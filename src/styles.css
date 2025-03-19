@@ -14,6 +14,8 @@
   --panel-bg: #2b2b2b;
   --input-bg: #3b3b3b;
   --drag-over-bg: rgba(114, 137, 218, 0.2);
+  --resize-handle-color: #454545;
+  --resize-handle-hover: #666666;
 }
 
 * {
@@ -35,7 +37,7 @@ body {
 
 .app-container {
   display: grid;
-  grid-template-columns: 60px 1fr 300px;
+  grid-template-columns: 60px 1fr 5px var(--right-panel-width, 300px);
   grid-template-rows: 1fr 30px;
   height: 100vh;
   width: 100vw;
@@ -87,11 +89,40 @@ body {
   padding: 20px;
   overflow-y: auto;
   background-color: var(--main-content-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Horizontal Resize Handle */
+.horizontal-resize-handle {
+  grid-column: 3;
+  grid-row: 1;
+  background-color: var(--border-color);
+  cursor: col-resize;
+  position: relative;
+}
+
+.horizontal-resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 30px;
+  transform: translateY(-50%);
+  background-color: var(--resize-handle-color);
+  border-radius: 2px;
+  width: 3px;
+  margin: 0 auto;
+}
+
+.horizontal-resize-handle:hover::before {
+  background-color: var(--resize-handle-hover);
 }
 
 /* Filter Styles */
 .filter-container {
-  margin-bottom: 15px;
+  margin-top: 15px;
 }
 
 .filter-input {
@@ -113,7 +144,7 @@ body {
   background-color: var(--panel-bg);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  height: calc(100% - 50px);
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -144,6 +175,44 @@ body {
   background-color: var(--tree-selected);
 }
 
+/* Expandable Tree Styles */
+.tree-parent {
+  font-weight: bold;
+  position: relative;
+}
+
+.tree-parent::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid var(--text-color);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.2s;
+}
+
+.tree-parent.expanded::before {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.tree-parent > div:first-child {
+  padding-left: 24px;
+}
+
+.tree-children {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.tree-children.expanded {
+  max-height: 1000px; /* This should be large enough to fit all your content */
+}
+
 /* Drag and Drop Styles */
 .tree-item.dragging {
   opacity: 0.6;
@@ -153,10 +222,6 @@ body {
 .tree-item.drag-over {
   background-color: var(--drag-over-bg);
   border: 1px dashed var(--primary-color);
-}
-
-.tree-parent {
-  font-weight: bold;
 }
 
 .tree-child {
@@ -174,7 +239,7 @@ body {
 
 /* Right Panel Styles */
 .right-panel {
-  grid-column: 3;
+  grid-column: 4;
   grid-row: 1;
   background-color: var(--panel-bg);
   border-left: 1px solid var(--border-color);
@@ -182,6 +247,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow-y: auto;
 }
 
 .span-container {
@@ -196,12 +262,106 @@ body {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  position: relative;
 }
 
 .info-span h3 {
   margin-bottom: 12px;
   font-size: 16px;
   color: var(--text-light);
+}
+
+/* Resizable Panel Styles */
+.resizable {
+  transition: height 0.1s ease;
+  min-height: 100px;
+}
+
+.resize-handle {
+  position: absolute;
+  height: 10px;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  cursor: ns-resize;
+  z-index: 10;
+}
+
+.resize-handle::after {
+  content: "";
+  display: block;
+  position: absolute;
+  height: 3px;
+  left: 50%;
+  right: 0;
+  bottom: 3px;
+  width: 30px;
+  margin-left: -15px;
+  background-color: var(--resize-handle-color);
+  border-radius: 2px;
+}
+
+.resize-handle:hover::after {
+  background-color: var(--resize-handle-hover);
+}
+
+/* List View Styles */
+.list-span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.list-view {
+  flex: 1;
+  background-color: var(--panel-bg);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.list-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr;
+  padding: 10px 12px;
+  font-weight: bold;
+  border-bottom: 1px solid var(--border-color);
+  background-color: #1e1e1e;
+  color: var(--text-light);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.list-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.list-item:hover {
+  background-color: var(--tree-hover);
+}
+
+.list-item.selected {
+  background-color: var(--tree-selected);
+}
+
+.list-span .filter-container {
+  margin-top: auto;
+  margin-bottom: 0;
 }
 
 .primary-btn {
@@ -228,7 +388,7 @@ body {
 
 /* Status Bar Styles */
 .status-bar {
-  grid-column: 1 / span 3;
+  grid-column: 1 / span 4;
   grid-row: 2;
   background-color: var(--status-bar-bg);
   color: var(--text-light);

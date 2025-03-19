@@ -1,4 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use settings::*;
+
+mod mod_manager;
+mod settings;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -33,6 +38,47 @@ fn get_sidebar_icons() -> Vec<SidebarIcon> {
             id: "settings".to_string(),
             name: "Settings".to_string(),
             icon: "cog".to_string(),
+        },
+    ]
+}
+
+#[tauri::command]
+fn get_list_items() -> Vec<ListItem> {
+    vec![
+        ListItem {
+            id: "pack1".to_string(),
+            pack: "HD Textures".to_string(),
+            item_type: "Graphics".to_string(),
+            order: 1,
+            location: "C:/Games/Packs/HD".to_string(),
+        },
+        ListItem {
+            id: "pack2".to_string(),
+            pack: "UI Overhaul".to_string(),
+            item_type: "Interface".to_string(),
+            order: 2,
+            location: "C:/Games/Packs/UI".to_string(),
+        },
+        ListItem {
+            id: "pack3".to_string(),
+            pack: "Sound Enhancement".to_string(),
+            item_type: "Audio".to_string(),
+            order: 3,
+            location: "C:/Games/Packs/Audio".to_string(),
+        },
+        ListItem {
+            id: "pack4".to_string(),
+            pack: "Gameplay Rebalance".to_string(),
+            item_type: "Gameplay".to_string(),
+            order: 4,
+            location: "C:/Games/Packs/Balance".to_string(),
+        },
+        ListItem {
+            id: "pack5".to_string(),
+            pack: "Character Models".to_string(),
+            item_type: "Graphics".to_string(),
+            order: 5,
+            location: "C:/Games/Packs/Models".to_string(),
         },
     ]
 }
@@ -114,6 +160,18 @@ fn handle_item_drop(source_id: &str, target_id: &str) -> Result<String, String> 
     Ok(format!("Moved item {} to {}", source_id, target_id))
 }
 
+// Load settings from config file
+#[tauri::command]
+fn load_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
+    AppSettings::load(&app_handle).map_err(|e| format!("Failed to load settings: {}", e))
+}
+
+// Save settings to config file
+#[tauri::command]
+fn save_settings(app_handle: tauri::AppHandle, settings: AppSettings) -> Result<(), String> {
+    settings.save(&app_handle).map_err(|e| format!("Failed to save settings: {}", e))
+}
+
 #[derive(serde::Serialize)]
 struct SidebarIcon {
     id: String,
@@ -141,6 +199,15 @@ struct TreeItem {
     is_checked: bool,
 }
 
+#[derive(serde::Serialize)]
+struct ListItem {
+    id: String,
+    pack: String,
+    item_type: String,
+    order: i32,
+    location: String,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -151,7 +218,10 @@ pub fn run() {
             get_sidebar_icons, 
             get_tree_data,
             handle_checkbox_change,
-            handle_item_drop
+            handle_item_drop,
+            load_settings,
+            save_settings,
+            get_list_items
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
