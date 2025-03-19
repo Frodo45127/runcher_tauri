@@ -1,3 +1,4 @@
+use rpfm_lib::games::supported_games::{SupportedGames, KEY_ARENA};
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use settings::*;
 
@@ -18,28 +19,20 @@ fn launch_game(id: &str) -> Result<String, String> {
 
 #[tauri::command]
 fn get_sidebar_icons() -> Vec<SidebarIcon> {
-    vec![
-        SidebarIcon {
-            id: "home".to_string(),
-            name: "Home".to_string(),
-            icon: "home".to_string(),
-        },
-        SidebarIcon {
-            id: "library".to_string(),
-            name: "Library".to_string(),
-            icon: "book".to_string(),
-        },
-        SidebarIcon {
-            id: "friends".to_string(),
-            name: "Friends".to_string(),
-            icon: "users".to_string(),
-        },
-        SidebarIcon {
-            id: "settings".to_string(),
-            name: "Settings".to_string(),
-            icon: "cog".to_string(),
-        },
-    ]
+    let games = SupportedGames::default();
+    let games = games.games_sorted();
+    let mut icons = Vec::with_capacity(games.len() - 1);
+    for game in games {
+        if game.key() != KEY_ARENA {
+            icons.push(SidebarIcon {
+                id: game.key().to_string(),
+                name: game.display_name().to_string(),
+                icon: game.icon_small().to_string(),
+            });   
+        }
+    }
+
+    icons
 }
 
 #[tauri::command]

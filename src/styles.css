@@ -614,3 +614,10 @@ body {
 .secondary-btn:hover {
   background-color: var(--sidebar-hover);
 }
+
+/* Sidebar Icon Styles */
+.sidebar-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}

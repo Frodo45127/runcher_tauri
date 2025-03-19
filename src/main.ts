@@ -40,6 +40,8 @@ interface AppSettings {
   selectedListItem: string | null;
   panel_heights: { [key: string]: number };
   right_panel_width: number;
+  paths: { [key: string]: string };
+  strings: { [key: string]: string };
 }
 
 let selectedGameId: string | null = null;
@@ -60,7 +62,9 @@ let appSettings: AppSettings = {
   selectedTreeItem: null,
   selectedListItem: null,
   panel_heights: {},
-  right_panel_width: 300
+  right_panel_width: 300,
+  paths: {},
+  strings: {}
 };
 
 // Load sidebar icons from Rust
@@ -68,13 +72,20 @@ async function loadSidebarIcons() {
   try {
     const icons: SidebarIcon[] = await invoke("get_sidebar_icons");
     const sidebarContainer = document.getElementById("sidebar-buttons");
-    
+
     if (sidebarContainer) {
       icons.forEach(icon => {
         const button = document.createElement("button");
         button.className = "sidebar-btn";
         button.dataset.id = icon.id;
-        button.innerHTML = `<i class="fa-solid fa-${icon.icon}"></i>`;
+        
+        // Create an image element instead of using FontAwesome
+        const img = document.createElement("img");
+        img.src = `icons/${icon.icon}`;
+        img.alt = icon.name;
+        img.className = "sidebar-icon";
+        
+        button.appendChild(img);
         button.title = icon.name;
         
         button.addEventListener("click", () => {
@@ -270,7 +281,7 @@ function filterListItems(searchText: string) {
 // Load app settings
 async function loadSettings() {
   try {
-    const settings = await invoke('get_settings') as Partial<AppSettings>;
+    const settings = await invoke('load_settings') as Partial<AppSettings>;
     appSettings = {
       ...appSettings,
       ...(settings as AppSettings)
@@ -307,7 +318,9 @@ async function saveSettings() {
         selectedTreeItem: appSettings.selectedTreeItem,
         selectedListItem: appSettings.selectedListItem,
         panel_heights: appSettings.panel_heights,
-        right_panel_width: appSettings.right_panel_width
+        right_panel_width: appSettings.right_panel_width,
+        paths: appSettings.paths,
+        strings: appSettings.strings
       }
     });
   } catch (error) {
