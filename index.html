@@ -1,43 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>Game Launcher</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/main.ts" defer></script>
   </head>
-
   <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
-
-      <div class="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
+    <div class="app-container">
+      <!-- Left sidebar with buttons -->
+      <div class="sidebar">
+        <div id="sidebar-buttons">
+          <!-- Will be populated dynamically -->
+        </div>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
+      <!-- Main content area -->
+      <div class="main-content">
+        <!-- Tree view -->
+        <div class="filter-container">
+          <input type="text" id="tree-filter" class="filter-input" placeholder="Filter games...">
+        </div>
+        <div class="tree-view">
+          <div class="tree-header">
+            <div class="header-item">Name</div>
+            <div class="header-item">Size</div>
+            <div class="header-item">Status</div>
+            <div class="header-item">Last Played</div>
+          </div>
+          <div id="tree-container">
+            <!-- Will be populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right sidebar -->
+      <div class="right-panel">
+        <div class="span-container">
+          <div class="info-span">
+            <h3>Launch Game</h3>
+            <button id="launch-game-btn" class="primary-btn">
+              <i class="fa-solid fa-play"></i> Launch Game
+            </button>
+          </div>
+          <div class="info-span">
+            <h3>Game Info</h3>
+            <div id="game-details">
+              Select a game to view details
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status bar -->
+      <div class="status-bar">
+        <div class="status-message">Ready</div>
+        <div class="status-buttons">
+          <button class="status-btn"><i class="fa-solid fa-cog"></i></button>
+          <button class="status-btn"><i class="fa-solid fa-question"></i></button>
+          <button class="status-btn"><i class="fa-solid fa-bell"></i></button>
+          <button class="status-btn"><i class="fa-solid fa-user"></i></button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
