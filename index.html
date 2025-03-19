@@ -45,9 +45,14 @@
           <div class="info-span resizable">
             <div class="resize-handle"></div>
             <h3>Launch Game</h3>
-            <button id="launch-game-btn" class="primary-btn">
-              <i class="fa-solid fa-play"></i> Launch Game
-            </button>
+            <div class="button-group">
+              <button id="launch-game-btn" class="primary-btn">
+                <i class="fa-solid fa-play"></i> Launch Game
+              </button>
+              <button id="settings-btn" class="icon-btn" title="Settings">
+                <i class="fa-solid fa-gear"></i>
+              </button>
+            </div>
           </div>
           <div class="info-span resizable">
             <div class="resize-handle"></div>
@@ -87,6 +92,67 @@
           <button class="status-btn"><i class="fa-solid fa-question"></i></button>
           <button class="status-btn"><i class="fa-solid fa-bell"></i></button>
           <button class="status-btn"><i class="fa-solid fa-user"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-tab="general">General</button>
+          <button class="tab-btn" data-tab="advanced">Advanced</button>
+        </div>
+        <div class="modal-body">
+          <div class="tab-content active" id="general-tab">
+            <!-- General settings content -->
+            <div class="setting-group">
+              <h3>General Settings</h3>
+              <div class="setting-item">
+                <label>Theme</label>
+                <select>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </div>
+              <div class="setting-item">
+                <label>Language</label>
+                <select>
+                  <option value="en">English</option>
+                  <option value="es">Spanish</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="tab-content" id="advanced-tab">
+            <!-- Advanced settings content -->
+            <div class="setting-group">
+              <h3>Advanced Settings</h3>
+              <div class="setting-item">
+                <label>Cache Size</label>
+                <input type="number" value="1024" min="256" max="4096">
+              </div>
+              <div class="setting-item">
+                <label>Log Level</label>
+                <select>
+                  <option value="info">Info</option>
+                  <option value="debug">Debug</option>
+                  <option value="error">Error</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="secondary-btn" id="restore-defaults">Restore Defaults</button>
+          <div class="button-group">
+            <button class="secondary-btn" id="cancel-settings">Cancel</button>
+            <button class="primary-btn" id="save-settings">OK</button>
+          </div>
         </div>
       </div>
     </div>

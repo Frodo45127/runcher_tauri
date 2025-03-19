@@ -664,6 +664,60 @@ async function launchGame() {
   }
 }
 
+// Settings Modal Functions
+function openSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) {
+    modal.classList.add('active');
+  }
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
+
+function switchTab(tabId: string) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-tab') === tabId) {
+      btn.classList.add('active');
+    }
+  });
+
+  // Update tab contents
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.remove('active');
+    if (content.id === `${tabId}-tab`) {
+      content.classList.add('active');
+    }
+  });
+}
+
+function restoreDefaultSettings() {
+  // Reset all form elements to their default values
+  const themeSelect = document.querySelector('#general-tab select') as HTMLSelectElement;
+  if (themeSelect) themeSelect.value = 'dark';
+
+  const languageSelect = document.querySelector('#general-tab select:nth-child(2)') as HTMLSelectElement;
+  if (languageSelect) languageSelect.value = 'en';
+
+  const cacheInput = document.querySelector('#advanced-tab input') as HTMLInputElement;
+  if (cacheInput) cacheInput.value = '1024';
+
+  const logSelect = document.querySelector('#advanced-tab select') as HTMLSelectElement;
+  if (logSelect) logSelect.value = 'info';
+}
+
+function saveSettingsModal() {
+  // Here you would implement the logic to save the settings
+  // For now, we'll just close the modal
+  closeSettingsModal();
+}
+
 // Initialize the app
 window.addEventListener("DOMContentLoaded", async () => {
   // Load settings
@@ -701,5 +755,51 @@ window.addEventListener("DOMContentLoaded", async () => {
   const launchButton = document.getElementById("launch-game-btn");
   if (launchButton) {
     launchButton.addEventListener("click", launchGame);
+  }
+
+  // Setup settings modal
+  const settingsBtn = document.getElementById('settings-btn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', openSettingsModal);
+  }
+
+  const closeBtn = document.querySelector('.close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeSettingsModal);
+  }
+
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.getAttribute('data-tab');
+      if (tabId) {
+        switchTab(tabId);
+      }
+    });
+  });
+
+  const restoreDefaultsBtn = document.getElementById('restore-defaults');
+  if (restoreDefaultsBtn) {
+    restoreDefaultsBtn.addEventListener('click', restoreDefaultSettings);
+  }
+
+  const cancelSettingsBtn = document.getElementById('cancel-settings');
+  if (cancelSettingsBtn) {
+    cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+  }
+
+  const saveSettingsBtn = document.getElementById('save-settings');
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', saveSettingsModal);
+  }
+
+  // Close modal when clicking outside
+  const modal = document.getElementById('settings-modal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeSettingsModal();
+      }
+    });
   }
 });
