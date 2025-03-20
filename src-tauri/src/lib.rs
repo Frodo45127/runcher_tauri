@@ -357,7 +357,6 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
     let secondary_older_than_content = tre("mod_secondary_older_than_content", &[&BASE64_STANDARD.encode(secondary_older_than_content_icon)]);
 */
     // This loads mods per category, meaning all installed mod have to be in the categories list!!!!
-dbg!(&game_config);
     let mut categories: Vec<TreeCategory> = vec![];
     for category in game_config.categories_order() {
         let mut cat_item = TreeCategory::default();
