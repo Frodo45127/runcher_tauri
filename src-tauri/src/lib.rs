@@ -22,8 +22,8 @@ mod settings;
 static SCHEMA: LazyLock<Option<Schema>> = LazyLock::new(|| None);
 static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
-static GAME_SELECTED: LazyLock<GameInfo> =
-    LazyLock::new(|| SupportedGames::default().game("arena").unwrap().clone());
+static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(SupportedGames::default().game("arena").unwrap().clone())));
 
 const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());

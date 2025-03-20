@@ -111,13 +111,11 @@ async function loadSidebarIcons() {
         });
         
         sidebarContainer.appendChild(button);
+
+        if (appSettings.paths[icon.id] === undefined || appSettings.paths[icon.id] === "") {
+          button.classList.add("hidden");
+        }
       });
-      
-      // Set first button as active by default
-      const firstButton = sidebarContainer.querySelector(".sidebar-btn");
-      if (firstButton) {
-        firstButton.classList.add("active");
-      }
     }
   } catch (error) {
     console.error("Failed to load sidebar icons:", error);
@@ -1116,6 +1114,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   
   // Initialize resizable panels
   initializeResizablePanels();
+
+  // Load the default game
+  const defaultGame = appSettings.default_game;
+  const sidebarContainer = document.getElementById("sidebar-buttons");
+  if (defaultGame && sidebarContainer) {
+    const buttons = sidebarContainer.querySelectorAll(".sidebar-btn");
+    const defaultGameButton = Array.from(buttons).find(button => button.getAttribute('data-id') === defaultGame) as HTMLButtonElement;
+    if (defaultGameButton && !defaultGameButton.classList.contains("hidden")) {
+      defaultGameButton.click();
+    }
+  }
   
   // Setup tree filter
   const treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
