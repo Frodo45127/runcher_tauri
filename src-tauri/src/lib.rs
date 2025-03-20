@@ -1,14 +1,49 @@
-use rpfm_lib::games::supported_games::{SupportedGames, KEY_ARENA};
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use regex::Regex;
+use std::cell::LazyCell;
+use std::sync::LazyLock;
+use rpfm_lib::games::{GameInfo,supported_games::{SupportedGames, KEY_ARENA}};
+use rpfm_lib::schema::Schema;
 use settings::*;
 
 mod mod_manager;
 mod settings;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+    /// Sentry client guard, so we can reuse it later on and keep it in scope for the entire duration of the program.
+    //static ref SENTRY_GUARD: Arc<RwLock<ClientInitGuard>> = Arc::new(RwLock::new(Logger::init(&{
+    //    init_config_path().expect("Error while trying to initialize config path. We're fucked.");
+    //    error_path().unwrap_or_else(|_| PathBuf::from("."))
+    //}, true, true, release_name!()).unwrap()));
+
+
+
+/// Currently loaded schema.
+static SCHEMA: LazyLock<Option<Schema>> = LazyLock::new(|| None);
+static GAME_SELECTED: LazyLock<GameInfo> = LazyLock::new(|| SupportedGames::default().game("arena").unwrap().clone());
+
+const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());
+const REGEX_MAP_INFO_DESCRIPTION: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<description>(.*)</description>").unwrap());
+const REGEX_MAP_INFO_TYPE: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<type>(.*)</type>").unwrap());
+const REGEX_MAP_INFO_TEAM_SIZE_1: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<team_size_1>(.*)</team_size_1>").unwrap());
+const REGEX_MAP_INFO_TEAM_SIZE_2: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<team_size_2>(.*)</team_size_2>").unwrap());
+const REGEX_MAP_INFO_DEFENDER_FUNDS_RATIO: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<defender_funds_ratio>(.*)</defender_funds_ratio>").unwrap());
+const REGEX_MAP_INFO_HAS_KEY_BUILDINGS: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<has_key_buildings>(.*)</has_key_buildings>").unwrap());
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION_SUBTITLE: &str = " -- When I learned maths";
+
+const GITHUB_URL: &str = "https://github.com/Frodo45127/runcher";
+const DISCORD_URL: &str = "https://discord.gg/moddingden";
+const PATREON_URL: &str = "https://www.patreon.com/RPFM";
+
+//const FALLBACK_LOCALE_EN: &str = include_str!("../../locale/English_en.ftl");
+const SENTRY_DSN_KEY: &str = "https://4c058b715c304d55b928c3e44a63b4ff@o152833.ingest.sentry.io/4504851217711104";
+
+const SQL_SCRIPTS_REPO: &str = "https://github.com/Frodo45127/twpatcher-sql-scripts";
+const SQL_SCRIPTS_BRANCH: &str = "master";
+const SQL_SCRIPTS_REMOTE: &str = "origin";
+
+const REPO_OWNER: &str = "Frodo45127";
+const REPO_NAME: &str = "runcher";
 
 #[tauri::command]
 fn launch_game(id: &str) -> Result<String, String> {
@@ -203,10 +238,10 @@ struct ListItem {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet, 
             launch_game, 
             get_sidebar_icons, 
             get_tree_data,

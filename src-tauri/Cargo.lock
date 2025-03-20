@@ -4237,7 +4237,6 @@ dependencies = [
  "flate2",
  "getset",
  "interprocess",
- "lazy_static",
  "rand 0.8.5",
  "rayon",
  "regex",

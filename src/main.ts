@@ -33,11 +33,11 @@ interface ListItem {
 }
 
 interface AppSettings {
-  treeOpenState: { [key: string]: boolean };
-  treeFilterValue: string;
-  listFilterValue: string;
-  selectedTreeItem: string | null;
-  selectedListItem: string | null;
+  tree_open_state: { [key: string]: boolean };
+  tree_filter_value: string;
+  list_filter_value: string;
+  selected_tree_item: string | null;
+  selected_list_item: string | null;
   panel_heights: { [key: string]: number };
   right_panel_width: number;
   paths: { [key: string]: string };
@@ -56,11 +56,11 @@ let treeData: TreeCategory[] = [];
 let listData: ListItem[] = [];
 // Store app settings
 let appSettings: AppSettings = {
-  treeOpenState: {},
-  treeFilterValue: '',
-  listFilterValue: '',
-  selectedTreeItem: null,
-  selectedListItem: null,
+  tree_open_state: {},
+  tree_filter_value: '',
+  list_filter_value: '',
+  selected_tree_item: null,
+  selected_list_item: null,
   panel_heights: {},
   right_panel_width: 300,
   paths: {},
@@ -289,15 +289,15 @@ async function loadSettings() {
     
     // Apply the loaded settings
     const treeFilter = document.getElementById('tree-filter') as HTMLInputElement;
-    if (treeFilter && appSettings.treeFilterValue) {
-      treeFilter.value = appSettings.treeFilterValue;
-      filterTreeItems(appSettings.treeFilterValue);
+    if (treeFilter && appSettings.tree_filter_value) {
+      treeFilter.value = appSettings.tree_filter_value;
+      filterTreeItems(appSettings.tree_filter_value);
     }
     
     const listFilter = document.getElementById('list-filter') as HTMLInputElement;
-    if (listFilter && appSettings.listFilterValue) {
-      listFilter.value = appSettings.listFilterValue;
-      filterListItems(appSettings.listFilterValue);
+    if (listFilter && appSettings.list_filter_value) {
+      listFilter.value = appSettings.list_filter_value;
+      filterListItems(appSettings.list_filter_value);
     }
     
     // Set panel width from settings
@@ -312,11 +312,11 @@ async function saveSettings() {
   try {
     await invoke('save_settings', { 
       settings: {
-        treeOpenState: appSettings.treeOpenState,
-        treeFilterValue: appSettings.treeFilterValue,
-        listFilterValue: appSettings.listFilterValue,
-        selectedTreeItem: appSettings.selectedTreeItem,
-        selectedListItem: appSettings.selectedListItem,
+        tree_open_state: appSettings.tree_open_state,
+        tree_filter_value: appSettings.tree_filter_value,
+        list_filter_value: appSettings.list_filter_value,
+        selected_tree_item: appSettings.selected_tree_item,
+        selected_list_item: appSettings.selected_list_item,
         panel_heights: appSettings.panel_heights,
         right_panel_width: appSettings.right_panel_width,
         paths: appSettings.paths,
@@ -511,7 +511,7 @@ function renderTreeView() {
       }
       
       // Set initial expanded state based on settings
-      if (appSettings.treeOpenState[category.id] === true) {
+      if (appSettings.tree_open_state[category.id] === true) {
         toggleCategoryExpansion(category.id, true);
       }
     });

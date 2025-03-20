@@ -71,9 +71,39 @@ impl AppSettings {
         }
     }
 
+    pub fn init(&mut self, app_handle: &tauri::AppHandle) -> Result<()> {
+        
+        // TODO: Make this triggers only once through an OnceCell value.
+        init_config_path(app_handle)?;
+
+        let games = SupportedGames::default();
+        let games = games.games_sorted();
+        for game in games {
+            if game.key() != KEY_ARENA {
+
+                // Try to find the game path automatically.
+                let game_path = game.find_game_install_location()
+                    .ok()
+                    .flatten()
+                    .map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
+    
+                // If we got a path and we don't have it saved yet, save it automatically.
+                let current_path = self.game_path(&game).ok().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
+                if !game_path.is_empty() && current_path != game_path {
+                    self.set_game_path(game, &game_path);
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn game_path(&self, game: &GameInfo) -> Result<PathBuf> {
         let path = self.paths.get(game.key()).ok_or(anyhow!("Game path not found"))?;
         Ok(PathBuf::from(path))
+    }
+
+    pub fn set_game_path(&mut self, game: &GameInfo, value: &str) {
+        self.paths.insert(game.key().to_owned(), value.to_owned());
     }
 
     pub fn secondary_mods_path(&self) -> Result<PathBuf> {
@@ -85,15 +115,27 @@ impl AppSettings {
         self.strings.get(key).cloned().ok_or(anyhow!("String not found"))
     }
 
+    pub fn set_string_if_new(&mut self, key: &str, value: &str) {
+        if self.strings.get(key).is_none() {
+            self.strings.insert(key.to_string(), value.to_string());
+        }
+    }
+
     pub fn load(app_handle: &tauri::AppHandle) -> Result<Self> {
         let config_path = get_config_path(&app_handle)?;  
         if !config_path.exists() {
-            return Ok(AppSettings::new());
+            return Ok(Self::new());
         }
         
         // Read and parse the file
         let content = std::fs::read_to_string(&config_path).map_err(|e| anyhow!("Failed to read config file: {}", e))?;
         serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e))
+        // Fix so we can edit this file on development without erroring out.
+        //if let Ok(settings) = serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e)) {
+        //    Ok(settings)
+        //} else {
+        //    Ok(Self::new())
+        //}
     }
 
     pub fn save(self, app_handle: &tauri::AppHandle) -> Result<()> {      
@@ -140,7 +182,7 @@ pub fn get_config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
 pub fn config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
     let path = app_handle.path().app_config_dir().map_err(|e| anyhow!("Failed to get app config directory: {e}"))?;
 
-    // Initialize the config path the first time 
+    // TODO: Make this triggers only once through an OnceCell value.
     if !path.exists() {
         init_config_path(app_handle)?;
     }
