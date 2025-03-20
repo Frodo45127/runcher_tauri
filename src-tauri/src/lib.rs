@@ -1,4 +1,5 @@
 use regex::Regex;
+use tauri::Listener;
 use std::cell::LazyCell;
 use std::sync::LazyLock;
 use rpfm_lib::games::{GameInfo,supported_games::{SupportedGames, KEY_ARENA}};
@@ -188,6 +189,19 @@ fn handle_item_drop(source_id: &str, target_id: &str) -> Result<String, String> 
     Ok(format!("Moved item {} to {}", source_id, target_id))
 }
 
+#[tauri::command]
+fn on_window_ready() -> Result<String, String> {
+    println!("Window HTML fully loaded and ready!");
+    // Aquí puedes colocar cualquier lógica que necesites ejecutar cuando la ventana esté lista
+    // Por ejemplo, cargar datos iniciales, verificar actualizaciones, etc.
+    Ok("Window ready event received".to_string())
+}
+
+#[tauri::command]
+fn init_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
+    AppSettings::init(&app_handle).map_err(|e| format!("Failed to load settings: {}", e))
+}
+
 // Load settings from config file
 #[tauri::command]
 fn load_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
@@ -238,18 +252,31 @@ struct ListItem {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let app_handle = app.handle();
+            let _settings = AppSettings::init(&app_handle).unwrap();
+                        
+            // Registrar un listener para el evento tauri://ready
+            app_handle.listen_any("tauri://ready", move |_| {
+                println!("Tauri application ready event triggered");
+                // Puedes realizar acciones adicionales si es necesario
+            });
+            
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             launch_game, 
             get_sidebar_icons, 
             get_tree_data,
             handle_checkbox_change,
             handle_item_drop,
+            init_settings,
             load_settings,
             save_settings,
-            get_list_items
+            get_list_items,
+            on_window_ready
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

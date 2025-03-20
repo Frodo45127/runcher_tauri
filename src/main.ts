@@ -279,6 +279,35 @@ function filterListItems(searchText: string) {
 }
 
 // Load app settings
+async function initSettings() {
+  try {
+    const settings = await invoke('init_settings') as Partial<AppSettings>;
+    appSettings = {
+      ...appSettings,
+      ...(settings as AppSettings)
+    };
+    
+    // Apply the loaded settings
+    const treeFilter = document.getElementById('tree-filter') as HTMLInputElement;
+    if (treeFilter && appSettings.tree_filter_value) {
+      treeFilter.value = appSettings.tree_filter_value;
+      filterTreeItems(appSettings.tree_filter_value);
+    }
+    
+    const listFilter = document.getElementById('list-filter') as HTMLInputElement;
+    if (listFilter && appSettings.list_filter_value) {
+      listFilter.value = appSettings.list_filter_value;
+      filterListItems(appSettings.list_filter_value);
+    }
+    
+    // Set panel width from settings
+    document.documentElement.style.setProperty('--right-panel-width', `${appSettings.right_panel_width}px`);
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+  }
+}
+
+// Load app settings
 async function loadSettings() {
   try {
     const settings = await invoke('load_settings') as Partial<AppSettings>;
@@ -733,9 +762,18 @@ function saveSettingsModal() {
 
 // Initialize the app
 window.addEventListener("DOMContentLoaded", async () => {
-  // Load settings
-  await loadSettings();
+  console.log('DOM fully loaded');
   
+  try {
+    // Notify Rust that the window is ready
+    const response = await invoke('on_window_ready');
+    console.log('Window ready notification sent to Rust:', response);
+  } catch (error) {
+    console.error('Error during window ready notification:', error);
+  }
+
+  await initSettings();
+    
   // Load sidebar icons
   await loadSidebarIcons();
   

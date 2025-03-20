@@ -12,12 +12,15 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::fs::{DirBuilder, File};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use rpfm_lib::games::{GameInfo, supported_games::{KEY_ARENA, SupportedGames}};
+
+const SETTINGS_INITIALIZED: OnceCell<bool> = OnceCell::new();
 
 const SQL_SCRIPTS_EXTRACTED_FOLDER: &str = "sql_scripts_extracted";
 const SQL_SCRIPTS_LOCAL_FOLDER: &str = "sql_scripts_local";
@@ -39,7 +42,7 @@ pub const SLASH_YMD_DATE_FORMAT_STR: &str = "[year]/[month]/[day]";
 //                             Enums 
 //-------------------------------------------------------------------------------//
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AppSettings {
     pub tree_open_state: HashMap<String, bool>,
     pub tree_filter_value: String,
@@ -56,8 +59,8 @@ pub struct AppSettings {
 //                             Implementations
 //-------------------------------------------------------------------------------//
 
-impl AppSettings {
-    pub fn new() -> Self {
+impl Default for AppSettings {
+    fn default() -> Self {
         Self {
             tree_open_state: HashMap::new(),
             tree_filter_value: String::new(),
@@ -70,12 +73,18 @@ impl AppSettings {
             strings: HashMap::new(),
         }
     }
+}
 
-    pub fn init(&mut self, app_handle: &tauri::AppHandle) -> Result<()> {
-        
-        // TODO: Make this triggers only once through an OnceCell value.
-        init_config_path(app_handle)?;
+impl AppSettings {
+    pub fn init(app_handle: &tauri::AppHandle) -> Result<Self> {
 
+        // Only initialize the config paths once.
+        if SETTINGS_INITIALIZED.get().is_none() {
+            init_config_path(app_handle)?;
+            let _ = SETTINGS_INITIALIZED.set(true);
+        }
+
+        let mut settings =Self::load(app_handle)?;
         let games = SupportedGames::default();
         let games = games.games_sorted();
         for game in games {
@@ -88,13 +97,16 @@ impl AppSettings {
                     .map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
     
                 // If we got a path and we don't have it saved yet, save it automatically.
-                let current_path = self.game_path(&game).ok().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
+                let current_path = settings.game_path(&game).ok().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
                 if !game_path.is_empty() && current_path != game_path {
-                    self.set_game_path(game, &game_path);
+                    settings.set_game_path(game, &game_path);
                 }
             }
         }
-        Ok(())
+
+        settings.save(app_handle)?;
+
+        Ok(settings)
     }
 
     pub fn game_path(&self, game: &GameInfo) -> Result<PathBuf> {
@@ -124,21 +136,21 @@ impl AppSettings {
     pub fn load(app_handle: &tauri::AppHandle) -> Result<Self> {
         let config_path = get_config_path(&app_handle)?;  
         if !config_path.exists() {
-            return Ok(Self::new());
+            return Ok(Self::default());
         }
         
         // Read and parse the file
         let content = std::fs::read_to_string(&config_path).map_err(|e| anyhow!("Failed to read config file: {}", e))?;
-        serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e))
+        //serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e))
         // Fix so we can edit this file on development without erroring out.
-        //if let Ok(settings) = serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e)) {
-        //    Ok(settings)
-        //} else {
-        //    Ok(Self::new())
-        //}
+        if let Ok(settings) = serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e)) {
+            Ok(settings)
+        } else {
+            Ok(Self::default())
+        }
     }
 
-    pub fn save(self, app_handle: &tauri::AppHandle) -> Result<()> {      
+    pub fn save(&self, app_handle: &tauri::AppHandle) -> Result<()> {      
         let path = get_config_path(app_handle)?;
         let content = serde_json::to_string_pretty(&self).map_err(|e| anyhow!("Failed to serialize settings: {}", e))?;
         std::fs::write(&path, content).map_err(|e| anyhow!("Failed to write config file: {}", e))?;
@@ -181,12 +193,6 @@ pub fn get_config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
 
 pub fn config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
     let path = app_handle.path().app_config_dir().map_err(|e| anyhow!("Failed to get app config directory: {e}"))?;
-
-    // TODO: Make this triggers only once through an OnceCell value.
-    if !path.exists() {
-        init_config_path(app_handle)?;
-    }
-
     Ok(path)
 }
 
