@@ -254,7 +254,7 @@ body {
 }
 
 .category-items.expanded {
-  max-height: 1000px; /* This should be large enough to fit all your content */
+  max-height: 10000000px; /* This should be large enough to fit all your content */
 }
 
 /* Drag and Drop Styles */
