@@ -1,7 +1,7 @@
 use regex::Regex;
 use tauri::Listener;
 use std::cell::LazyCell;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock, RwLock};
 use rpfm_lib::games::{GameInfo,supported_games::{SupportedGames, KEY_ARENA}};
 use rpfm_lib::schema::Schema;
 use settings::*;
@@ -19,6 +19,7 @@ mod settings;
 
 /// Currently loaded schema.
 static SCHEMA: LazyLock<Option<Schema>> = LazyLock::new(|| None);
+static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> = LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
 static GAME_SELECTED: LazyLock<GameInfo> = LazyLock::new(|| SupportedGames::default().game("arena").unwrap().clone());
 
 const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());
@@ -205,13 +206,15 @@ fn init_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
 // Load settings from config file
 #[tauri::command]
 fn load_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
-    AppSettings::load(&app_handle).map_err(|e| format!("Failed to load settings: {}", e))
+    Ok(SETTINGS.read().unwrap().clone())
 }
 
 // Save settings to config file
 #[tauri::command]
 fn save_settings(app_handle: tauri::AppHandle, settings: AppSettings) -> Result<(), String> {
-    settings.save(&app_handle).map_err(|e| format!("Failed to save settings: {}", e))
+    settings.save(&app_handle).map_err(|e| format!("Failed to save settings: {}", e))?;
+    *SETTINGS.write().unwrap() = settings;
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -256,7 +259,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_handle = app.handle();
-            let _settings = AppSettings::init(&app_handle).unwrap();
+            *SETTINGS.write().unwrap() = AppSettings::init(&app_handle).unwrap();
                         
             // Registrar un listener para el evento tauri://ready
             app_handle.listen_any("tauri://ready", move |_| {

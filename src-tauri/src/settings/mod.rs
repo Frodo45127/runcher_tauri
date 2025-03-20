@@ -42,7 +42,7 @@ pub const SLASH_YMD_DATE_FORMAT_STR: &str = "[year]/[month]/[day]";
 //                             Enums 
 //-------------------------------------------------------------------------------//
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AppSettings {
     pub tree_open_state: HashMap<String, bool>,
     pub tree_filter_value: String,
