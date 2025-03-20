@@ -485,6 +485,7 @@ function toggleCategoryExpansion(categoryId: string, forceState?: boolean) {
   }
   
   // Save settings when expansion state changes
+  appSettings.tree_open_state[categoryId] = newState;
   saveSettings();
 }
 
@@ -659,6 +660,7 @@ function updateGameDetails(game: TreeItem) {
 // Filter tree items based on search text
 function filterTreeItems(searchText: string) {
   const normalizedSearchText = searchText.toLowerCase().trim();
+  appSettings.tree_filter_value = normalizedSearchText;
   
   // If search text is empty, show all items
   if (normalizedSearchText === '') {
