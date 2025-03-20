@@ -8,6 +8,7 @@ use anyhow::anyhow;
 use settings::*;
 use std::cell::LazyCell;
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 use tauri::Listener;
 
@@ -104,57 +105,24 @@ fn get_sidebar_icons() -> Vec<SidebarIcon> {
 }
 
 #[tauri::command]
-fn get_list_items() -> Vec<ListItem> {
-    vec![
-        ListItem {
-            id: "pack1".to_string(),
-            pack: "HD Textures".to_string(),
-            item_type: "Graphics".to_string(),
-            order: 1,
-            location: "C:/Games/Packs/HD".to_string(),
-        },
-        ListItem {
-            id: "pack2".to_string(),
-            pack: "UI Overhaul".to_string(),
-            item_type: "Interface".to_string(),
-            order: 2,
-            location: "C:/Games/Packs/UI".to_string(),
-        },
-        ListItem {
-            id: "pack3".to_string(),
-            pack: "Sound Enhancement".to_string(),
-            item_type: "Audio".to_string(),
-            order: 3,
-            location: "C:/Games/Packs/Audio".to_string(),
-        },
-        ListItem {
-            id: "pack4".to_string(),
-            pack: "Gameplay Rebalance".to_string(),
-            item_type: "Gameplay".to_string(),
-            order: 4,
-            location: "C:/Games/Packs/Balance".to_string(),
-        },
-        ListItem {
-            id: "pack5".to_string(),
-            pack: "Character Models".to_string(),
-            item_type: "Graphics".to_string(),
-            order: 5,
-            location: "C:/Games/Packs/Models".to_string(),
-        },
-    ]
-}
-
-#[tauri::command]
-fn handle_checkbox_change(game_id: &str, is_checked: bool) -> Result<String, String> {
-    println!("Game {} checkbox changed to: {}", game_id, is_checked);
+async fn handle_checkbox_change(app: tauri::AppHandle, mod_id: &str, is_checked: bool) -> Result<Vec<ListItem>, String> {
+    println!("Mod {} checkbox changed to: {}", mod_id, is_checked);
     // Here you would implement actual logic to handle the checkbox change
     // For example, adding to favorites, marking for download, etc.
 
-    if is_checked {
-        Ok(format!("Game {} marked", game_id))
-    } else {
-        Ok(format!("Game {} unmarked", game_id))
-    }
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+
+    game_config.mods_mut().get_mut(mod_id).unwrap().set_enabled(is_checked);
+
+    let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
+    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
+    
+    *GAME_LOAD_ORDER.write().unwrap() = load_order;
+    *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
+    Ok(items)
 }
 
 #[tauri::command]
@@ -484,6 +452,63 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
     Ok(categories)
 }
 
+async fn load_packs(app: &tauri::AppHandle, game_config: &GameConfig, game_info: &GameInfo, game_path: &Path, load_order: &LoadOrder) -> anyhow::Result<Vec<ListItem>> {
+    use crate::mod_manager::secondary_mods_path;
+    use rpfm_lib::files::pack::Pack;
+
+    let mut items = vec![];
+
+    let secondary_mods_path = secondary_mods_path(app, game_config.game_key()).unwrap_or_default();
+    if !game_path.to_string_lossy().is_empty() {
+        if let Ok(game_data_folder) = game_info.data_path(game_path) {
+            let game_data_folder = std::fs::canonicalize(game_data_folder.clone()).unwrap_or_else(|_| game_data_folder.clone());
+
+            // Chain so movie packs are always last.
+            let mods = load_order.mods().iter().chain(load_order.movies().iter());
+            for (index, mod_id) in mods.enumerate() {
+                if let Some(modd) = game_config.mods().get(mod_id) {
+
+                    let pack_name = modd.paths()[0].file_name().unwrap().to_string_lossy().as_ref().to_owned();
+
+                    // This is needed to avoid errors with map packs before we process them.
+                    //
+                    // In practice if a bin pack loads here, there's a bug elsewhere.
+                    if pack_name.ends_with(".pack") {
+                        let pack = Pack::read_and_merge(&[modd.paths()[0].to_path_buf()], true, false, false)?;
+
+                        let mut item = ListItem::default();
+                        item.id = mod_id.to_string();
+                        item.pack = pack_name;
+                        item.r#type = modd.pack_type().to_string();
+                        item.order = index as i32;
+                        item.location = if modd.paths()[0].starts_with(&game_data_folder) {
+                            "Data".to_string()
+                        } else if secondary_mods_path.is_dir() && modd.paths()[0].starts_with(&secondary_mods_path) {
+                            if let Some(ref id) = modd.steam_id() {
+                                format!("Secondary ({})", id)
+                            } else {
+                                "Secondary (Non-Steam)".to_string()
+                            }
+                        } else if let Some(ref id) = modd.steam_id() {
+                            format!("Content ({})", id)
+                        } else {
+                            "Where the fuck is this pack?".to_string()
+                        };
+
+                        item.steam_id = modd.steam_id().clone().unwrap_or_default();
+                        items.push(item);
+                    } else {
+                        // TODO: fix this case in shogun 2.
+                        //error!("Error loading Pack to UI: {}", modd.paths()[0].to_string_lossy())
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(items)
+}
+
 #[derive(serde::Serialize)]
 struct SidebarIcon {
     id: String,
@@ -519,9 +544,10 @@ struct TreeItem {
 struct ListItem {
     id: String,
     pack: String,
-    item_type: String,
+    r#type: String,
     order: i32,
     location: String,
+    steam_id: String,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -549,7 +575,6 @@ pub fn run() {
             init_settings,
             load_settings,
             save_settings,
-            get_list_items,
             on_window_ready,
             get_available_languages,
             get_available_date_formats,

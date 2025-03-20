@@ -33,9 +33,10 @@ interface TreeCategory {
 interface ListItem {
   id: string;
   pack: string;
-  item_type: string;
+  type: string;
   order: number;
   location: string;
+  steam_id: string;
 }
 
 interface AppSettings {
@@ -279,12 +280,12 @@ function renderListItems() {
       listItem.className = "list-item";
       listItem.dataset.id = item.id;
       listItem.dataset.pack = item.pack.toLowerCase();
-      listItem.dataset.type = item.item_type.toLowerCase();
+      listItem.dataset.type = item.type.toLowerCase();
       listItem.dataset.location = item.location.toLowerCase();
       
       listItem.innerHTML = `
         <div>${item.pack}</div>
-        <div>${item.item_type}</div>
+        <div>${item.type}</div>
         <div>${item.order}</div>
         <div>${item.location}</div>
       `;
@@ -421,18 +422,19 @@ async function saveSettings() {
 async function handleCheckboxChange(itemId: string, isChecked: boolean) {
   try {
     // Llamar a la función Rust para manejar el cambio del checkbox
-    const result = await invoke('handle_checkbox_change', { 
-      game_id: itemId, 
-      is_checked: isChecked 
+    listData = await invoke('handle_checkbox_change', { 
+      modId: itemId.replace(/\\/g, ''), 
+      isChecked: isChecked 
     });
-    
-    console.log(result);
-    
+
+    console.log(listData);
+    renderListItems();
+   
     // Actualizar la UI visualmente si es necesario
-    const checkbox = document.querySelector(`#check-${itemId}`) as HTMLInputElement;
-    if (checkbox) {
-      checkbox.checked = isChecked;
-    }
+    //const checkbox = document.querySelector(`#check-${itemId}`) as HTMLInputElement;
+    //if (checkbox) {
+    //  checkbox.checked = isChecked;
+    //}
   } catch (error) {
     console.error('Failed to handle checkbox change:', error);
   }
@@ -1084,8 +1086,12 @@ function renderTree(categories: TreeCategory[]) {
         </div>
       `;
       
+      // Append them before adding listeners, or the selectors won't work.
+      itemElement.appendChild(itemContent);
+      itemsContainer.appendChild(itemElement);
+
       // Evento para manejo de checkbox
-      const checkbox = itemContent.querySelector(`#check-${itemElement.getAttribute('data-id')}`) as HTMLInputElement;
+      const checkbox = itemElement.querySelector('.item-checkbox')?.getElementsByTagName('input')[0] as HTMLInputElement;
       if (checkbox) {
         checkbox.addEventListener('change', (e) => {
           handleCheckboxChange(itemElement.getAttribute('data-id') || '', checkbox.checked);
@@ -1101,9 +1107,6 @@ function renderTree(categories: TreeCategory[]) {
           selectTreeItem(itemElement.getAttribute('data-id') || '');
         }
       });
-      
-      itemElement.appendChild(itemContent);
-      itemsContainer.appendChild(itemElement);
 
       itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);
     });
@@ -1221,7 +1224,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   await loadSidebarIcons();
     
   // Load and render list items
-  await loadListItems();
+  //await loadListItems();
   
   // Initialize resizable panels
   initializeResizablePanels();
