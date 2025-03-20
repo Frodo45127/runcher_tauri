@@ -656,6 +656,11 @@ function openSettingsModal() {
   const modal = document.getElementById('settings-modal');
   if (modal) {
     modal.classList.add('active');
+
+    const firstTabBtn = document.querySelector('.tab-btn') as HTMLButtonElement;
+    if (firstTabBtn) {
+      switchTab(firstTabBtn.dataset.tab || 'general');
+    }
   }
 }
 
@@ -911,13 +916,7 @@ async function loadGamePaths() {
         browseBtn.disabled = isLocked;
         browseBtn.addEventListener('click', () => openFolderDialog(icon.id));
         
-        inputContainer.appendChild(input);
-        inputContainer.appendChild(browseBtn);
-        
-        pathRow.appendChild(label);
-        pathRow.appendChild(inputContainer);
-        
-        // Create the lock checkbox row
+        // Create the lock checkbox container
         const lockContainer = document.createElement('div');
         lockContainer.className = 'lock-container';
         
@@ -939,12 +938,21 @@ async function loadGamePaths() {
           browseBtn.disabled = isChecked;
         });
         
+        // Agregar componentes al contenedor de checkbox
         lockContainer.appendChild(lockCheckbox);
         lockContainer.appendChild(lockLabel);
         
-        // Add everything to the path item
+        // Agregar componentes al contenedor de inputs
+        inputContainer.appendChild(input);
+        inputContainer.appendChild(browseBtn);
+        inputContainer.appendChild(lockContainer);
+        
+        // Agregar componentes a la fila
+        pathRow.appendChild(label);
+        pathRow.appendChild(inputContainer);
+        
+        // Agregar la fila al elemento de path
         pathItem.appendChild(pathRow);
-        pathItem.appendChild(lockContainer);
         
         // Add to the container
         gamePathsContainer.appendChild(pathItem);
@@ -1285,15 +1293,5 @@ window.addEventListener("DOMContentLoaded", async () => {
   const saveSettingsBtn = document.getElementById('save-settings');
   if (saveSettingsBtn) {
     saveSettingsBtn.addEventListener('click', saveSettingsModal);
-  }
-
-  // Close modal when clicking outside
-  const modal = document.getElementById('settings-modal');
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        closeSettingsModal();
-      }
-    });
   }
 });
