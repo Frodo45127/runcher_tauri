@@ -11,7 +11,6 @@
 //! Module containing the centralized code for mod and load order management.
 
 use anyhow::Result;
-use crossbeam::channel::Receiver;
 use getset::*;
 use rayon::{iter::Either, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -30,6 +29,7 @@ use rpfm_lib::integrations::log::error;
 //use crate::games::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 use crate::mod_manager::{load_order::LoadOrder, mods::Mod};
 use crate::settings::*;
+use crate::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 
 use super::secondary_mods_packs_paths;
 
@@ -190,11 +190,11 @@ impl GameConfig {
         self.categories_mut().remove(category);
         self.categories_order_mut().retain(|x| x != category);
     }
-    /*
+    
     /// NOTE: This returns a channel receiver for the workshop/equivalent service data request.
     /// This is done so the request doesn't hang the entire load process, as it usually takes 2 or 3 seconds to complete.
-    pub fn update_mod_list(&mut self, app_handle: &tauri::AppHandle, game: &GameInfo, game_path: &Path, load_order: &mut LoadOrder, skip_network_update: bool) -> Result<Option<Receiver<Response>>> {
-        let mut receiver = None;
+    pub fn update_mod_list(&mut self, app_handle: &tauri::AppHandle, game: &GameInfo, game_path: &Path, load_order: &mut LoadOrder, skip_network_update: bool) -> Result<()> {
+        //let mut receiver = None;
 
         // Clear the mod paths, just in case a failure while loading them leaves them unclean.
         self.mods_mut().values_mut().for_each(|modd| modd.paths_mut().clear());
@@ -546,6 +546,6 @@ impl GameConfig {
         // Save the GameConfig or we may lost the population.
         self.save(app_handle, game)?;
 
-        Ok(receiver)
-    }*/
+        Ok(())
+    }
 }

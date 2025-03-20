@@ -4290,6 +4290,7 @@ dependencies = [
  "common_utils",
  "crossbeam",
  "flate2",
+ "futures-util",
  "getset",
  "interprocess",
  "rand 0.8.5",

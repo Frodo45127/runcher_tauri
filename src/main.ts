@@ -9,10 +9,16 @@ interface SidebarIcon {
 interface TreeItem {
   id: string;
   name: string;
+  flags: string;
+  location: string;
+  creator: string;
+  type: string;
   size: string;
-  status: string;
-  last_played: string;
+  created: number;
+  updated: number;
   is_checked: boolean;
+  status?: string;
+  last_played?: string;
 }
 
 interface TreeCategory {
@@ -54,7 +60,7 @@ let selectedGameId: string | null = null;
 let selectedListItemId: string | null = null;
 // Store references to category and game elements for filtering
 let categoryElements: Map<string, HTMLElement> = new Map();
-let gameElements: Map<string, HTMLElement> = new Map();
+let itemElements: Map<string, HTMLElement> = new Map();
 let listElements: Map<string, HTMLElement> = new Map();
 // Store the tree data
 let treeData: TreeCategory[] = [];
@@ -100,7 +106,7 @@ async function loadSidebarIcons() {
         button.appendChild(img);
         button.title = icon.name;
         
-        button.addEventListener("click", () => {
+        button.addEventListener("click", (e) => {
           // Remove active class from all buttons
           document.querySelectorAll(".sidebar-btn").forEach(btn => 
             btn.classList.remove("active")
@@ -108,6 +114,12 @@ async function loadSidebarIcons() {
           
           // Add active class to clicked button
           button.classList.add("active");
+
+          console.log("Game selected changed");
+          const isChecked = (e.target as HTMLInputElement).checked;
+          const buttonId = button.dataset.id ? button.dataset.id : '';
+          handleGameSelectedChangeChange(buttonId, isChecked);
+          e.stopPropagation(); // Prevent the row selection from triggering
         });
         
         sidebarContainer.appendChild(button);
@@ -119,6 +131,38 @@ async function loadSidebarIcons() {
     }
   } catch (error) {
     console.error("Failed to load sidebar icons:", error);
+  }
+}
+
+async function handleGameSelectedChangeChange(gameId: string, isChecked: boolean) {
+  try {
+    treeData = await invoke("handle_change_game_selected", { gameId: gameId }) as TreeCategory[];
+    
+    console.log(treeData);
+    renderTree(treeData);
+      
+    // Expandir categorías guardadas
+    Object.keys(appSettings.tree_open_state).forEach(categoryId => {
+      if (appSettings.tree_open_state[categoryId]) {
+        toggleCategoryExpansion(categoryId, true);
+      }
+    });
+    
+    // Restaurar el item seleccionado si existe
+    if (appSettings.selected_tree_item) {
+      selectTreeItem(appSettings.selected_tree_item);
+    }
+    
+    // Update status bar with result
+    const statusMessage = document.querySelector(".status-message");
+    if (statusMessage) {
+      //statusMessage.textContent = result as string;
+    }
+    
+    // Save settings after change
+    await saveSettings();
+  } catch (error) {
+    console.error("Failed to handle checkbox change:", error);
   }
 }
 
@@ -373,31 +417,24 @@ async function saveSettings() {
   }
 }
 
-// Load tree data from Rust
-async function loadTreeData() {
+// Manejar cambio en checkbox
+async function handleCheckboxChange(itemId: string, isChecked: boolean) {
   try {
-    treeData = await invoke("get_tree_data");
-    renderTreeView();
-  } catch (error) {
-    console.error("Failed to load tree data:", error);
-  }
-}
-
-// Handle checkbox change
-async function handleCheckboxChange(gameId: string, isChecked: boolean) {
-  try {
-    const result = await invoke("handle_checkbox_change", { gameId, isChecked });
+    // Llamar a la función Rust para manejar el cambio del checkbox
+    const result = await invoke('handle_checkbox_change', { 
+      game_id: itemId, 
+      is_checked: isChecked 
+    });
     
-    // Update status bar with result
-    const statusMessage = document.querySelector(".status-message");
-    if (statusMessage) {
-      statusMessage.textContent = result as string;
+    console.log(result);
+    
+    // Actualizar la UI visualmente si es necesario
+    const checkbox = document.querySelector(`#check-${itemId}`) as HTMLInputElement;
+    if (checkbox) {
+      checkbox.checked = isChecked;
     }
-    
-    // Save settings after change
-    await saveSettings();
   } catch (error) {
-    console.error("Failed to handle checkbox change:", error);
+    console.error('Failed to handle checkbox change:', error);
   }
 }
 
@@ -413,7 +450,7 @@ async function handleItemDrop(sourceId: string, targetId: string) {
     }
     
     // Reload tree data to reflect changes
-    await loadTreeData();
+    //await loadTreeData();
     
     // Save settings after change
     await saveSettings();
@@ -424,10 +461,14 @@ async function handleItemDrop(sourceId: string, targetId: string) {
 
 // Toggle category expansion
 function toggleCategoryExpansion(categoryId: string, forceState?: boolean) {
+  categoryId = CSS.escape(categoryId);
+
   const categoryElement = categoryElements.get(categoryId);
+  console.log(categoryElement);
   if (!categoryElement) return;
   
   const childrenContainer = document.getElementById(`children-${categoryId}`);
+  console.log(childrenContainer);
   if (!childrenContainer) return;
   
   const isExpanded = categoryElement.classList.contains('expanded');
@@ -455,7 +496,7 @@ function renderTreeView() {
     treeContainer.innerHTML = "";
     // Clear maps for filtering
     categoryElements.clear();
-    gameElements.clear();
+    itemElements.clear();
     
     treeData.forEach(category => {
       // Create parent/category item
@@ -545,7 +586,7 @@ function renderTreeView() {
           
           childrenContainer.appendChild(gameElement);
           // Store reference for filtering
-          gameElements.set(game.id, gameElement);
+          itemElements.set(game.id, gameElement);
           
           // If this is the selected game, select it
           if (game.id === selectedGameId) {
@@ -622,8 +663,8 @@ function filterTreeItems(searchText: string) {
   // If search text is empty, show all items
   if (normalizedSearchText === '') {
     categoryElements.forEach(element => element.classList.remove('hidden'));
-    gameElements.forEach(element => element.classList.remove('hidden'));
-    document.querySelectorAll('.tree-children').forEach(
+    itemElements.forEach(element => element.classList.remove('hidden'));
+    document.querySelectorAll('.category-items').forEach(
       element => element.classList.remove('hidden')
     );
     return;
@@ -631,20 +672,20 @@ function filterTreeItems(searchText: string) {
   
   // First, hide all items
   categoryElements.forEach(element => element.classList.add('hidden'));
-  gameElements.forEach(element => element.classList.add('hidden'));
-  document.querySelectorAll('.tree-children').forEach(
+  itemElements.forEach(element => element.classList.add('hidden'));
+  document.querySelectorAll('.category-items').forEach(
     element => element.classList.add('hidden')
   );
   
   // Keep track of categories that need to be shown
   const categoriesToShow = new Set<string>();
-  
+  console.log(itemElements);
   // Check each game element
-  gameElements.forEach((element, gameId) => {
-    const gameName = element.dataset.name || '';
+  itemElements.forEach((element, id) => {
+    const itemId = element.dataset.id || '';
     const categoryId = element.dataset.categoryId || '';
-    
-    if (gameName.includes(normalizedSearchText)) {
+
+    if (itemId.includes(normalizedSearchText)) {
       // Show this game
       element.classList.remove('hidden');
       // Mark its category to be shown
@@ -684,9 +725,9 @@ function filterTreeItems(searchText: string) {
       }
       
       // Show all its children
-      gameElements.forEach((gameElement) => {
-        if (gameElement.dataset.categoryId === categoryId) {
-          gameElement.classList.remove('hidden');
+      itemElements.forEach((itemElement) => {
+        if (itemElement.dataset.categoryId === categoryId) {
+          itemElement.classList.remove('hidden');
         }
       });
     }
@@ -1089,6 +1130,185 @@ function getGamePathsFromModal() {
   });
 }
 
+// Función actualizada para renderizar el árbol
+function renderTree(categories: TreeCategory[]) {
+  const treeContainer = document.getElementById('tree-container');
+  if (!treeContainer) return;
+
+  // Clear maps for filtering
+  categoryElements.clear();
+  itemElements.clear();
+  
+  treeContainer.innerHTML = '';
+  
+  categories.forEach(category => {
+    const categoryElement = document.createElement('div');
+    categoryElement.className = 'tree-category';
+    categoryElement.dataset.id = CSS.escape(category.id);
+
+    // Add drag and drop event listeners
+    setupDragAndDrop(categoryElement);
+
+    const categoryHeader = document.createElement('div');
+    categoryHeader.className = 'category-header';
+    categoryHeader.innerHTML = `
+      <span class="expander"><i class="fa-solid fa-chevron-right"></i></span>
+      <span class="category-name">${category.id}</span>
+    `;
+    categoryHeader.addEventListener('click', () => {
+      console.log(categoryElement.getAttribute('data-id'));
+      toggleCategoryExpansion(categoryElement.getAttribute('data-id') || '')
+    });
+
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'category-items';
+    itemsContainer.id = `children-${categoryElement.getAttribute('data-id')}`;
+    
+    category.children.forEach(item => {
+      const itemElement = document.createElement('div');
+      itemElement.className = 'tree-item tree-child';
+      itemElement.dataset.id = CSS.escape(item.id);
+      itemElement.dataset.categoryId = categoryElement.getAttribute('data-id') || '';
+      // Para HTML seguro, usar createTextNode o implementar sanitización
+      // El name puede contener HTML por design en el backend
+      const itemContent = document.createElement('div');
+      itemContent.className = 'item-content';
+      itemContent.innerHTML = `
+        <div class="item-checkbox">
+          <input type="checkbox" ${item.is_checked ? 'checked' : ''} id="check-${itemElement.getAttribute('data-id')}">
+        </div>
+        <div class="item-details">
+          <div class="item-row">
+            <div class="item-name">${item.name}</div>
+          </div>
+          <div class="item-row item-info">
+            <div class="item-type">${item.type || ''}</div>
+            <div class="item-creator">${item.creator || ''}</div>
+            <div class="item-location">${item.location || ''}</div>
+            <div class="item-size">${item.size || ''}</div>
+          </div>
+        </div>
+      `;
+      
+      // Evento para manejo de checkbox
+      const checkbox = itemContent.querySelector(`#check-${itemElement.getAttribute('data-id')}`) as HTMLInputElement;
+      if (checkbox) {
+        checkbox.addEventListener('change', (e) => {
+          handleCheckboxChange(itemElement.getAttribute('data-id') || '', checkbox.checked);
+        });
+      }
+      
+      // Add drag and drop event listeners
+      setupDragAndDrop(itemElement);
+
+      // Evento para seleccionar item
+      itemContent.addEventListener('click', (e) => {
+        if (e.target !== checkbox) {
+          selectTreeItem(itemElement.getAttribute('data-id') || '');
+        }
+      });
+      
+      itemElement.appendChild(itemContent);
+      itemsContainer.appendChild(itemElement);
+
+      itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);
+    });
+    
+    categoryElement.appendChild(categoryHeader);
+    categoryElement.appendChild(itemsContainer);
+    treeContainer.appendChild(categoryElement);
+
+    categoryElements.set(categoryElement.getAttribute('data-id') || '', categoryElement);
+
+    if (appSettings.tree_open_state[category.id] === true) {
+      toggleCategoryExpansion(category.id, true);
+    }
+  });
+}
+
+// Función para obtener el juego seleccionado en la barra lateral
+function getSidebarSelectedButton(): string {
+  const selectedButton = document.querySelector('.sidebar-btn.active') as HTMLElement;
+  return selectedButton ? selectedButton.dataset.id || '' : '';
+}
+
+// Función para seleccionar un item del árbol
+function selectTreeItem(itemId: string) {
+  // Quitar la selección actual
+  const currentSelected = document.querySelector('.tree-item.selected');
+  if (currentSelected) {
+    currentSelected.classList.remove('selected');
+  }
+  
+  // Seleccionar el nuevo item
+  const newSelected = document.querySelector(`.tree-item[data-id="${itemId}"]`);
+  if (newSelected) {
+    newSelected.classList.add('selected');
+    
+    // Asegurarse de que la categoría esté expandida
+    const categoryContainer = newSelected.closest('.tree-category');
+    if (categoryContainer) {
+      const categoryId = categoryContainer.getAttribute('data-id');
+      if (categoryId) {
+        const categoryItems = categoryContainer.querySelector('.category-items');
+        if (categoryItems && categoryItems.classList.contains('hidden')) {
+          toggleCategoryExpansion(categoryId);
+        }
+      }
+    }
+    
+    // Actualizar el item seleccionado en la configuración
+    appSettings.selected_tree_item = itemId;
+    saveSettings();
+    
+    // Mostrar detalles del item (si corresponde)
+    showItemDetails(itemId);
+  }
+}
+
+// Función para mostrar detalles del item seleccionado
+function showItemDetails(itemId: string) {
+  const gameDetails = document.getElementById('game-details');
+  if (!gameDetails) return;
+  
+  // Encontrar el item en los datos
+  let selectedItem: TreeItem | null = null;
+  
+  // Aquí tendríamos que buscar en los datos cargados el item con el ID correspondiente
+  // Esta es una implementación simplificada
+  document.querySelectorAll('.tree-item').forEach(el => {
+    if (el.getAttribute('data-id') === itemId) {
+      const nameElement = el.querySelector('.item-name');
+      const typeElement = el.querySelector('.item-type');
+      const creatorElement = el.querySelector('.item-creator');
+      const locationElement = el.querySelector('.item-location');
+      const sizeElement = el.querySelector('.item-size');
+      
+      if (nameElement && typeElement && creatorElement && locationElement && sizeElement) {
+        const details = `
+          <div class="detail-item">
+            <strong>Name:</strong> ${nameElement.innerHTML}
+          </div>
+          <div class="detail-item">
+            <strong>Type:</strong> ${typeElement.textContent || 'N/A'}
+          </div>
+          <div class="detail-item">
+            <strong>Creator:</strong> ${creatorElement.textContent || 'N/A'}
+          </div>
+          <div class="detail-item">
+            <strong>Location:</strong> ${locationElement.textContent || 'N/A'}
+          </div>
+          <div class="detail-item">
+            <strong>Size:</strong> ${sizeElement.textContent || 'N/A'}
+          </div>
+        `;
+        
+        gameDetails.innerHTML = details;
+      }
+    }
+  });
+}
+
 // Initialize the app
 window.addEventListener("DOMContentLoaded", async () => {
   console.log('DOM fully loaded');
@@ -1105,10 +1325,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     
   // Load sidebar icons
   await loadSidebarIcons();
-  
-  // Load and render tree data
-  await loadTreeData();
-  
+    
   // Load and render list items
   await loadListItems();
   
