@@ -15,12 +15,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
 
 use std::collections::HashMap;
-use std::io::{BufReader, BufWriter, Read, Write};
 use std::fs::{DirBuilder, File};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-use rpfm_lib::files::{Container, ContainerPath, pack::Pack};
-use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
+use rpfm_lib::files::{pack::Pack, Container, ContainerPath};
+use rpfm_lib::games::{pfh_file_type::PFHFileType, GameInfo};
 use rpfm_lib::utils::{path_to_absolute_path, path_to_absolute_string};
 
 use crate::settings::{game_config_path, sql_scripts_extracted_path};
@@ -38,7 +38,6 @@ const FILE_NAME_END: &str = ".json";
 #[derive(Clone, Debug, Getters, MutGetters, Setters, Serialize, Deserialize)]
 #[getset(get = "pub", get_mut = "pub", set = "pub")]
 pub struct LoadOrder {
-
     // If the list is to be generated automatically on update or not.
     automatic: bool,
 
@@ -56,7 +55,7 @@ pub struct LoadOrder {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ImportedLoadOrderMode {
     Runcher(String),
-    Modlist(String)
+    Modlist(String),
 }
 
 //-------------------------------------------------------------------------------//
@@ -75,9 +74,9 @@ impl Default for LoadOrder {
 }
 
 impl LoadOrder {
-
     pub fn load(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<Self> {
-        let path = game_config_path(app_handle)?.join(format!("{FILE_NAME_START}{}{FILE_NAME_END}", game.key()));
+        let path = game_config_path(app_handle)?
+            .join(format!("{FILE_NAME_START}{}{FILE_NAME_END}", game.key()));
 
         let mut file = BufReader::new(File::open(path)?);
         let mut data = Vec::with_capacity(file.get_ref().metadata()?.len() as usize);
@@ -90,7 +89,8 @@ impl LoadOrder {
     }
 
     pub fn save(&mut self, app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<()> {
-        let path = game_config_path(app_handle)?.join(format!("{FILE_NAME_START}{}{FILE_NAME_END}", game.key()));
+        let path = game_config_path(app_handle)?
+            .join(format!("{FILE_NAME_START}{}{FILE_NAME_END}", game.key()));
 
         // Make sure the path exists to avoid problems with updating schemas.
         if let Some(parent_folder) = path.parent() {
@@ -102,7 +102,13 @@ impl LoadOrder {
         Ok(())
     }
 
-    pub fn update(&mut self, app_handle: &tauri::AppHandle, game_config: &GameConfig, game: &GameInfo, game_data_path: &Path) {
+    pub fn update(
+        &mut self,
+        app_handle: &tauri::AppHandle,
+        game_config: &GameConfig,
+        game: &GameInfo,
+        game_data_path: &Path,
+    ) {
         self.movies.clear();
 
         if self.automatic {
@@ -113,13 +119,18 @@ impl LoadOrder {
 
         // After the order is built, reload the enabled packs.
         self.packs.clear();
-        self.packs = self.mods.clone()
+        self.packs = self
+            .mods
+            .clone()
             .into_par_iter()
             .chain(self.movies.clone())
             .filter_map(|mod_id| {
                 let modd = game_config.mods().get(&mod_id)?;
                 let path = modd.paths().first()?;
-                Some((mod_id.to_owned(), Pack::read_and_merge(&[path.to_path_buf()], true, false, false).ok()?))
+                Some((
+                    mod_id.to_owned(),
+                    Pack::read_and_merge(&[path.to_path_buf()], true, false, false).ok()?,
+                ))
             })
             .collect();
 
@@ -130,22 +141,41 @@ impl LoadOrder {
 
             for mod_id in self.mods.iter().chain(self.movies.iter()) {
                 if let Some(pack) = self.packs.get_mut(mod_id) {
-                    let _ = pack.extract(ContainerPath::Folder("twpatcher/".to_string()), &sql_path, true, &None, false, false, &None, false);
+                    let _ = pack.extract(
+                        ContainerPath::Folder("twpatcher/".to_string()),
+                        &sql_path,
+                        true,
+                        &None,
+                        false,
+                        false,
+                        &None,
+                        false,
+                    );
                 }
             }
         }
     }
 
     /// Automatic builds means the user input is ignored, and mods are sorted alphabetically.
-    fn build_automatic(&mut self, game_config: &GameConfig, game: &GameInfo, game_data_path: &Path) {
+    fn build_automatic(
+        &mut self,
+        game_config: &GameConfig,
+        game: &GameInfo,
+        game_data_path: &Path,
+    ) {
         self.mods.clear();
 
         self.build_movies(game_config, game, game_data_path);
 
         // Pre-sort the mods, with movie mods at the end.
-        self.mods = game_config.mods()
+        self.mods = game_config
+            .mods()
             .values()
-            .filter(|modd| modd.enabled(game, game_data_path) && *modd.pack_type() == PFHFileType::Mod && !modd.paths().is_empty())
+            .filter(|modd| {
+                modd.enabled(game, game_data_path)
+                    && *modd.pack_type() == PFHFileType::Mod
+                    && !modd.paths().is_empty()
+            })
             .map(|modd| modd.id().to_string())
             .collect::<Vec<_>>();
 
@@ -155,7 +185,6 @@ impl LoadOrder {
             let mod_b = game_config.mods().get(b);
             if let Some(mod_a) = mod_a {
                 if let Some(mod_b) = mod_b {
-
                     // Paths is always populated, as per the previous filter.
                     let pack_a = mod_a.paths()[0].file_name().unwrap().to_string_lossy();
                     let pack_b = mod_b.paths()[0].file_name().unwrap().to_string_lossy();
@@ -184,9 +213,14 @@ impl LoadOrder {
     fn build_manual(&mut self, game_config: &GameConfig, game: &GameInfo, game_data_path: &Path) {
         self.build_movies(game_config, game, game_data_path);
 
-        let enabled_mods = game_config.mods()
+        let enabled_mods = game_config
+            .mods()
             .values()
-            .filter(|modd| modd.enabled(game, game_data_path) && *modd.pack_type() == PFHFileType::Mod && !modd.paths().is_empty())
+            .filter(|modd| {
+                modd.enabled(game, game_data_path)
+                    && *modd.pack_type() == PFHFileType::Mod
+                    && !modd.paths().is_empty()
+            })
             .map(|modd| modd.id().to_string())
             .collect::<Vec<_>>();
 
@@ -201,11 +235,15 @@ impl LoadOrder {
     }
 
     fn build_movies(&mut self, game_config: &GameConfig, game: &GameInfo, game_data_path: &Path) {
-
         // Movies are still automatic, even in manual mode.
-        self.movies = game_config.mods()
+        self.movies = game_config
+            .mods()
             .values()
-            .filter(|modd| modd.enabled(game, game_data_path) && *modd.pack_type() == PFHFileType::Movie && !modd.paths().is_empty())
+            .filter(|modd| {
+                modd.enabled(game, game_data_path)
+                    && *modd.pack_type() == PFHFileType::Movie
+                    && !modd.paths().is_empty()
+            })
             .map(|modd| modd.id().to_string())
             .collect::<Vec<_>>();
 
@@ -215,7 +253,6 @@ impl LoadOrder {
             let mod_b = game_config.mods().get(b);
             if let Some(mod_a) = mod_a {
                 if let Some(mod_b) = mod_b {
-
                     // Paths is always populated, as per the previous filter.
                     let pack_a = mod_a.paths()[0].file_name().unwrap().to_string_lossy();
                     let pack_b = mod_b.paths()[0].file_name().unwrap().to_string_lossy();
@@ -230,36 +267,72 @@ impl LoadOrder {
         });
     }
 
-    pub fn build_load_order_string(&self, app_handle: &tauri::AppHandle, game_config: &GameConfig, game: &GameInfo, game_data_path: &Path, pack_string: &mut String, folder_paths: &mut String) {
+    pub fn build_load_order_string(
+        &self,
+        app_handle: &tauri::AppHandle,
+        game_config: &GameConfig,
+        game: &GameInfo,
+        game_data_path: &Path,
+        pack_string: &mut String,
+        folder_paths: &mut String,
+    ) {
         let mut added_secondary_folder = false;
-        let secondary_mods_path = secondary_mods_path(app_handle, game.key()).unwrap_or_else(|_| PathBuf::new());
+        let secondary_mods_path =
+            secondary_mods_path(app_handle, game.key()).unwrap_or_else(|_| PathBuf::new());
         let game_data_path = game_data_path.canonicalize().unwrap();
         let mut folder_paths_mods = String::new();
 
         for mod_id in self.mods() {
-            self.process_mod(game_config, game, &game_data_path, pack_string, &mut folder_paths_mods, mod_id, &mut added_secondary_folder, &secondary_mods_path);
+            self.process_mod(
+                game_config,
+                game,
+                &game_data_path,
+                pack_string,
+                &mut folder_paths_mods,
+                mod_id,
+                &mut added_secondary_folder,
+                &secondary_mods_path,
+            );
         }
 
         // Once we're done loading mods, we need to check for toggleable movie packs and add their paths as working folders if they're enabled.
         for mod_id in self.movies() {
-            self.process_mod(game_config, game, &game_data_path, pack_string, &mut folder_paths_mods, mod_id, &mut added_secondary_folder, &secondary_mods_path);
+            self.process_mod(
+                game_config,
+                game,
+                &game_data_path,
+                pack_string,
+                &mut folder_paths_mods,
+                mod_id,
+                &mut added_secondary_folder,
+                &secondary_mods_path,
+            );
         }
 
         // Movie exclusions are done in the last step. We need to go through all the movie mods, and make sure to add an exclusion if they're disabled and in data or in secondary.
         for modd in game_config.mods().values() {
             if !modd.enabled(game, &game_data_path) && *modd.pack_type() == PFHFileType::Movie {
-
                 // This only works for Rome 2 and later games.
                 if *game.raw_db_version() >= 1 {
                     if let Some(path) = modd.paths().first() {
-                        let pack_name = path.file_name().unwrap().to_string_lossy().as_ref().to_owned();
+                        let pack_name = path
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy()
+                            .as_ref()
+                            .to_owned();
 
                         let mut folder_path = path_to_absolute_path(path, false);
                         folder_path.pop();
 
                         // If it's the secondary folder and we're using it for another pack, or it's in data, add an exclusion for it.
-                        if (secondary_mods_path.is_dir() && folder_path == secondary_mods_path && added_secondary_folder) || path.starts_with(&game_data_path) {
-                            pack_string.push_str(&format!("\nexclude_pack_file \"{}\";", &pack_name));
+                        if (secondary_mods_path.is_dir()
+                            && folder_path == secondary_mods_path
+                            && added_secondary_folder)
+                            || path.starts_with(&game_data_path)
+                        {
+                            pack_string
+                                .push_str(&format!("\nexclude_pack_file \"{}\";", &pack_name));
                         }
                     }
                 }
@@ -278,10 +351,9 @@ impl LoadOrder {
         folder_paths: &mut String,
         mod_id: &str,
         added_secondary_folder: &mut bool,
-        secondary_mods_path: &PathBuf
+        secondary_mods_path: &PathBuf,
     ) {
         if let Some(modd) = game_config.mods().get(mod_id) {
-
             // Check if the mod is from /data, /secondary or /content.
             //
             // Loading from content is only supported on Rome2 and later games.
@@ -290,20 +362,31 @@ impl LoadOrder {
             //
             // Also, Shogun 2 requires some custom file management to move and convert mods to /data, but that's not done here.
             if let Some(path) = modd.paths().first() {
-                let pack_name = path.file_name().unwrap().to_string_lossy().as_ref().to_owned();
+                let pack_name = path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .as_ref()
+                    .to_owned();
                 if !path.starts_with(game_data_path) && *game.raw_db_version() >= 1 {
                     let mut folder_path = path_to_absolute_path(path, false);
                     folder_path.pop();
 
                     // If it's the secondary folder, just add it once. If it's the contents folder, add one per mod.
                     let folder_path_str = path_to_absolute_string(&folder_path);
-                    if secondary_mods_path.is_dir() && folder_path == *secondary_mods_path && !*added_secondary_folder {
-
+                    if secondary_mods_path.is_dir()
+                        && folder_path == *secondary_mods_path
+                        && !*added_secondary_folder
+                    {
                         // We have to add both, the secondary folder and the masking folder, so movie packs in secondary can be toggled by using masks.
-                        folder_paths.insert_str(0, &format!("add_working_directory \"{}\";\n", folder_path_str));
+                        folder_paths.insert_str(
+                            0,
+                            &format!("add_working_directory \"{}\";\n", folder_path_str),
+                        );
                         *added_secondary_folder = true;
                     } else {
-                        folder_paths.push_str(&format!("add_working_directory \"{}\";\n", folder_path_str));
+                        folder_paths
+                            .push_str(&format!("add_working_directory \"{}\";\n", folder_path_str));
                     }
                 }
 

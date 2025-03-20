@@ -1,34 +1,44 @@
 use regex::Regex;
-use tauri::Listener;
-use std::cell::LazyCell;
-use std::sync::{Arc, LazyLock, RwLock};
-use rpfm_lib::games::{GameInfo,supported_games::{SupportedGames, KEY_ARENA}};
+use rpfm_lib::games::{
+    supported_games::{SupportedGames, KEY_ARENA},
+    GameInfo,
+};
 use rpfm_lib::schema::Schema;
 use settings::*;
+use std::cell::LazyCell;
+use std::sync::{Arc, LazyLock, RwLock};
+use tauri::Listener;
 
 mod mod_manager;
 mod settings;
 
-    /// Sentry client guard, so we can reuse it later on and keep it in scope for the entire duration of the program.
-    //static ref SENTRY_GUARD: Arc<RwLock<ClientInitGuard>> = Arc::new(RwLock::new(Logger::init(&{
-    //    init_config_path().expect("Error while trying to initialize config path. We're fucked.");
-    //    error_path().unwrap_or_else(|_| PathBuf::from("."))
-    //}, true, true, release_name!()).unwrap()));
-
-
+/// Sentry client guard, so we can reuse it later on and keep it in scope for the entire duration of the program.
+//static ref SENTRY_GUARD: Arc<RwLock<ClientInitGuard>> = Arc::new(RwLock::new(Logger::init(&{
+//    init_config_path().expect("Error while trying to initialize config path. We're fucked.");
+//    error_path().unwrap_or_else(|_| PathBuf::from("."))
+//}, true, true, release_name!()).unwrap()));
 
 /// Currently loaded schema.
 static SCHEMA: LazyLock<Option<Schema>> = LazyLock::new(|| None);
-static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> = LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
-static GAME_SELECTED: LazyLock<GameInfo> = LazyLock::new(|| SupportedGames::default().game("arena").unwrap().clone());
+static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
+static GAME_SELECTED: LazyLock<GameInfo> =
+    LazyLock::new(|| SupportedGames::default().game("arena").unwrap().clone());
 
-const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());
-const REGEX_MAP_INFO_DESCRIPTION: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<description>(.*)</description>").unwrap());
-const REGEX_MAP_INFO_TYPE: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<type>(.*)</type>").unwrap());
-const REGEX_MAP_INFO_TEAM_SIZE_1: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<team_size_1>(.*)</team_size_1>").unwrap());
-const REGEX_MAP_INFO_TEAM_SIZE_2: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<team_size_2>(.*)</team_size_2>").unwrap());
-const REGEX_MAP_INFO_DEFENDER_FUNDS_RATIO: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<defender_funds_ratio>(.*)</defender_funds_ratio>").unwrap());
-const REGEX_MAP_INFO_HAS_KEY_BUILDINGS: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"<has_key_buildings>(.*)</has_key_buildings>").unwrap());
+const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());
+const REGEX_MAP_INFO_DESCRIPTION: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<description>(.*)</description>").unwrap());
+const REGEX_MAP_INFO_TYPE: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<type>(.*)</type>").unwrap());
+const REGEX_MAP_INFO_TEAM_SIZE_1: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<team_size_1>(.*)</team_size_1>").unwrap());
+const REGEX_MAP_INFO_TEAM_SIZE_2: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<team_size_2>(.*)</team_size_2>").unwrap());
+const REGEX_MAP_INFO_DEFENDER_FUNDS_RATIO: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<defender_funds_ratio>(.*)</defender_funds_ratio>").unwrap());
+const REGEX_MAP_INFO_HAS_KEY_BUILDINGS: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"<has_key_buildings>(.*)</has_key_buildings>").unwrap());
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_SUBTITLE: &str = " -- When I learned maths";
@@ -38,7 +48,8 @@ const DISCORD_URL: &str = "https://discord.gg/moddingden";
 const PATREON_URL: &str = "https://www.patreon.com/RPFM";
 
 //const FALLBACK_LOCALE_EN: &str = include_str!("../../locale/English_en.ftl");
-const SENTRY_DSN_KEY: &str = "https://4c058b715c304d55b928c3e44a63b4ff@o152833.ingest.sentry.io/4504851217711104";
+const SENTRY_DSN_KEY: &str =
+    "https://4c058b715c304d55b928c3e44a63b4ff@o152833.ingest.sentry.io/4504851217711104";
 
 const SQL_SCRIPTS_REPO: &str = "https://github.com/Frodo45127/twpatcher-sql-scripts";
 const SQL_SCRIPTS_BRANCH: &str = "master";
@@ -65,7 +76,7 @@ fn get_sidebar_icons() -> Vec<SidebarIcon> {
                 id: game.key().to_string(),
                 name: game.display_name().to_string(),
                 icon: game.icon_small().to_string(),
-            });   
+            });
         }
     }
 
@@ -174,7 +185,7 @@ fn handle_checkbox_change(game_id: &str, is_checked: bool) -> Result<String, Str
     println!("Game {} checkbox changed to: {}", game_id, is_checked);
     // Here you would implement actual logic to handle the checkbox change
     // For example, adding to favorites, marking for download, etc.
-    
+
     if is_checked {
         Ok(format!("Game {} marked", game_id))
     } else {
@@ -186,7 +197,7 @@ fn handle_checkbox_change(game_id: &str, is_checked: bool) -> Result<String, Str
 fn handle_item_drop(source_id: &str, target_id: &str) -> Result<String, String> {
     println!("Item {} dropped onto {}", source_id, target_id);
     // Here you would implement logic to handle the reordering, moving between categories, etc.
-    
+
     Ok(format!("Moved item {} to {}", source_id, target_id))
 }
 
@@ -212,9 +223,53 @@ fn load_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
 // Save settings to config file
 #[tauri::command]
 fn save_settings(app_handle: tauri::AppHandle, settings: AppSettings) -> Result<(), String> {
-    settings.save(&app_handle).map_err(|e| format!("Failed to save settings: {}", e))?;
+    settings
+        .save(&app_handle)
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
     *SETTINGS.write().unwrap() = settings;
     Ok(())
+}
+
+#[tauri::command]
+fn get_available_languages() -> Vec<String> {
+    // Devuelve los idiomas disponibles en la aplicación
+    vec![
+        "English".to_string(),
+        "Español".to_string(),
+        "Français".to_string(),
+        "Deutsch".to_string(),
+        "Italiano".to_string(),
+    ]
+}
+
+#[tauri::command]
+fn get_available_date_formats() -> Vec<String> {
+    // Devuelve los formatos de fecha disponibles
+    vec![
+        "DD/MM/YYYY".to_string(),
+        "MM/DD/YYYY".to_string(),
+        "YYYY-MM-DD".to_string(),
+        "DD.MM.YYYY".to_string(),
+        "YYYY/MM/DD".to_string(),
+    ]
+}
+
+#[tauri::command]
+async fn browse_folder(app: tauri::AppHandle, title: String, current_path: String) -> Option<String> {
+    use std::path::PathBuf;
+    use tauri_plugin_dialog::DialogExt;
+
+    // Si se proporcionó una ruta válida, iniciar el diálogo en esa carpeta
+    let start_dir = PathBuf::from(&current_path);
+    
+    // Mostrar el diálogo y obtener la carpeta seleccionada
+    let dialog = app.dialog()
+        .file()
+        .set_directory(start_dir)
+        .set_title(title);
+    
+    dialog.blocking_pick_folder()
+        .map(|path| path.as_path().unwrap().to_string_lossy().to_string())
 }
 
 #[derive(serde::Serialize)]
@@ -256,22 +311,23 @@ struct ListItem {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_handle = app.handle();
             *SETTINGS.write().unwrap() = AppSettings::init(&app_handle).unwrap();
-                        
+
             // Registrar un listener para el evento tauri://ready
             app_handle.listen_any("tauri://ready", move |_| {
                 println!("Tauri application ready event triggered");
                 // Puedes realizar acciones adicionales si es necesario
             });
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            launch_game, 
-            get_sidebar_icons, 
+            launch_game,
+            get_sidebar_icons,
             get_tree_data,
             handle_checkbox_change,
             handle_item_drop,
@@ -279,7 +335,10 @@ pub fn run() {
             load_settings,
             save_settings,
             get_list_items,
-            on_window_ready
+            on_window_ready,
+            get_available_languages,
+            get_available_date_formats,
+            browse_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -621,3 +621,146 @@ body {
   height: 24px;
   object-fit: contain;
 }
+
+/* Toggle switch styles */
+.switch-container {
+  position: relative;
+  display: inline-block;
+}
+
+.toggle-switch {
+  height: 0;
+  width: 0;
+  opacity: 0;
+  position: absolute;
+}
+
+.toggle-label {
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.toggle-label::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.toggle-switch:checked + .toggle-label {
+  background-color: var(--primary-color);
+}
+
+.toggle-switch:checked + .toggle-label::after {
+  transform: translateX(24px);
+}
+
+.toggle-switch:focus + .toggle-label {
+  box-shadow: 0 0 2px 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Select styles in modal */
+.setting-item select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: var(--bg-color-light);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+
+.setting-item select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* Input styles in modal */
+.setting-item input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: var(--bg-color-light);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+
+/* Game paths styles */
+.game-path-item {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.game-path-item:last-child {
+  border-bottom: none;
+}
+
+.path-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.path-label {
+  width: 120px;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.path-input-container {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.path-input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+
+.path-browse-btn {
+  background-color: var(--panel-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.path-browse-btn:hover {
+  background-color: var(--sidebar-hover);
+}
+
+.lock-container {
+  display: flex;
+  align-items: center;
+  margin-left: 120px;
+}
+
+.lock-checkbox {
+  margin-right: 8px;
+  accent-color: var(--primary-color);
+}
+
+.lock-label {
+  color: var(--text-color);
+  font-size: 12px;
+}

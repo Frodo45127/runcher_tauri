@@ -33,7 +33,12 @@ pub mod mods;
 pub mod profiles;
 pub mod saves;
 
-pub fn copy_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_config: &GameConfig, mod_ids: &[String]) -> Result<Vec<String>> {
+pub fn copy_to_secondary(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    game_config: &GameConfig,
+    mod_ids: &[String],
+) -> Result<Vec<String>> {
     let mut mods_failed = vec![];
 
     let settings = AppSettings::load(app_handle)?;
@@ -45,10 +50,10 @@ pub fn copy_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
 
     for mod_id in mod_ids {
         if let Some(modd) = game_config.mods().get(mod_id) {
-
             // Apply only to mods on content, or both on content and secondary.
             if modd.paths().len() <= 2 {
-                let decannon_paths = modd.paths()
+                let decannon_paths = modd
+                    .paths()
                     .iter()
                     .map(|path| path_to_absolute_string(path))
                     .collect::<Vec<_>>();
@@ -59,26 +64,26 @@ pub fn copy_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
                     if std::fs::copy(&modd.paths()[0], new_path).is_err() {
                         mods_failed.push(modd.id().to_string());
                     }
-
                     // Copy the png too.
                     else {
-
                         let mut old_image_path = PathBuf::from(&decannon_paths[0]);
                         old_image_path.set_extension("png");
 
-                        let mut new_image_path = secondary_path.join(modd.paths()[0].file_name().unwrap());
+                        let mut new_image_path =
+                            secondary_path.join(modd.paths()[0].file_name().unwrap());
                         new_image_path.set_extension("png");
 
                         let _ = std::fs::copy(&old_image_path, &new_image_path);
                     }
                 }
-
                 // If it's a file in content and secondary, allow to copy it to update the secondary one.
-                else if decannon_paths.len() == 2 && decannon_paths[0].starts_with(&secondary_path_str) && decannon_paths[1].starts_with(&content_path_str) {
+                else if decannon_paths.len() == 2
+                    && decannon_paths[0].starts_with(&secondary_path_str)
+                    && decannon_paths[1].starts_with(&content_path_str)
+                {
                     if std::fs::copy(&modd.paths()[1], &modd.paths()[0]).is_err() {
                         mods_failed.push(modd.id().to_string());
                     }
-
                     // Copy the png too.
                     else {
                         let mut old_image_path = PathBuf::from(&decannon_paths[1]);
@@ -90,7 +95,6 @@ pub fn copy_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
                         let _ = std::fs::copy(&old_image_path, &new_image_path);
                     }
                 }
-
                 // Any other case is not supported.
                 else {
                     mods_failed.push(modd.id().to_string());
@@ -102,7 +106,12 @@ pub fn copy_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
     Ok(mods_failed)
 }
 
-pub fn move_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_config: &GameConfig, mod_ids: &[String]) -> Result<Vec<String>> {
+pub fn move_to_secondary(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    game_config: &GameConfig,
+    mod_ids: &[String],
+) -> Result<Vec<String>> {
     let mut mods_failed = vec![];
 
     let settings = AppSettings::load(app_handle)?;
@@ -113,9 +122,9 @@ pub fn move_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
 
     for mod_id in mod_ids {
         if let Some(modd) = game_config.mods().get(mod_id) {
-
             // Apply only to mods on content, or both on content and secondary.
-            let decannon_paths = modd.paths()
+            let decannon_paths = modd
+                .paths()
                 .iter()
                 .map(|path| path_to_absolute_string(path))
                 .collect::<Vec<_>>();
@@ -126,14 +135,13 @@ pub fn move_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
                 if std::fs::copy(&modd.paths()[0], new_path).is_err() {
                     mods_failed.push(modd.id().to_string());
                 }
-
                 // Move the png too, and delete the originals if it worked.
                 else {
-
                     let mut old_image_path = PathBuf::from(&decannon_paths[0]);
                     old_image_path.set_extension("png");
 
-                    let mut new_image_path = secondary_path.join(modd.paths()[0].file_name().unwrap());
+                    let mut new_image_path =
+                        secondary_path.join(modd.paths()[0].file_name().unwrap());
                     new_image_path.set_extension("png");
 
                     if std::fs::copy(&old_image_path, &new_image_path).is_ok() {
@@ -142,7 +150,6 @@ pub fn move_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
                     }
                 }
             }
-
             // Any other case is not supported.
             else {
                 mods_failed.push(modd.id().to_string());
@@ -155,8 +162,13 @@ pub fn move_to_secondary(app_handle: &tauri::AppHandle, game: &GameInfo, game_co
 
 pub fn secondary_mods_path(app_handle: &tauri::AppHandle, game: &str) -> Result<PathBuf> {
     match SupportedGames::default().game(game) {
-        Some(game_info) => if game_info.raw_db_version() < &1 {
-            return Err(anyhow!("This game ({}) doesn't support secondary mod folders.", game))
+        Some(game_info) => {
+            if game_info.raw_db_version() < &1 {
+                return Err(anyhow!(
+                    "This game ({}) doesn't support secondary mod folders.",
+                    game
+                ));
+            }
         }
         None => return Err(anyhow!("What kind of game is {}?", game)),
     }
@@ -165,7 +177,7 @@ pub fn secondary_mods_path(app_handle: &tauri::AppHandle, game: &str) -> Result<
     let base_path = settings.secondary_mods_path()?;
     let base_path_str = path_to_absolute_string(&base_path);
     if base_path_str.is_empty() {
-        return Err(anyhow!("Secondary Mods Path not set."))
+        return Err(anyhow!("Secondary Mods Path not set."));
     }
 
     // Canonicalization is required due to some issues with the game not loading not properly formatted paths.
@@ -183,13 +195,20 @@ pub fn secondary_mods_path(app_handle: &tauri::AppHandle, game: &str) -> Result<
     Ok(game_path)
 }
 
-pub fn secondary_mods_packs_paths(app_handle: &tauri::AppHandle, game: &str) -> Option<Vec<PathBuf>> {
+pub fn secondary_mods_packs_paths(
+    app_handle: &tauri::AppHandle,
+    game: &str,
+) -> Option<Vec<PathBuf>> {
     let path = secondary_mods_path(app_handle, game).ok()?;
     let mut paths = vec![];
 
     for path in files_from_subdir(&path, false).ok()?.iter() {
         match path.extension() {
-            Some(extension) => if extension == "pack" || extension == "bin" { paths.push(path.to_path_buf()); }
+            Some(extension) => {
+                if extension == "pack" || extension == "bin" {
+                    paths.push(path.to_path_buf());
+                }
+            }
             None => continue,
         }
     }

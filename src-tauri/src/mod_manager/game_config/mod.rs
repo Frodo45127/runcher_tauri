@@ -24,7 +24,7 @@ use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use rpfm_lib::files::pack::Pack;
-use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
+use rpfm_lib::games::{pfh_file_type::PFHFileType, GameInfo};
 use rpfm_lib::integrations::log::error;
 
 //use crate::games::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
@@ -46,7 +46,6 @@ pub const DEFAULT_CATEGORY: &str = "Unassigned";
 #[derive(Clone, Debug, Default, Getters, MutGetters, Setters, Serialize, Deserialize)]
 #[getset(get = "pub", get_mut = "pub", set = "pub")]
 pub struct GameConfig {
-
     // Key of the game.
     game_key: String,
 
@@ -69,17 +68,27 @@ pub struct GameConfig {
 //-------------------------------------------------------------------------------//
 
 impl GameConfig {
-
-    pub fn load(app_handle: &tauri::AppHandle, game: &GameInfo, new_if_missing: bool) -> Result<Self> {
-        let path = game_config_path(app_handle)?.join(format!("{GAME_CONFIG_FILE_NAME_START}{}{GAME_CONFIG_FILE_NAME_END}", game.key()));
+    pub fn load(
+        app_handle: &tauri::AppHandle,
+        game: &GameInfo,
+        new_if_missing: bool,
+    ) -> Result<Self> {
+        let path = game_config_path(app_handle)?.join(format!(
+            "{GAME_CONFIG_FILE_NAME_START}{}{GAME_CONFIG_FILE_NAME_END}",
+            game.key()
+        ));
         if !path.is_file() && new_if_missing {
             let mut config = Self {
                 game_key: game.key().to_string(),
                 ..Default::default()
             };
 
-            config.categories_mut().insert(DEFAULT_CATEGORY.to_owned(), vec![]);
-            config.categories_order_mut().push(DEFAULT_CATEGORY.to_owned());
+            config
+                .categories_mut()
+                .insert(DEFAULT_CATEGORY.to_owned(), vec![]);
+            config
+                .categories_order_mut()
+                .push(DEFAULT_CATEGORY.to_owned());
 
             return Ok(config);
         }
@@ -92,16 +101,25 @@ impl GameConfig {
 
         // Just in case we don't have a default category yet.
         if config.categories().get(DEFAULT_CATEGORY).is_none() {
-            config.categories_mut().insert(DEFAULT_CATEGORY.to_owned(), vec![]);
-            config.categories_order_mut().retain(|category| category != DEFAULT_CATEGORY);
-            config.categories_order_mut().push(DEFAULT_CATEGORY.to_owned());
+            config
+                .categories_mut()
+                .insert(DEFAULT_CATEGORY.to_owned(), vec![]);
+            config
+                .categories_order_mut()
+                .retain(|category| category != DEFAULT_CATEGORY);
+            config
+                .categories_order_mut()
+                .push(DEFAULT_CATEGORY.to_owned());
         }
 
         Ok(config)
     }
 
     pub fn save(&mut self, app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<()> {
-        let path = game_config_path(app_handle)?.join(format!("{GAME_CONFIG_FILE_NAME_START}{}{GAME_CONFIG_FILE_NAME_END}", game.key()));
+        let path = game_config_path(app_handle)?.join(format!(
+            "{GAME_CONFIG_FILE_NAME_START}{}{GAME_CONFIG_FILE_NAME_END}",
+            game.key()
+        ));
 
         // Make sure the path exists to avoid problems with updating schemas.
         if let Some(parent_folder) = path.parent() {
@@ -158,10 +176,10 @@ impl GameConfig {
     }
 
     pub fn delete_category(&mut self, category: &str) {
-
         // Just in case we don't have a default category yet.
         if self.categories().get(DEFAULT_CATEGORY).is_none() {
-            self.categories_mut().insert(DEFAULT_CATEGORY.to_owned(), vec![]);
+            self.categories_mut()
+                .insert(DEFAULT_CATEGORY.to_owned(), vec![]);
         }
 
         // Do not delete default category.
@@ -172,7 +190,7 @@ impl GameConfig {
         self.categories_mut().remove(category);
         self.categories_order_mut().retain(|x| x != category);
     }
-/*
+    /*
     /// NOTE: This returns a channel receiver for the workshop/equivalent service data request.
     /// This is done so the request doesn't hang the entire load process, as it usually takes 2 or 3 seconds to complete.
     pub fn update_mod_list(&mut self, app_handle: &tauri::AppHandle, game: &GameInfo, game_path: &Path, load_order: &mut LoadOrder, skip_network_update: bool) -> Result<Option<Receiver<Response>>> {

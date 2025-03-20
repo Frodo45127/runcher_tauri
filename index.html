@@ -105,6 +105,7 @@
         </div>
         <div class="modal-tabs">
           <button class="tab-btn active" data-tab="general">General</button>
+          <button class="tab-btn" data-tab="paths">Paths</button>
           <button class="tab-btn" data-tab="advanced">Advanced</button>
         </div>
         <div class="modal-body">
@@ -113,25 +114,61 @@
             <div class="setting-group">
               <h3>General Settings</h3>
               <div class="setting-item">
-                <label>Theme</label>
-                <select>
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
+                <label>Language</label>
+                <select id="language-select">
+                  <!-- Will be populated dynamically -->
                 </select>
               </div>
               <div class="setting-item">
-                <label>Language</label>
-                <select>
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
+                <label>Default Game</label>
+                <select id="default-game-select">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
+              <div class="setting-item">
+                <label>Date Format</label>
+                <select id="date-format-select">
+                  <!-- Will be populated dynamically -->
                 </select>
               </div>
             </div>
           </div>
+          
+          <div class="tab-content" id="paths-tab">
+            <!-- Paths settings content -->
+            <div class="setting-group">
+              <h3>Game Paths</h3>
+              <div id="game-paths-container">
+                <!-- Game paths will be populated dynamically -->
+              </div>
+            </div>
+          </div>
+          
           <div class="tab-content" id="advanced-tab">
             <!-- Advanced settings content -->
             <div class="setting-group">
               <h3>Advanced Settings</h3>
+              <div class="setting-item">
+                <label>Check for Updates on Start</label>
+                <div class="switch-container">
+                  <input type="checkbox" id="check-updates-toggle" class="toggle-switch">
+                  <label for="check-updates-toggle" class="toggle-label"></label>
+                </div>
+              </div>
+              <div class="setting-item">
+                <label>Check for Schema Updates on Start</label>
+                <div class="switch-container">
+                  <input type="checkbox" id="check-schema-updates-toggle" class="toggle-switch">
+                  <label for="check-schema-updates-toggle" class="toggle-label"></label>
+                </div>
+              </div>
+              <div class="setting-item">
+                <label>Check for SQL Scripts Updates on Start</label>
+                <div class="switch-container">
+                  <input type="checkbox" id="check-sql-updates-toggle" class="toggle-switch">
+                  <label for="check-sql-updates-toggle" class="toggle-label"></label>
+                </div>
+              </div>
               <div class="setting-item">
                 <label>Cache Size</label>
                 <input type="number" value="1024" min="256" max="4096">

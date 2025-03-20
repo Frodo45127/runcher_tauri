@@ -24,9 +24,12 @@ use crate::mod_manager::mods::Mod;
 
 mod steam;
 
-#[cfg(target_os = "windows")] pub const CREATE_NO_WINDOW: u32 = 0x08000000;
-#[cfg(target_os = "windows")] pub const DETACHED_PROCESS: u32 = 0x00000008;
-#[cfg(target_os = "windows")] const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+#[cfg(target_os = "windows")]
+pub const CREATE_NO_WINDOW: u32 = 0x08000000;
+#[cfg(target_os = "windows")]
+pub const DETACHED_PROCESS: u32 = 0x00000008;
+#[cfg(target_os = "windows")]
+const CREATE_NEW_CONSOLE: u32 = 0x00000010;
 
 //-------------------------------------------------------------------------------//
 //                              Enums & Structs
@@ -36,7 +39,8 @@ mod steam;
 pub enum PublishedFileVisibilityDerive {
     Public,
     FriendsOnly,
-    #[default] Private,
+    #[default]
+    Private,
     Unlisted,
 }
 
@@ -53,27 +57,68 @@ pub struct PreUploadInfo {
 //                             Implementations
 //-------------------------------------------------------------------------------//
 
-pub fn request_mods_data(app_handle: &tauri::AppHandle, game: &GameInfo, mod_ids: &[String]) -> Result<Vec<Mod>> {
+pub fn request_mods_data(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    mod_ids: &[String],
+) -> Result<Vec<Mod>> {
     steam::request_mods_data(app_handle, game, mod_ids)
 }
 
-pub fn request_pre_upload_info(app_handle: &tauri::AppHandle, game: &GameInfo, mod_id: &str) -> Result<PreUploadInfo> {
+pub fn request_pre_upload_info(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    mod_id: &str,
+) -> Result<PreUploadInfo> {
     steam::request_pre_upload_info(app_handle, game, mod_id)
 }
 
-pub fn populate_mods_with_online_data(app_handle: &tauri::AppHandle, mods: &mut HashMap<String, Mod>, workshop_items: &[Mod]) -> Result<()> {
+pub fn populate_mods_with_online_data(
+    app_handle: &tauri::AppHandle,
+    mods: &mut HashMap<String, Mod>,
+    workshop_items: &[Mod],
+) -> Result<()> {
     steam::populate_mods_with_online_data(app_handle, mods, workshop_items)
 }
 
-pub fn upload_mod_to_workshop(app_handle: &tauri::AppHandle, game: &GameInfo, modd: &Mod, title: &str, description: &str, tags: &[String], changelog: &str, visibility: &Option<u32>, force_update: bool) -> Result<()> {
-    steam::upload_mod_to_workshop(app_handle, game, modd, title, description, tags, changelog, visibility, force_update)
+pub fn upload_mod_to_workshop(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    modd: &Mod,
+    title: &str,
+    description: &str,
+    tags: &[String],
+    changelog: &str,
+    visibility: &Option<u32>,
+    force_update: bool,
+) -> Result<()> {
+    steam::upload_mod_to_workshop(
+        app_handle,
+        game,
+        modd,
+        title,
+        description,
+        tags,
+        changelog,
+        visibility,
+        force_update,
+    )
 }
 
-pub fn launch_game(app_handle: &tauri::AppHandle, game: &GameInfo, command_to_pass: &str, wait_for_finish: bool) -> Result<()> {
+pub fn launch_game(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    command_to_pass: &str,
+    wait_for_finish: bool,
+) -> Result<()> {
     steam::launch_game(app_handle, game, command_to_pass, wait_for_finish)
 }
 
-pub fn download_subscribed_mods(app_handle: &tauri::AppHandle, game: &GameInfo, published_file_ids: &Option<Vec<String>>) -> Result<()> {
+pub fn download_subscribed_mods(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    published_file_ids: &Option<Vec<String>>,
+) -> Result<()> {
     steam::download_subscribed_mods(app_handle, game, published_file_ids)
 }
 

@@ -15,7 +15,7 @@ use sha256::try_digest;
 
 use std::path::{Path, PathBuf};
 
-use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
+use rpfm_lib::games::{pfh_file_type::PFHFileType, GameInfo};
 use rpfm_lib::utils::path_to_absolute_string;
 
 //pub mod versions;
@@ -27,7 +27,6 @@ use rpfm_lib::utils::path_to_absolute_string;
 #[derive(Clone, Debug, Default, Getters, MutGetters, Setters, Serialize, Deserialize)]
 #[getset(get = "pub", get_mut = "pub", set = "pub")]
 pub struct Mod {
-
     /// Visual name of the mod. Title if the mod is from the workshop.
     name: String,
 
@@ -80,7 +79,7 @@ pub struct ShareableMod {
     name: String,
     id: String,
     steam_id: Option<String>,
-    hash: String
+    hash: String,
 }
 
 //-------------------------------------------------------------------------------//
@@ -88,7 +87,6 @@ pub struct ShareableMod {
 //-------------------------------------------------------------------------------//
 
 impl From<&Mod> for ShareableMod {
-
     fn from(value: &Mod) -> Self {
         let hash = try_digest(value.paths()[0].as_path()).unwrap();
         Self {
@@ -101,14 +99,17 @@ impl From<&Mod> for ShareableMod {
 }
 
 impl Mod {
-
     /// Returns if the mod is outdated or not. Requires the date of the last update of the game.
     pub fn outdated(&self, game_last_update_date: u64) -> bool {
         game_last_update_date > *self.time_updated() as u64
     }
 
-    pub fn location(&self, data_path: &str, secondary_path: &str, content_path: &str) -> (bool, bool, Option<String>) {
-
+    pub fn location(
+        &self,
+        data_path: &str,
+        secondary_path: &str,
+        content_path: &str,
+    ) -> (bool, bool, Option<String>) {
         // Shortcut for mods with no paths.
         if self.paths().is_empty() {
             return (false, false, None);
@@ -132,8 +133,12 @@ impl Mod {
         (data, secondary, content)
     }
 
-    pub fn priority_dating_flags(&self, data_path: &str, secondary_path: &str, content_path: &str) -> Result<(bool, bool, bool)> {
-
+    pub fn priority_dating_flags(
+        &self,
+        data_path: &str,
+        secondary_path: &str,
+        content_path: &str,
+    ) -> Result<(bool, bool, bool)> {
         // Shortcut for mods only in one place.
         if self.paths().len() == 1 {
             return Ok((false, false, false));
@@ -143,7 +148,8 @@ impl Mod {
         let mut data_older_than_content = false;
         let mut secondary_older_than_content = false;
 
-        let paths = self.paths()
+        let paths = self
+            .paths()
             .iter()
             .map(|x| path_to_absolute_string(x))
             .collect::<Vec<_>>();
@@ -183,12 +189,15 @@ impl Mod {
             }
         }
 
-        Ok((data_older_than_secondary, data_older_than_content, secondary_older_than_content))
+        Ok((
+            data_older_than_secondary,
+            data_older_than_content,
+            secondary_older_than_content,
+        ))
     }
 
     /// Returns if the mod is enabled or not.
     pub fn enabled(&self, game: &GameInfo, data_path: &Path) -> bool {
-
         // For mod packs we just return it.
         // For movie packs in Shogun 2 and newer games, just return it.
         // For movie packs in Empire and Napoleon:
@@ -206,7 +215,6 @@ impl Mod {
                     self.enabled
                 }
             }
-
             // If no path is found, this is not a mod we have in use.
             else {
                 false
@@ -222,7 +230,6 @@ impl Mod {
     }
 
     pub fn can_be_toggled(&self, game: &GameInfo, data_path: &Path) -> bool {
-
         // Same checks as in the "enabled" function.
         if self.pack_type == PFHFileType::Mod {
             true

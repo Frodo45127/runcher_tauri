@@ -39,7 +39,6 @@ const FILE_NAME_END: &str = ".json";
 #[derive(Clone, Debug, Default, Getters, MutGetters, Setters, Serialize, Deserialize)]
 #[getset(get = "pub", get_mut = "pub", set = "pub")]
 pub struct Profile {
-
     // Id/Name of the profile. Must be unique for the game.
     id: String,
 
@@ -55,8 +54,10 @@ pub struct Profile {
 //-------------------------------------------------------------------------------//
 
 impl Profile {
-
-    pub fn profiles_for_game(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<HashMap<String, Self>> {
+    pub fn profiles_for_game(
+        app_handle: &tauri::AppHandle,
+        game: &GameInfo,
+    ) -> Result<HashMap<String, Self>> {
         let mut profiles = HashMap::new();
         let path = profiles_path(app_handle)?;
         let file_name_start = format!("{FILE_NAME_START}{}_", game.key());
@@ -65,7 +66,13 @@ impl Profile {
         for file in files {
             let file_name = file.file_name().unwrap().to_string_lossy();
             if file_name.starts_with(&file_name_start) && file_name.ends_with(FILE_NAME_END) {
-                let file_name_no_end = file.file_stem().unwrap().to_string_lossy().strip_prefix(&file_name_start).unwrap().to_string();
+                let file_name_no_end = file
+                    .file_stem()
+                    .unwrap()
+                    .to_string_lossy()
+                    .strip_prefix(&file_name_start)
+                    .unwrap()
+                    .to_string();
                 let profile = Self::load(app_handle, game, &file_name_no_end, false)?;
                 profiles.insert(file_name_no_end, profile);
             }
@@ -74,8 +81,17 @@ impl Profile {
         Ok(profiles)
     }
 
-    pub fn load(app_handle: &tauri::AppHandle, game: &GameInfo, profile: &str, new_if_missing: bool) -> Result<Self> {
-        let path = profiles_path(app_handle)?.join(format!("{FILE_NAME_START}{}_{}{FILE_NAME_END}", game.key(), profile));
+    pub fn load(
+        app_handle: &tauri::AppHandle,
+        game: &GameInfo,
+        profile: &str,
+        new_if_missing: bool,
+    ) -> Result<Self> {
+        let path = profiles_path(app_handle)?.join(format!(
+            "{FILE_NAME_START}{}_{}{FILE_NAME_END}",
+            game.key(),
+            profile
+        ));
         if !path.is_file() && new_if_missing {
             return Ok(Self {
                 id: profile.to_string(),
@@ -91,8 +107,17 @@ impl Profile {
         Ok(profile)
     }
 
-    pub fn save(&mut self, app_handle: &tauri::AppHandle, game: &GameInfo, profile: &str) -> Result<()> {
-        let path = profiles_path(app_handle)?.join(format!("{FILE_NAME_START}{}_{}{FILE_NAME_END}", game.key(), profile));
+    pub fn save(
+        &mut self,
+        app_handle: &tauri::AppHandle,
+        game: &GameInfo,
+        profile: &str,
+    ) -> Result<()> {
+        let path = profiles_path(app_handle)?.join(format!(
+            "{FILE_NAME_START}{}_{}{FILE_NAME_END}",
+            game.key(),
+            profile
+        ));
 
         // Make sure the path exists to avoid problems with updating schemas.
         if let Some(parent_folder) = path.parent() {
@@ -112,7 +137,11 @@ impl Profile {
     }
 
     pub fn delete(&self, app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<()> {
-        let path = profiles_path(app_handle)?.join(format!("{FILE_NAME_START}{}_{}{FILE_NAME_END}", game.key(), self.id()));
+        let path = profiles_path(app_handle)?.join(format!(
+            "{FILE_NAME_START}{}_{}{FILE_NAME_END}",
+            game.key(),
+            self.id()
+        ));
         if path.is_file() {
             std::fs::remove_file(path)?;
         }

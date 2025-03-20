@@ -18,7 +18,10 @@ use std::fs::{DirBuilder, File};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use rpfm_lib::games::{GameInfo, supported_games::{KEY_ARENA, SupportedGames}};
+use rpfm_lib::games::{
+    supported_games::{SupportedGames, KEY_ARENA},
+    GameInfo,
+};
 
 const SETTINGS_INITIALIZED: OnceCell<bool> = OnceCell::new();
 
@@ -34,12 +37,8 @@ const SETTINGS_FILE: &str = "settings.json";
 const PROFILES_FILE: &str = "profiles.json";
 const GAME_CONFIG_FILE: &str = "game_config.json";
 
-pub const SLASH_DMY_DATE_FORMAT_STR: &str = "[day]/[month]/[year]";
-pub const SLASH_MDY_DATE_FORMAT_STR: &str = "[month]/[day]/[year]";
-pub const SLASH_YMD_DATE_FORMAT_STR: &str = "[year]/[month]/[day]";
-
 //-------------------------------------------------------------------------------//
-//                             Enums 
+//                             Enums
 //-------------------------------------------------------------------------------//
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -53,6 +52,12 @@ pub struct AppSettings {
     pub right_panel_width: u32,
     pub paths: HashMap<String, String>,
     pub strings: HashMap<String, String>,
+    pub default_game: String,
+    pub language: String,
+    pub date_format: String,
+    pub check_updates_on_start: bool,
+    pub check_schema_updates_on_start: bool,
+    pub check_sql_scripts_updates_on_start: bool,
 }
 
 //-------------------------------------------------------------------------------//
@@ -71,33 +76,43 @@ impl Default for AppSettings {
             right_panel_width: 300,
             paths: HashMap::new(),
             strings: HashMap::new(),
+            default_game: "warhammer_2".to_string(),
+            language: "English".to_string(),
+            date_format: "DD/MM/YYYY".to_string(),
+            check_updates_on_start: true,
+            check_schema_updates_on_start: true,
+            check_sql_scripts_updates_on_start: true,
         }
     }
 }
 
 impl AppSettings {
     pub fn init(app_handle: &tauri::AppHandle) -> Result<Self> {
-
         // Only initialize the config paths once.
         if SETTINGS_INITIALIZED.get().is_none() {
             init_config_path(app_handle)?;
             let _ = SETTINGS_INITIALIZED.set(true);
         }
 
-        let mut settings =Self::load(app_handle)?;
+        let mut settings = Self::load(app_handle)?;
         let games = SupportedGames::default();
         let games = games.games_sorted();
         for game in games {
             if game.key() != KEY_ARENA {
-
                 // Try to find the game path automatically.
-                let game_path = game.find_game_install_location()
+                let game_path = game
+                    .find_game_install_location()
                     .ok()
                     .flatten()
-                    .map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
-    
+                    .map(|x| x.to_string_lossy().to_string())
+                    .unwrap_or_default();
+
                 // If we got a path and we don't have it saved yet, save it automatically.
-                let current_path = settings.game_path(&game).ok().map(|x| x.to_string_lossy().to_string()).unwrap_or_default();
+                let current_path = settings
+                    .game_path(&game)
+                    .ok()
+                    .map(|x| x.to_string_lossy().to_string())
+                    .unwrap_or_default();
                 if !game_path.is_empty() && current_path != game_path {
                     settings.set_game_path(game, &game_path);
                 }
@@ -110,7 +125,10 @@ impl AppSettings {
     }
 
     pub fn game_path(&self, game: &GameInfo) -> Result<PathBuf> {
-        let path = self.paths.get(game.key()).ok_or(anyhow!("Game path not found"))?;
+        let path = self
+            .paths
+            .get(game.key())
+            .ok_or(anyhow!("Game path not found"))?;
         Ok(PathBuf::from(path))
     }
 
@@ -119,12 +137,18 @@ impl AppSettings {
     }
 
     pub fn secondary_mods_path(&self) -> Result<PathBuf> {
-        let path = self.paths.get("secondary_mods_path").ok_or(anyhow!("Secondary mods path not found"))?;
+        let path = self
+            .paths
+            .get("secondary_mods_path")
+            .ok_or(anyhow!("Secondary mods path not found"))?;
         Ok(PathBuf::from(path))
     }
 
     pub fn string(&self, key: &str) -> Result<String> {
-        self.strings.get(key).cloned().ok_or(anyhow!("String not found"))
+        self.strings
+            .get(key)
+            .cloned()
+            .ok_or(anyhow!("String not found"))
     }
 
     pub fn set_string_if_new(&mut self, key: &str, value: &str) {
@@ -134,27 +158,32 @@ impl AppSettings {
     }
 
     pub fn load(app_handle: &tauri::AppHandle) -> Result<Self> {
-        let config_path = get_config_path(&app_handle)?;  
+        let config_path = get_config_path(&app_handle)?;
         if !config_path.exists() {
             return Ok(Self::default());
         }
-        
+
         // Read and parse the file
-        let content = std::fs::read_to_string(&config_path).map_err(|e| anyhow!("Failed to read config file: {}", e))?;
+        let content = std::fs::read_to_string(&config_path)
+            .map_err(|e| anyhow!("Failed to read config file: {}", e))?;
         //serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e))
         // Fix so we can edit this file on development without erroring out.
-        if let Ok(settings) = serde_json::from_str(&content).map_err(|e| anyhow!("Failed to parse config file: {}", e)) {
+        if let Ok(settings) = serde_json::from_str(&content)
+            .map_err(|e| anyhow!("Failed to parse config file: {}", e))
+        {
             Ok(settings)
         } else {
             Ok(Self::default())
         }
     }
 
-    pub fn save(&self, app_handle: &tauri::AppHandle) -> Result<()> {      
+    pub fn save(&self, app_handle: &tauri::AppHandle) -> Result<()> {
         let path = get_config_path(app_handle)?;
-        let content = serde_json::to_string_pretty(&self).map_err(|e| anyhow!("Failed to serialize settings: {}", e))?;
-        std::fs::write(&path, content).map_err(|e| anyhow!("Failed to write config file: {}", e))?;
-        
+        let content = serde_json::to_string_pretty(&self)
+            .map_err(|e| anyhow!("Failed to serialize settings: {}", e))?;
+        std::fs::write(&path, content)
+            .map_err(|e| anyhow!("Failed to write config file: {}", e))?;
+
         println!("Settings saved to: {}", path.display());
         Ok(())
     }
@@ -166,19 +195,35 @@ impl AppSettings {
 
 #[must_use = "Many things depend on this folder existing. So better check this worked."]
 pub fn init_config_path(app_handle: &tauri::AppHandle) -> Result<()> {
-    DirBuilder::new().recursive(true).create(error_path(app_handle)?)?;
-    DirBuilder::new().recursive(true).create(game_config_path(app_handle)?)?;
-    DirBuilder::new().recursive(true).create(profiles_path(app_handle)?)?;
-    DirBuilder::new().recursive(true).create(schemas_path(app_handle)?)?;
-    DirBuilder::new().recursive(true).create(sql_scripts_extracted_path(app_handle)?)?;
-    DirBuilder::new().recursive(true).create(sql_scripts_remote_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(error_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(game_config_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(profiles_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(schemas_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(sql_scripts_extracted_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(sql_scripts_remote_path(app_handle)?)?;
 
     // Within the config path we need to create a folder to store the temp packs of each game.
     // Otherwise they interfere with each other due to being movie packs.
     for game in SupportedGames::default().games_sorted().iter() {
         if game.key() != KEY_ARENA {
-            DirBuilder::new().recursive(true).create(temp_packs_folder(app_handle, game)?)?;
-            DirBuilder::new().recursive(true).create(sql_scripts_local_path(app_handle)?.join(game.key()))?;
+            DirBuilder::new()
+                .recursive(true)
+                .create(temp_packs_folder(app_handle, game)?)?;
+            DirBuilder::new()
+                .recursive(true)
+                .create(sql_scripts_local_path(app_handle)?.join(game.key()))?;
         }
     }
 
@@ -187,12 +232,15 @@ pub fn init_config_path(app_handle: &tauri::AppHandle) -> Result<()> {
 
 // Get the path to the config file
 pub fn get_config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
-    let config_dir = config_path(app_handle)?;   
+    let config_dir = config_path(app_handle)?;
     Ok(config_dir.join(SETTINGS_FILE))
 }
 
 pub fn config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
-    let path = app_handle.path().app_config_dir().map_err(|e| anyhow!("Failed to get app config directory: {e}"))?;
+    let path = app_handle
+        .path()
+        .app_config_dir()
+        .map_err(|e| anyhow!("Failed to get app config directory: {e}"))?;
     Ok(path)
 }
 
@@ -202,7 +250,9 @@ pub fn error_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
 }
 
 pub fn temp_packs_folder(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<PathBuf> {
-    Ok(config_path(app_handle)?.join(TEMP_PACKS_FOLDER).join(game.key()))
+    Ok(config_path(app_handle)?
+        .join(TEMP_PACKS_FOLDER)
+        .join(game.key()))
 }
 
 pub fn sql_scripts_extracted_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
@@ -210,7 +260,10 @@ pub fn sql_scripts_extracted_path(app_handle: &tauri::AppHandle) -> Result<PathB
 }
 
 pub fn sql_scripts_extracted_extended_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
-    Ok(config_path(app_handle)?.join(format!("{}/twpatcher/scripts", SQL_SCRIPTS_EXTRACTED_FOLDER)))
+    Ok(config_path(app_handle)?.join(format!(
+        "{}/twpatcher/scripts",
+        SQL_SCRIPTS_EXTRACTED_FOLDER
+    )))
 }
 
 pub fn sql_scripts_local_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
@@ -237,7 +290,10 @@ pub fn last_game_update_date(game: &GameInfo, game_path: &Path) -> Result<u64> {
     Ok(if let Some(exe_path) = game.executable_path(game_path) {
         if let Ok(exe) = File::open(exe_path) {
             if cfg!(target_os = "windows") {
-                exe.metadata()?.created()?.duration_since(UNIX_EPOCH)?.as_secs()
+                exe.metadata()?
+                    .created()?
+                    .duration_since(UNIX_EPOCH)?
+                    .as_secs()
             } else {
                 0
             }

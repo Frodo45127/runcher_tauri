@@ -19,25 +19,30 @@ use std::cell::LazyCell;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufWriter, Read, Write};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-#[cfg(target_os = "windows")]use std::os::windows::process::CommandExt;
 
-use rpfm_lib::files::{EncodeableExtraData, pack::Pack};
+use rpfm_lib::files::{pack::Pack, EncodeableExtraData};
 use rpfm_lib::games::GameInfo;
 use rpfm_lib::utils::path_to_absolute_string;
 
 use crate::mod_manager::mods::Mod;
 use crate::settings::AppSettings;
 
-#[cfg(target_os = "windows")]use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
 use super::{PreUploadInfo, PublishedFileVisibilityDerive};
+#[cfg(target_os = "windows")]
+use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
 
-const REGEX_URL: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"(\[url=)(.*)(\])(.*)(\[/url\])").unwrap());
-const WORKSHOPPER_PATH: LazyCell<String> = LazyCell::new(|| if cfg!(debug_assertions) {
-    format!(".\\target\\debug\\{}", WORKSHOPPER_EXE)
-} else {
-    WORKSHOPPER_EXE.to_string()
+const REGEX_URL: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"(\[url=)(.*)(\])(.*)(\[/url\])").unwrap());
+const WORKSHOPPER_PATH: LazyCell<String> = LazyCell::new(|| {
+    if cfg!(debug_assertions) {
+        format!(".\\target\\debug\\{}", WORKSHOPPER_EXE)
+    } else {
+        WORKSHOPPER_EXE.to_string()
+    }
 });
 
 const WORKSHOPPER_EXE: &str = "workshopper.exe";
@@ -99,10 +104,17 @@ impl From<&QueryResultDerive> for PreUploadInfo {
     }
 }
 
-pub fn request_pre_upload_info(app_handle: &tauri::AppHandle, game: &GameInfo, mod_id: &str) -> Result<PreUploadInfo> {
+pub fn request_pre_upload_info(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    mod_id: &str,
+) -> Result<PreUploadInfo> {
     let workshop_items = request_mods_data_raw(app_handle, game, &[mod_id.to_owned()])?;
     if workshop_items.is_empty() {
-        return Err(anyhow!("Mod with SteamId {} not found in the Workshop.", mod_id));
+        return Err(anyhow!(
+            "Mod with SteamId {} not found in the Workshop.",
+            mod_id
+        ));
     }
 
     // If we're not the author, do not even let us upload it.
@@ -117,11 +129,14 @@ pub fn request_pre_upload_info(app_handle: &tauri::AppHandle, game: &GameInfo, m
     Ok(data)
 }
 
-pub fn request_mods_data(app_handle: &tauri::AppHandle, game: &GameInfo, mod_ids: &[String]) -> Result<Vec<Mod>> {
-
+pub fn request_mods_data(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    mod_ids: &[String],
+) -> Result<Vec<Mod>> {
     // Do not call the cmd if there are no mods.
     if mod_ids.is_empty() {
-        return Ok(vec![])
+        return Ok(vec![]);
     }
 
     let workshop_items = request_mods_data_raw(app_handle, game, mod_ids)?;
@@ -145,11 +160,14 @@ pub fn request_mods_data(app_handle: &tauri::AppHandle, game: &GameInfo, mod_ids
     Ok(mods)
 }
 
-pub fn request_mods_data_raw(app_handle: &tauri::AppHandle, game: &GameInfo, mod_ids: &[String]) -> Result<Vec<QueryResultDerive>> {
-
+pub fn request_mods_data_raw(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    mod_ids: &[String],
+) -> Result<Vec<QueryResultDerive>> {
     // Do not call the cmd if there are no mods.
     if mod_ids.is_empty() {
-        return Ok(vec![])
+        return Ok(vec![]);
     }
 
     let settings = AppSettings::load(app_handle)?;
@@ -168,7 +186,8 @@ pub fn request_mods_data_raw(app_handle: &tauri::AppHandle, game: &GameInfo, mod
     command.arg(BAT_GET_PUBLISHED_FILE_DETAILS);
 
     // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
-    #[cfg(target_os = "windows")] if cfg!(debug_assertions) {
+    #[cfg(target_os = "windows")]
+    if cfg!(debug_assertions) {
         command.creation_flags(DETACHED_PROCESS);
     } else {
         command.creation_flags(CREATE_NO_WINDOW);
@@ -190,11 +209,13 @@ pub fn request_mods_data_raw(app_handle: &tauri::AppHandle, game: &GameInfo, mod
     }
 }
 
-pub fn request_user_names(app_handle: &tauri::AppHandle, user_ids: &[String]) -> Result<HashMap<String, String>> {
-
+pub fn request_user_names(
+    app_handle: &tauri::AppHandle,
+    user_ids: &[String],
+) -> Result<HashMap<String, String>> {
     // Do not call the cmd if there are no users.
     if user_ids.is_empty() {
-        return Ok(HashMap::new())
+        return Ok(HashMap::new());
     }
 
     let mut client = Workshop::new(None);
@@ -209,12 +230,17 @@ pub fn request_user_names(app_handle: &tauri::AppHandle, user_ids: &[String]) ->
     }
 }
 
-pub fn populate_mods_with_online_data(app_handle: &tauri::AppHandle, mods: &mut HashMap<String, Mod>, workshop_items: &[Mod]) -> Result<()> {
+pub fn populate_mods_with_online_data(
+    app_handle: &tauri::AppHandle,
+    mods: &mut HashMap<String, Mod>,
+    workshop_items: &[Mod],
+) -> Result<()> {
     for workshop_item in workshop_items {
-        if let Some(modd) = mods.values_mut()
+        if let Some(modd) = mods
+            .values_mut()
             .filter(|modd| modd.steam_id().is_some())
-            .find(|modd| modd.steam_id() == workshop_item.steam_id()) {
-
+            .find(|modd| modd.steam_id() == workshop_item.steam_id())
+        {
             modd.set_name(workshop_item.name().to_string());
             modd.set_creator(workshop_item.creator().to_string());
             modd.set_file_name(workshop_item.file_name().to_string());
@@ -225,11 +251,16 @@ pub fn populate_mods_with_online_data(app_handle: &tauri::AppHandle, mods: &mut 
         }
     }
 
-    let user_ids = mods.values()
-        .filter_map(|modd| if !modd.creator().is_empty() {
-            Some(modd.creator().to_owned())
-        } else { None }
-        ).collect::<Vec<_>>();
+    let user_ids = mods
+        .values()
+        .filter_map(|modd| {
+            if !modd.creator().is_empty() {
+                Some(modd.creator().to_owned())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
 
     if user_ids.is_empty() {
         return Ok(());
@@ -242,7 +273,10 @@ pub fn populate_mods_with_online_data(app_handle: &tauri::AppHandle, mods: &mut 
     Ok(())
 }
 
-pub fn populate_mods_with_author_names(mods: &mut HashMap<String, Mod>, user_names: &HashMap<String, String>) {
+pub fn populate_mods_with_author_names(
+    mods: &mut HashMap<String, Mod>,
+    user_names: &HashMap<String, String>,
+) {
     for modd in mods.values_mut() {
         if let Some(creator_name) = user_names.get(modd.creator()) {
             modd.set_creator_name(creator_name.to_string());
@@ -253,7 +287,17 @@ pub fn populate_mods_with_author_names(mods: &mut HashMap<String, Mod>, user_nam
 /// This function uploads a mod to the workshop through workshopper.
 ///
 /// If the mod doesn't yet exists in the workshop, it creates it. If it already exists, it updates it.
-pub fn upload_mod_to_workshop(app_handle: &tauri::AppHandle, game: &GameInfo, modd: &Mod, title: &str, description: &str, tags: &[String], changelog: &str, visibility: &Option<u32>, force_update: bool) -> Result<()> {
+pub fn upload_mod_to_workshop(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    modd: &Mod,
+    title: &str,
+    description: &str,
+    tags: &[String],
+    changelog: &str,
+    visibility: &Option<u32>,
+    force_update: bool,
+) -> Result<()> {
     let settings = AppSettings::load(app_handle)?;
     let game_path = settings.game_path(game)?;
     let steam_id = game.steam_id(&game_path)? as u32;
@@ -274,7 +318,8 @@ pub fn upload_mod_to_workshop(app_handle: &tauri::AppHandle, game: &GameInfo, mo
     // If we have a published_file_id, it means this file exists in the workshop.
     //
     // So, instead of uploading, we just update it.
-    let mut command_string = format!("{} {} -b -s {steam_id} -f \"{pack_path}\" -t {} --tags {}",
+    let mut command_string = format!(
+        "{} {} -b -s {steam_id} -f \"{pack_path}\" -t {} --tags {}",
         &*WORKSHOPPER_PATH,
         match modd.steam_id() {
             Some(published_file_id) => format!("update --published-file-id {published_file_id}"),
@@ -307,14 +352,20 @@ pub fn upload_mod_to_workshop(app_handle: &tauri::AppHandle, game: &GameInfo, mo
     command.arg(BAT_UPLOAD_TO_WORKSHOP);
 
     // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
-    #[cfg(target_os = "windows")]command.creation_flags(CREATE_NEW_CONSOLE);
+    #[cfg(target_os = "windows")]
+    command.creation_flags(CREATE_NEW_CONSOLE);
     command.spawn()?;
 
     Ok(())
 }
 
 /// This function launches a game through workshopper, with access to the Steam Api.
-pub fn launch_game(app_handle: &tauri::AppHandle, game: &GameInfo, command_to_pass: &str, wait_for_finish: bool) -> Result<()> {
+pub fn launch_game(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    command_to_pass: &str,
+    wait_for_finish: bool,
+) -> Result<()> {
     let settings = AppSettings::load(app_handle)?;
     let game_path = settings.game_path(game)?;
     let steam_id = game.steam_id(&game_path)? as u32;
@@ -332,7 +383,8 @@ pub fn launch_game(app_handle: &tauri::AppHandle, game: &GameInfo, command_to_pa
     command.arg(command_to_pass);
 
     // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
-    #[cfg(target_os = "windows")] if cfg!(debug_assertions) {
+    #[cfg(target_os = "windows")]
+    if cfg!(debug_assertions) {
         command.creation_flags(DETACHED_PROCESS);
     } else {
         command.creation_flags(CREATE_NO_WINDOW);
@@ -348,7 +400,11 @@ pub fn launch_game(app_handle: &tauri::AppHandle, game: &GameInfo, command_to_pa
 }
 
 /// This function asks workshopper to get all subscribed items, check which ones are missing, and tell steam to re-download them.
-pub fn download_subscribed_mods(app_handle: &tauri::AppHandle, game: &GameInfo, published_file_ids: &Option<Vec<String>>) -> Result<()> {
+pub fn download_subscribed_mods(
+    app_handle: &tauri::AppHandle,
+    game: &GameInfo,
+    published_file_ids: &Option<Vec<String>>,
+) -> Result<()> {
     let settings = AppSettings::load(app_handle)?;
     let game_path = settings.game_path(game)?;
     let steam_id = game.steam_id(&game_path)? as u32;
@@ -367,7 +423,8 @@ pub fn download_subscribed_mods(app_handle: &tauri::AppHandle, game: &GameInfo, 
     }
 
     // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
-    #[cfg(target_os = "windows")]command.creation_flags(DETACHED_PROCESS);
+    #[cfg(target_os = "windows")]
+    command.creation_flags(DETACHED_PROCESS);
 
     let mut handle = command.spawn()?;
     handle.wait()?;
@@ -392,7 +449,8 @@ pub fn user_id(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<u64> {
     command.arg(&ipc_channel);
 
     // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
-    #[cfg(target_os = "windows")] if cfg!(debug_assertions) {
+    #[cfg(target_os = "windows")]
+    if cfg!(debug_assertions) {
         command.creation_flags(DETACHED_PROCESS);
     } else {
         command.creation_flags(CREATE_NO_WINDOW);
@@ -407,7 +465,9 @@ pub fn user_id(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<u64> {
     let mut bytes = vec![];
     stream.read_to_end(&mut bytes)?;
 
-    let array: [u8; 8] = bytes.try_into().map_err(|_| anyhow!("Error when trying to get the Steam User ID."))?;
+    let array: [u8; 8] = bytes
+        .try_into()
+        .map_err(|_| anyhow!("Error when trying to get the Steam User ID."))?;
 
     Ok(u64::from_le_bytes(array))
 }
