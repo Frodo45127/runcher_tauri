@@ -1,12 +1,13 @@
+use base64::prelude::BASE64_STANDARD;
 use regex::Regex;
-use rpfm_lib::games::{
-    supported_games::{SupportedGames, KEY_ARENA},
+use rpfm_lib::{binary::WriteBytes, games::{
+    supported_games::{SupportedGames, KEY_ARENA, KEY_EMPIRE},
     GameInfo,
-};
+}};
 use rpfm_lib::schema::Schema;
 use anyhow::anyhow;
 use settings::*;
-use std::cell::LazyCell;
+use std::{cell::LazyCell, fs::DirBuilder};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
@@ -78,12 +79,323 @@ const REPO_NAME: &str = "runcher";
 const RESERVED_PACK_NAME: &str = "zzzzzzzzzzzzzzzzzzzzrun_you_fool_thron.pack";
 const RESERVED_PACK_NAME_ALTERNATIVE: &str = "!!!!!!!!!!!!!!!!!!!!!run_you_fool_thron.pack";
 
+const VANILLA_MOD_LIST_FILE_NAME: &str = "used_mods.txt";
+const CUSTOM_MOD_LIST_FILE_NAME: &str = "mod_list.txt";
+const USER_SCRIPT_FILE_NAME: &str = "user.script.txt";
+const USER_SCRIPT_EMPIRE_FILE_NAME: &str = "user.empire_script.txt";
 
 #[tauri::command]
-fn launch_game(id: &str) -> Result<String, String> {
-    // In a real implementation, this would launch the game with the given ID
-    println!("Launching game with ID: {}", id);
-    Ok(format!("Game {} launched successfully!", id))
+fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
+    use base64::Engine;
+
+    let mut folder_list = String::new();
+    let mut pack_list = String::new();
+
+    let game = GAME_SELECTED.read().unwrap().clone();
+    let game_path = SETTINGS.read().unwrap().game_path(&game).map_err(|e| format!("Error getting the game's path: {}", e))?;
+    let data_path = game.data_path(&game_path).map_err(|e| format!("Error getting the game's data path: {}", e))?;
+    let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+
+    load_order.build_load_order_string(&app, &game_config, &game, &data_path, &mut pack_list, &mut folder_list);
+
+    // Check if we are loading a save. First option is no save load. Any index above that is a save.
+    let mut extra_args: Vec<String> = vec![];
+    /*let save_index = self.actions_ui.save_combobox().current_index();
+    if self.actions_ui.save_combobox().current_index() > 0 {
+        if let Some(save) = self.game_saves.read().unwrap().get(save_index as usize - 1) {
+            extra_args.push("game_startup_mode".to_owned());
+            extra_args.push("campaign_load".to_owned());
+            extra_args.push(save.name().to_owned());
+        }
+    }*/
+
+    // NOTE: On Empire and Napoleon we need to use the user_script, not the custom file, as it doesn't seem to work.
+    // Older versions of shogun 2 also used the user_script, but the latest update enabled use of custom mod lists.
+    let file_path = if *game.raw_db_version() >= 1 {
+        game_path.join(CUSTOM_MOD_LIST_FILE_NAME)
+    } else {
+
+        // Games may fail to launch if we don't have this path created, which is done the first time we start the game.
+        let config_path = game.config_path(&game_path).ok_or(format!("Error getting the game's config path."))?;
+        let scripts_path = config_path.join("scripts");
+        DirBuilder::new().recursive(true).create(&scripts_path).map_err(|e| format!("Error creating the scripts path: {}", e))?;
+
+        // Empire has its own user script.
+        if game.key() == KEY_EMPIRE {
+            scripts_path.join(USER_SCRIPT_EMPIRE_FILE_NAME)
+        } else {
+            scripts_path.join(USER_SCRIPT_FILE_NAME)
+        }
+    };
+
+    // Setup the launch options stuff. This may add a line to the folder list, so we need to resave the load order file after this.
+    let folder_list_pre = folder_list.to_owned();
+    save_load_order_file(&file_path, &game, &folder_list, &pack_list).map_err(|e| format!("Error saving the load order file: {}", e))?;
+    prepare_launch_options(&game, &data_path, &mut folder_list).map_err(|e| format!("Error preparing launch options: {}", e))?;
+
+    if folder_list != folder_list_pre {
+        save_load_order_file(&file_path, &game, &folder_list, &pack_list).map_err(|e| format!("Error saving the load order file: {}", e))?;
+    }
+
+    // Launch is done through workshopper to getup the Steam Api.
+    //
+    // Here we just build the commands and pass them to workshopper.
+    match game.executable_path(&game_path) {
+        Some(exec_game) => {
+            if cfg!(target_os = "windows") {
+
+                let mut command = format!("cmd /C start /W /d \"{}\" \"{}\" \"{}\";",
+                    game_path.to_string_lossy().replace('\\', "/"),
+                    exec_game.file_name().unwrap().to_string_lossy(),
+
+                    // Custom load order file is only supported by Shogun 2 and later games.
+                    if *game.raw_db_version() >= 1 { CUSTOM_MOD_LIST_FILE_NAME.to_owned() } else { file_path.to_string_lossy().replace('\\', "/") }
+                );
+
+                // Only Shogun 2 and later games support extra arguments.
+                if *game.raw_db_version() >= 1 {
+                    for arg in &extra_args {
+                        command.push(' ');
+                        command.push_str(arg);
+                    }
+                }
+                
+                let command = BASE64_STANDARD.encode(command);
+                crate::mod_manager::integrations::launch_game(&app, &game, &command, false).map_err(|e| format!("Error launching the game: {}", e))?;
+                Ok(format!("Game {} launched successfully!", id))   
+            } else if cfg!(target_os = "linux") {
+                Err(format!("Unsupported OS."))
+            } else {
+                Err(format!("Unsupported OS."))
+            }
+        }
+        None => Err(format!("Executable path not found. Is the game folder configured correctly in the settings?"))
+    }
+}
+
+fn save_load_order_file(file_path: &Path, game: &GameInfo, folder_list: &str, pack_list: &str) -> anyhow::Result<()> {
+    use std::fs::File;
+    use std::io::BufWriter;
+    use std::io::Write;
+
+    let mut file = BufWriter::new(File::create(file_path)?);
+
+    // Napoleon, Empire and Shogun 2 require the user.script.txt or mod list file (for Shogun's latest update) to be in UTF-16 LE. What the actual fuck.
+    if *game.raw_db_version() < 2 {
+        file.write_string_u16(folder_list)?;
+        file.write_string_u16(pack_list)?;
+    } else {
+        file.write_all(folder_list.as_bytes())?;
+        file.write_all(pack_list.as_bytes())?;
+    }
+
+    file.flush().map_err(From::from)
+}
+
+
+fn prepare_launch_options(game: &GameInfo, data_path: &Path, folder_list: &mut String) -> anyhow::Result<()> {
+    /*
+    let actions_ui = app_ui.actions_ui();
+
+    // We only use the reserved pack if we need to.
+    if (actions_ui.enable_logging_checkbox().is_enabled() && actions_ui.enable_logging_checkbox().is_checked()) ||
+        (actions_ui.enable_skip_intro_checkbox().is_enabled() && actions_ui.enable_skip_intro_checkbox().is_checked()) ||
+        (actions_ui.remove_trait_limit_checkbox().is_enabled() && actions_ui.remove_trait_limit_checkbox().is_checked()) ||
+        (actions_ui.remove_siege_attacker_checkbox().is_enabled() && actions_ui.remove_siege_attacker_checkbox().is_checked()) ||
+        (actions_ui.enable_translations_combobox().is_enabled() && actions_ui.enable_translations_combobox().current_index() != 0) ||
+        (actions_ui.universal_rebalancer_combobox().is_enabled() && actions_ui.universal_rebalancer_combobox().current_index() != 0) ||
+        (actions_ui.enable_dev_only_ui_checkbox().is_enabled() && actions_ui.enable_dev_only_ui_checkbox().is_checked()) ||
+        (actions_ui.unit_multiplier_spinbox().is_enabled() && actions_ui.unit_multiplier_spinbox().value() != 1.00) ||
+        actions_ui.scripts_to_execute().read().unwrap().iter().any(|(_, item)| item.is_checked()) {
+
+        // We need to use an alternative name for Shogun 2, Rome 2, Attila and Thrones because their load order logic for movie packs seems... either different or broken.
+        let reserved_pack_name = if game.key() == KEY_SHOGUN_2 || game.key() == KEY_ROME_2 || game.key() == KEY_ATTILA || game.key() == KEY_THRONES_OF_BRITANNIA {
+            RESERVED_PACK_NAME_ALTERNATIVE
+        } else {
+            RESERVED_PACK_NAME
+        };
+
+        // If the reserved pack is loaded from a custom folder we need to CLEAR SAID FOLDER before anything else. Otherwise we may end up with old packs messing up stuff.
+        if *game.raw_db_version() >= 1 {
+            let temp_packs_folder = temp_packs_folder(game)?;
+            let files = files_from_subdir(&temp_packs_folder, false)?;
+            for file in &files {
+                std::fs::remove_file(file)?;
+            }
+        }
+
+        // Support for add_working_directory seems to be only present in rome 2 and newer games. For older games, we drop the pack into /data.
+        let temp_path = if *game.raw_db_version() >= 1 {
+            let temp_packs_folder = temp_packs_folder(game)?;
+            let temp_path = temp_packs_folder.join(reserved_pack_name);
+            folder_list.push_str(&format!("add_working_directory \"{}\";\n", temp_packs_folder.to_string_lossy()));
+            temp_path
+        } else {
+            data_path.join(reserved_pack_name)
+        };
+
+        // Prepare the command to generate the temp pack.
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C");
+        cmd.arg(&*PATCHER_PATH);
+        cmd.arg("-g");
+        cmd.arg(game.key());
+        cmd.arg("-l");
+        cmd.arg(CUSTOM_MOD_LIST_FILE_NAME);
+        cmd.arg("-p");
+        cmd.arg(temp_path.to_string_lossy().to_string());   // Use a custom path out of /data, if available.
+        cmd.arg("-s");                                      // Skip updates. Updates will be shipped with Runcher updates.
+
+        // Logging check.
+        if actions_ui.enable_logging_checkbox().is_enabled() && actions_ui.enable_logging_checkbox().is_checked() {
+            cmd.arg("-e");
+        }
+
+        // Skip Intros check.
+        if actions_ui.enable_skip_intro_checkbox().is_enabled() && actions_ui.enable_skip_intro_checkbox().is_checked() {
+            cmd.arg("-i");
+        }
+
+        // Remove Trait Limit check.
+        if actions_ui.remove_trait_limit_checkbox().is_enabled() && actions_ui.remove_trait_limit_checkbox().is_checked() {
+            cmd.arg("-r");
+        }
+
+        // Remove Siege Attacker check.
+        if actions_ui.remove_siege_attacker_checkbox().is_enabled() && actions_ui.remove_siege_attacker_checkbox().is_checked() {
+            cmd.arg("-a");
+        }
+
+        // Enable Dev-only UI check.
+        if actions_ui.enable_dev_only_ui_checkbox().is_enabled() && actions_ui.enable_dev_only_ui_checkbox().is_checked() {
+            cmd.arg("-d");
+        }
+
+        // Translations check.
+        if actions_ui.enable_translations_combobox().is_enabled() && actions_ui.enable_translations_combobox().current_index() != 0 {
+            cmd.arg("-t");
+            cmd.arg(app_ui.actions_ui().enable_translations_combobox().current_text().to_std_string());
+        }
+
+        // Universal Rebalancer check.
+        if actions_ui.universal_rebalancer_combobox().is_enabled() && actions_ui.universal_rebalancer_combobox().current_index() != 0 {
+            cmd.arg("-u");
+            cmd.arg(app_ui.actions_ui().universal_rebalancer_combobox().current_text().to_std_string());
+        }
+
+        // Unit Multiplier check.
+        if actions_ui.unit_multiplier_spinbox().is_enabled() && actions_ui.unit_multiplier_spinbox().value() != 1.00 {
+            cmd.arg("-m");
+            cmd.arg(app_ui.actions_ui().unit_multiplier_spinbox().value().to_string());
+        }
+
+        // Script checks.
+        let sql_folder_extracted = sql_scripts_extracted_extended_path()?;
+        let sql_folder_local = sql_scripts_local_path()?.join(game.key());
+        let sql_folder_remote = sql_scripts_remote_path()?.join(game.key());
+        actions_ui.scripts_to_execute().read().unwrap()
+            .iter()
+            .filter(|(_, item)| item.is_checked())
+            .for_each(|(script, item)| {
+                cmd.arg("--sql-script");
+
+                let script_params = if script.metadata().parameters().is_empty() {
+                    vec![]
+                } else {
+                    let mut script_params = vec![];
+                    let script_container = item.parent_widget().parent_widget();
+
+                    // First check if we have a preset set. If not, we can check each param.
+                    let preset_combo_name = format!("{}_preset_combo", script.metadata().key());
+                    let preset_key = if let Ok(widget) = script_container.find_child::<QComboBox>(&preset_combo_name) {
+                        widget.current_text().to_std_string()
+                    } else {
+                        String::new()
+                    };
+
+                    let preset = if !preset_key.is_empty() {
+                        let preset_path = sql_scripts_extracted_path().unwrap().join("twpatcher/presets");
+                        if preset_path.is_dir() {
+                            files_from_subdir(&preset_path, false).unwrap()
+                                .iter()
+                                .filter_map(|x| Preset::read(x).ok())
+                                .find(|x| *x.key() == preset_key)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    match preset {
+                        Some(preset) => {
+                            for param in script.metadata().parameters() {
+                                match preset.params().get(param.key()) {
+                                    Some(value) => script_params.push(value.to_string()),
+                                    None => script_params.push(param.default_value().to_string()),
+                                }
+                            }
+                        }
+                        None => {
+                            for param in script.metadata().parameters() {
+                                let object_name = format!("{}_{}", script.metadata().key(), param.key());
+                                match param.r#type() {
+                                    ParamType::Bool => {
+                                        if let Ok(widget) = script_container.find_child::<QCheckBox>(&object_name) {
+                                            script_params.push(widget.is_checked().to_string());
+                                        }
+                                    },
+                                    ParamType::Integer => {
+                                        if let Ok(widget) = script_container.find_child::<QSpinBox>(&object_name) {
+                                            script_params.push(widget.value().to_string());
+                                        }
+                                    },
+                                    ParamType::Float => {
+                                        if let Ok(widget) = script_container.find_child::<QDoubleSpinBox>(&object_name) {
+                                            script_params.push(widget.value().to_string());
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                    }
+
+
+                    script_params
+                };
+
+                // When there's a collision, default to the local script path.
+                let script_name = format!("{}.yml", script.metadata().key());
+                let local_script_path = sql_folder_local.join(&script_name);
+                let extracted_script_path = sql_folder_extracted.join(&script_name);
+                let remote_script_path = sql_folder_remote.join(&script_name);
+                let script_path = if PathBuf::from(&local_script_path).is_file() {
+                    local_script_path
+                } else if PathBuf::from(&extracted_script_path).is_file() {
+                    extracted_script_path
+                } else {
+                    remote_script_path
+                };
+
+                if script_params.is_empty() {
+                    cmd.arg(script_path);
+                } else {
+                    cmd.arg(format!("{};{}", script_path.to_string_lossy().to_string().replace("\\", "/"), script_params.join(";")));
+                }
+            });
+
+        cmd.creation_flags(DETACHED_PROCESS);
+
+        let mut h = cmd.spawn().map_err(|err| anyhow!("Error when preparing the game patch: {}", err))?;
+        if let Ok(status) = h.wait() {
+            if !status.success() {
+                return Err(anyhow!("Something failed while creating the load order patch. Check the patcher terminal to see what happened."))
+            }
+        }
+    }*/
+
+    Ok(())
 }
 
 #[tauri::command]

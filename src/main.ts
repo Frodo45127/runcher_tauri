@@ -624,29 +624,34 @@ function filterTreeItems(searchText: string) {
 
 // Launch game function
 async function launchGame() {
-  if (selectedGameId) {
-    try {
-      const result = await invoke("launch_game", { id: selectedGameId });
-      
+  // Update status bar
+  const statusMessage = document.querySelector(".status-message");
+  try {
+
+    const button = document.querySelector('.sidebar-btn.active') as HTMLElement;
+    if (button) {
+      const id = button.dataset.id || '';
+      const result = await invoke("launch_game", { 
+        id: id 
+      });
+
       // Update status bar
       const statusMessage = document.querySelector(".status-message");
       if (statusMessage) {
         statusMessage.textContent = result as string;
       }
-    } catch (error) {
-      console.error("Failed to launch game:", error);
-      
-      // Update status bar with error
-      const statusMessage = document.querySelector(".status-message");
+    }
+    else {
       if (statusMessage) {
-        statusMessage.textContent = `Error: ${error}`;
+        statusMessage.textContent = "No game selected";
       }
     }
-  } else {
-    // Update status bar
-    const statusMessage = document.querySelector(".status-message");
+  } catch (error) {
+    console.error("Failed to launch game:", error);
+    
+    // Update status bar with error
     if (statusMessage) {
-      statusMessage.textContent = "No game selected";
+      statusMessage.textContent = `Error: ${error}`;
     }
   }
 }
