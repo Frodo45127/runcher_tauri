@@ -24,8 +24,8 @@ interface AppSettings {
 }
 
 export class SettingsManager {
-  private isLoaded: boolean;
-  private appSettings: AppSettings;
+  public isLoaded: boolean;
+  public appSettings: AppSettings;
 
   constructor(main: Main) {
     this.appSettings = {
@@ -46,6 +46,7 @@ export class SettingsManager {
       check_sql_scripts_updates_on_start: true
     };
 
+    this.isLoaded = false;
     this.loadSettings(main);
   }
 
@@ -63,7 +64,7 @@ export class SettingsManager {
 
       this.isLoaded = true;
 
-      await this.applySettings(main).then(main.sidebar.clickSidebarButton(this.appSettings.default_game));
+      await this.applySettings(main).then(() => main.sidebar.clickSidebarButton(this.appSettings.default_game));
     } catch (error) {
       console.error('Failed to load settings:', error);
     }

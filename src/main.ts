@@ -105,15 +105,15 @@ function showItemDetails(itemId: string) {
 }
 
 
-class Main {
-  private settingsManager: SettingsManager;
-  private sidebar: Sidebar;
-  private modTree: ModTree;
-  private packList: PackList;
-  private settingsModal: SettingsModal;
+export class Main {
+  public settingsManager: SettingsManager;
+  public sidebar: Sidebar;
+  public modTree: ModTree;
+  public packList: PackList;
+  public settingsModal: SettingsModal;
 
-  private launchBtn: HTMLElement;
-  private settingsBtn: HTMLElement;
+  private launchBtn: HTMLButtonElement;
+  private settingsBtn: HTMLButtonElement;
 
   constructor() {
     this.sidebar = new Sidebar(this);
@@ -122,11 +122,11 @@ class Main {
     this.settingsModal = new SettingsModal(this);
        
     // Add event listener for launch button
-    this.launchButton = document.getElementById("launch-game-btn");
-    this.launchButton.addEventListener("click", () => this.launchGame());
+    this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
+    this.launchBtn.addEventListener("click", () => this.launchGame());
     
     // Setup settings modal
-    this.settingsBtn = document.getElementById('settings-btn');
+    this.settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
     this.settingsBtn.addEventListener('click', () => this.settingsModal.openSettingsModal(this));
     
     // Once everything is loaded, apply the settings.

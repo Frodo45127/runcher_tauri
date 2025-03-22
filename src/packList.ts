@@ -5,7 +5,7 @@ import { Main } from "./main";
  * This file contains the functions for the pack list.
  */
 
-interface ListItem {
+export interface ListItem {
   id: string;
   pack: string;
   type: string;
