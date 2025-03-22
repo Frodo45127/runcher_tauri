@@ -28,6 +28,7 @@ export class SettingsManager {
   public appSettings: AppSettings;
 
   constructor(main: Main) {
+    this.isLoaded = false;
     this.appSettings = {
       tree_open_state: {},
       tree_filter_value: '',
@@ -46,7 +47,6 @@ export class SettingsManager {
       check_sql_scripts_updates_on_start: true
     };
 
-    this.isLoaded = false;
     this.loadSettings(main);
   }
 

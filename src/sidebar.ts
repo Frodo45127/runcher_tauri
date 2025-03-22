@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Main } from "./main";
 import { SettingsManager } from "./settings";
 
-interface SidebarIcon {
+export interface SidebarIcon {
   id: string;
   name: string;
   icon: string;
@@ -10,7 +10,7 @@ interface SidebarIcon {
 
 export class Sidebar {
   private icons: SidebarIcon[];
-  private buttons: Map<string, HTMLElement>;
+  private buttons: Map<string, HTMLButtonElement>;
   private container: HTMLElement;
 
   /**
@@ -18,8 +18,9 @@ export class Sidebar {
    * @param {Main} main - The main instance of the application.
    */
   constructor(main: Main) {
+    this.icons = [];
     this.buttons = new Map();
-    this.container = document.getElementById("sidebar-buttons");
+    this.container = document.getElementById("sidebar-buttons") as HTMLElement;
 
     this.loadSidebarIcons(main).then(() => {
       console.log("Sidebar icons loaded");
@@ -77,7 +78,7 @@ export class Sidebar {
 
   public async updateSidebarIcons(settingsManager: SettingsManager) {
     this.icons.forEach(icon => {
-      const button = this.buttons.get(icon.id);
+      const button = this.buttons.get(icon.id) as HTMLButtonElement;
       
       if (settingsManager.appSettings.paths[icon.id] === undefined || settingsManager.appSettings.paths[icon.id] === "") {
         button.classList.add("hidden");
@@ -88,7 +89,7 @@ export class Sidebar {
   }
 
   public async clickSidebarButton(id: string) {
-    this.buttons.get(id).click();
+    (this.buttons.get(id) as HTMLButtonElement).click();
   }
 
   /**

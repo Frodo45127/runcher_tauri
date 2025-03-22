@@ -3,7 +3,7 @@ import { Main } from "./main";
 import { ListItem, PackList } from "./packList";
 import { SettingsManager } from "./settings";
 
-interface TreeItem {
+export interface TreeItem {
   id: string;
   name: string;
   flags: string;
@@ -18,7 +18,7 @@ interface TreeItem {
   last_played?: string;
 }
 
-interface TreeCategory {
+export interface TreeCategory {
   id: string;
   name: string;
   size: string;
@@ -28,13 +28,14 @@ interface TreeCategory {
 }
 
 export class ModTree {
-  private categoryElements: Map<string, HTMLElement> = new Map();
-  private itemElements: Map<string, HTMLElement> = new Map();
-  private treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
+  private categoryElements: Map<string, HTMLElement>;
+  private itemElements: Map<string, HTMLElement>;
+  private treeFilterInput: HTMLInputElement;
       
   constructor(main: Main) {
     this.categoryElements = new Map();
     this.itemElements = new Map();
+    this.treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
 
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
@@ -43,11 +44,10 @@ export class ModTree {
  
   /**
    * Clear and render the mod tree.
-   * @param {SettingsManager} settingsManager - The settings manager instance.
-   * @param {PackList} packList - The pack list instance.
+   * @param {Main} main - The main instance of the application.
    * @param {TreeCategory[]} categories - The categories to render.
    */
-  public async renderTree(settingsManager: SettingsManager, packList: PackList, categories: TreeCategory[]) {
+  public async renderTree(main: Main, categories: TreeCategory[]) {
     const treeContainer = document.getElementById('tree-container');
     if (!treeContainer) return;
 
@@ -63,7 +63,7 @@ export class ModTree {
       categoryElement.dataset.id = CSS.escape(category.id);
 
       // Add drag and drop event listeners
-      this.setupDragAndDrop(categoryElement);
+      this.setupDragAndDrop(main, categoryElement);
 
       const categoryHeader = document.createElement('div');
       categoryHeader.className = 'category-header';
@@ -73,7 +73,7 @@ export class ModTree {
       `;
       categoryHeader.addEventListener('click', () => {
         console.log(categoryElement.getAttribute('data-id'));
-        this.toggleCategoryExpansion(settingsManager, categoryElement.getAttribute('data-id') || '')
+        this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '')
       });
 
       const itemsContainer = document.createElement('div');
@@ -114,17 +114,17 @@ export class ModTree {
         const checkbox = itemElement.querySelector('.item-checkbox')?.getElementsByTagName('input')[0] as HTMLInputElement;
         if (checkbox) {
           checkbox.addEventListener('change', () => {
-            this.handleCheckboxChange(packList, itemElement.getAttribute('data-id') || '', checkbox.checked);
+            this.handleCheckboxChange(main.packList, itemElement.getAttribute('data-id') || '', checkbox.checked);
           });
         }
         
         // Add drag and drop event listeners
-        this.setupDragAndDrop(itemElement);
+        this.setupDragAndDrop(main, itemElement);
 
         // Evento para seleccionar item
         itemContent.addEventListener('click', (e) => {
           if (e.target !== checkbox) {
-            this.selectTreeItem(itemElement.getAttribute('data-id') || '');
+            this.selectTreeItem(main, itemElement.getAttribute('data-id') || '');
           }
         });
 
@@ -137,8 +137,8 @@ export class ModTree {
 
       this.categoryElements.set(categoryElement.getAttribute('data-id') || '', categoryElement);
 
-      if (settingsManager.appSettings.tree_open_state[category.id] === true) {
-        this.toggleCategoryExpansion(settingsManager, category.id, true);
+      if (main.settingsManager.appSettings.tree_open_state[category.id] === true) {
+        this.toggleCategoryExpansion(main.settingsManager, category.id, true);
       }
     });
   }
@@ -256,7 +256,7 @@ export class ModTree {
   }
 
   // Setup drag and drop for an element
-  public async setupDragAndDrop(element: HTMLElement) {
+  public async setupDragAndDrop(main: Main, element: HTMLElement) {
     // Drag start event
     element.addEventListener("dragstart", (e) => {
       e.dataTransfer?.setData("text/plain", element.dataset.id || "");
@@ -288,11 +288,45 @@ export class ModTree {
       const targetId = element.dataset.id;
       
       if (sourceId && targetId && sourceId !== targetId) {
-        handleItemDrop(sourceId, targetId);
+        this.handleItemDrop(main, sourceId, targetId);
       }
     });
   }
-
+/*
+  // Función para seleccionar un item del árbol
+  function selectTreeItem(itemId: string) {
+    // Quitar la selección actual
+    const currentSelected = document.querySelector('.tree-item.selected');
+    if (currentSelected) {
+      currentSelected.classList.remove('selected');
+    }
+    
+    // Seleccionar el nuevo item
+    const newSelected = document.querySelector(`.tree-item[data-id="${itemId}"]`);
+    if (newSelected) {
+      newSelected.classList.add('selected');
+      
+      // Asegurarse de que la categoría esté expandida
+      const categoryContainer = newSelected.closest('.tree-category');
+      if (categoryContainer) {
+        const categoryId = categoryContainer.getAttribute('data-id');
+        if (categoryId) {
+          const categoryItems = categoryContainer.querySelector('.category-items');
+          if (categoryItems && categoryItems.classList.contains('hidden')) {
+            toggleCategoryExpansion(categoryId);
+          }
+        }
+      }
+      
+      // Actualizar el item seleccionado en la configuración
+      appSettings.selected_tree_item = itemId;
+      saveSettings();
+      
+      // Mostrar detalles del item (si corresponde)
+      showItemDetails(itemId);
+    }
+  }
+*/
   /**
    * Handle checkbox change (mod toggling).
    * @param {PackList} packList - The pack list instance.
@@ -316,6 +350,27 @@ export class ModTree {
       //}
     } catch (error) {
       console.error('Failed to handle checkbox change:', error);
+    }
+  }
+
+  // Handle item drop
+  public async handleItemDrop(main: Main, sourceId: string, targetId: string) {
+    try {
+      const result = await invoke("handle_item_drop", { sourceId, targetId });
+      
+      // Update status bar with result
+      const statusMessage = document.querySelector(".status-message");
+      if (statusMessage) {
+        statusMessage.textContent = result as string;
+      }
+      
+      // Reload tree data to reflect changes
+      await this.renderTree(main, treeData);
+      
+      // Save settings after change
+      await main.settingsManager.saveSettings();
+    } catch (error) {
+      console.error("Failed to handle item drop:", error);
     }
   }
 }

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Main } from './main';
-
+import { SidebarIcon } from './sidebar';
 /**
  * This file contains the functions for the settings modal.
  */ 
@@ -10,9 +10,9 @@ export class SettingsModal {
   private closeBtn: HTMLElement;
   private tabButtons: NodeListOf<HTMLElement>;
   private tabContents: NodeListOf<HTMLElement>;
-  private restoreDefaultsBtn: HTMLElement;
-  private cancelSettingsBtn: HTMLElement;
-  private saveSettingsBtn: HTMLElement;
+  private restoreDefaultsBtn: HTMLButtonElement;
+  private cancelSettingsBtn: HTMLButtonElement;
+  private saveSettingsBtn: HTMLButtonElement;
   private gamePathsContainer: HTMLElement;
 
   private checkUpdatesToggle: HTMLInputElement;
@@ -24,22 +24,22 @@ export class SettingsModal {
 
 
   constructor() {
-    this.modal = document.getElementById('settings-modal');
-    this.closeBtn = document.querySelector('.close-btn');
-    this.tabButtons = document.querySelectorAll('.tab-btn');
-    this.tabContents = document.querySelectorAll('.tab-content');
-    this.restoreDefaultsBtn = document.getElementById('restore-defaults');
-    this.cancelSettingsBtn = document.getElementById('cancel-settings');
-    this.saveSettingsBtn = document.getElementById('save-settings');
-    this.gamePathsContainer = document.getElementById('game-paths-container');
+    this.modal = document.getElementById('settings-modal') as HTMLElement;
+    this.closeBtn = document.querySelector('.close-btn') as HTMLElement;
+    this.tabButtons = document.querySelectorAll('.tab-btn') as NodeListOf<HTMLElement>;
+    this.tabContents = document.querySelectorAll('.tab-content') as NodeListOf<HTMLElement>;
+    this.restoreDefaultsBtn = document.getElementById('restore-defaults') as HTMLButtonElement;
+    this.cancelSettingsBtn = document.getElementById('cancel-settings') as HTMLButtonElement;
+    this.saveSettingsBtn = document.getElementById('save-settings') as HTMLButtonElement;
+    this.gamePathsContainer = document.getElementById('game-paths-container') as HTMLElement;
 
     // Default values for checkboxes
-    this.checkUpdatesToggle = document.getElementById('check-updates-toggle');    
-    this.checkSchemaUpdatesToggle = document.getElementById('check-schema-updates-toggle');
-    this.checkSqlUpdatesToggle = document.getElementById('check-sql-updates-toggle');
-    this.languageSelect = document.getElementById('language-select');
-    this.dateFormatSelect = document.getElementById('date-format-select');
-    this.defaultGameSelect = document.getElementById('default-game-select');
+    this.checkUpdatesToggle = document.getElementById('check-updates-toggle') as HTMLInputElement;    
+    this.checkSchemaUpdatesToggle = document.getElementById('check-schema-updates-toggle') as HTMLInputElement;
+    this.checkSqlUpdatesToggle = document.getElementById('check-sql-updates-toggle') as HTMLInputElement;
+    this.languageSelect = document.getElementById('language-select') as HTMLSelectElement;
+    this.dateFormatSelect = document.getElementById('date-format-select') as HTMLSelectElement;
+    this.defaultGameSelect = document.getElementById('default-game-select') as HTMLSelectElement;
   }
 
   /**
@@ -81,7 +81,7 @@ export class SettingsModal {
    */ 
   switchTab(tabId: string) {
     // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    this.tabButtons.forEach(btn => {
       btn.classList.remove('active');
       if (btn.getAttribute('data-tab') === tabId) {
         btn.classList.add('active');
@@ -89,7 +89,7 @@ export class SettingsModal {
     });
 
     // Update tab contents
-    document.querySelectorAll('.tab-content').forEach(content => {
+    this.tabContents.forEach(content => {
       content.classList.remove('active');
       if (content.id === `${tabId}-tab`) {
         content.classList.add('active');

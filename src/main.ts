@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsManager } from "./settings";
 import { Sidebar } from "./sidebar";
-import { ModTree } from "./modTree";
-import { PackList } from "./packList";
+import { ModTree, TreeItem, TreeCategory } from "./modTree";
+import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
 
 
@@ -21,43 +21,6 @@ function updateGameDetails(game: TreeItem) {
       <p><strong>Status:</strong> ${game.status}</p>
       <p><strong>Last Played:</strong> ${game.last_played}</p>
     `;
-  }
-}
-
-
-
-
-// Función para seleccionar un item del árbol
-function selectTreeItem(itemId: string) {
-  // Quitar la selección actual
-  const currentSelected = document.querySelector('.tree-item.selected');
-  if (currentSelected) {
-    currentSelected.classList.remove('selected');
-  }
-  
-  // Seleccionar el nuevo item
-  const newSelected = document.querySelector(`.tree-item[data-id="${itemId}"]`);
-  if (newSelected) {
-    newSelected.classList.add('selected');
-    
-    // Asegurarse de que la categoría esté expandida
-    const categoryContainer = newSelected.closest('.tree-category');
-    if (categoryContainer) {
-      const categoryId = categoryContainer.getAttribute('data-id');
-      if (categoryId) {
-        const categoryItems = categoryContainer.querySelector('.category-items');
-        if (categoryItems && categoryItems.classList.contains('hidden')) {
-          toggleCategoryExpansion(categoryId);
-        }
-      }
-    }
-    
-    // Actualizar el item seleccionado en la configuración
-    appSettings.selected_tree_item = itemId;
-    saveSettings();
-    
-    // Mostrar detalles del item (si corresponde)
-    showItemDetails(itemId);
   }
 }
 
@@ -119,7 +82,7 @@ export class Main {
     this.sidebar = new Sidebar(this);
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
-    this.settingsModal = new SettingsModal(this);
+    this.settingsModal = new SettingsModal();
        
     // Add event listener for launch button
     this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
@@ -272,7 +235,7 @@ export class Main {
   public async handleGameSelectedChange(gameId: string, isChecked: boolean) {
     try {
       const [treeData, listData] = await invoke("handle_change_game_selected", { gameId: gameId }) as [TreeCategory[], ListItem[]];
-      this.modTree.renderTree(this.settingsManager, this.packList, treeData);      
+      this.modTree.renderTree(this, treeData);      
       this.packList.renderListItems(listData);
         
       // Expandir categorías guardadas
@@ -297,27 +260,6 @@ export class Main {
       await this.settingsManager.saveSettings();
     } catch (error) {
       console.error("Failed to handle checkbox change:", error);
-    }
-  }
-
-  // Handle item drop
-  public async handleItemDrop(sourceId: string, targetId: string) {
-    try {
-      const result = await invoke("handle_item_drop", { sourceId, targetId });
-      
-      // Update status bar with result
-      const statusMessage = document.querySelector(".status-message");
-      if (statusMessage) {
-        statusMessage.textContent = result as string;
-      }
-      
-      // Reload tree data to reflect changes
-      await this.modTree.renderTree(this.settingsManager, this.packList, treeData);
-      
-      // Save settings after change
-      await this.settingsManager.saveSettings();
-    } catch (error) {
-      console.error("Failed to handle item drop:", error);
     }
   }
 }

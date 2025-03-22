@@ -15,12 +15,14 @@ export interface ListItem {
 }
 
 export class PackList {
-  private listElements: Map<string, HTMLElement> = new Map();
-  private selectedListItemId: string | null = null;
-  private listFilterInput = document.getElementById('list-filter') as HTMLInputElement;
+  private listElements: Map<string, HTMLElement>;
+  private selectedListItemId: string;
+  private listFilterInput: HTMLInputElement;
 
   constructor(main: Main) {
     this.listElements = new Map();
+    this.selectedListItemId = '';
+    this.listFilterInput = document.getElementById('list-filter') as HTMLInputElement;
 
     this.listFilterInput.addEventListener('input', () => {
       this.filterListItems(main.settingsManager, this.listFilterInput.value);
