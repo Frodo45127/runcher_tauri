@@ -292,9 +292,9 @@ export class ModTree {
       }
     });
   }
-/*
+
   // Función para seleccionar un item del árbol
-  function selectTreeItem(itemId: string) {
+  public selectTreeItem(main: Main, itemId: string) {
     // Quitar la selección actual
     const currentSelected = document.querySelector('.tree-item.selected');
     if (currentSelected) {
@@ -313,20 +313,60 @@ export class ModTree {
         if (categoryId) {
           const categoryItems = categoryContainer.querySelector('.category-items');
           if (categoryItems && categoryItems.classList.contains('hidden')) {
-            toggleCategoryExpansion(categoryId);
+            this.toggleCategoryExpansion(main.settingsManager, categoryId);
           }
         }
       }
       
       // Actualizar el item seleccionado en la configuración
-      appSettings.selected_tree_item = itemId;
-      saveSettings();
+      main.settingsManager.appSettings.selected_tree_item = itemId;
+      main.settingsManager.saveSettings();
       
       // Mostrar detalles del item (si corresponde)
-      showItemDetails(itemId);
+      this.showItemDetails(itemId);
     }
   }
-*/
+
+  // Función para mostrar detalles del item seleccionado
+  public showItemDetails(itemId: string) {
+    const gameDetails = document.getElementById('game-details');
+    if (!gameDetails) return;
+        
+    // Aquí tendríamos que buscar en los datos cargados el item con el ID correspondiente
+    // Esta es una implementación simplificada
+    document.querySelectorAll('.tree-item').forEach(el => {
+      if (el.getAttribute('data-id') === itemId) {
+        const nameElement = el.querySelector('.item-name');
+        const typeElement = el.querySelector('.item-type');
+        const creatorElement = el.querySelector('.item-creator');
+        const locationElement = el.querySelector('.item-location');
+        const sizeElement = el.querySelector('.item-size');
+        
+        if (nameElement && typeElement && creatorElement && locationElement && sizeElement) {
+          const details = `
+            <div class="detail-item">
+              <strong>Name:</strong> ${nameElement.innerHTML}
+            </div>
+            <div class="detail-item">
+              <strong>Type:</strong> ${typeElement.textContent || 'N/A'}
+            </div>
+            <div class="detail-item">
+              <strong>Creator:</strong> ${creatorElement.textContent || 'N/A'}
+            </div>
+            <div class="detail-item">
+              <strong>Location:</strong> ${locationElement.textContent || 'N/A'}
+            </div>
+            <div class="detail-item">
+              <strong>Size:</strong> ${sizeElement.textContent || 'N/A'}
+            </div>
+          `;
+          
+          gameDetails.innerHTML = details;
+        }
+      }
+    });
+  }
+
   /**
    * Handle checkbox change (mod toggling).
    * @param {PackList} packList - The pack list instance.
@@ -365,7 +405,7 @@ export class ModTree {
       }
       
       // Reload tree data to reflect changes
-      await this.renderTree(main, treeData);
+      //await this.renderTree(main, treeData);
       
       // Save settings after change
       await main.settingsManager.saveSettings();

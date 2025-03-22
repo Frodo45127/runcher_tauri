@@ -1,72 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsManager } from "./settings";
 import { Sidebar } from "./sidebar";
-import { ModTree, TreeItem, TreeCategory } from "./modTree";
+import { ModTree, TreeCategory } from "./modTree";
 import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
 
 
 // Store the main instance, which should contain everything in the app.
 let main: Main;
-
-
-// Update game details in the right panel
-function updateGameDetails(game: TreeItem) {
-  const gameDetails = document.getElementById("game-details");
-  
-  if (gameDetails) {
-    gameDetails.innerHTML = `
-      <p><strong>Name:</strong> ${game.name}</p>
-      <p><strong>Size:</strong> ${game.size}</p>
-      <p><strong>Status:</strong> ${game.status}</p>
-      <p><strong>Last Played:</strong> ${game.last_played}</p>
-    `;
-  }
-}
-
-// Función para mostrar detalles del item seleccionado
-function showItemDetails(itemId: string) {
-  const gameDetails = document.getElementById('game-details');
-  if (!gameDetails) return;
-  
-  // Encontrar el item en los datos
-  let selectedItem: TreeItem | null = null;
-  
-  // Aquí tendríamos que buscar en los datos cargados el item con el ID correspondiente
-  // Esta es una implementación simplificada
-  document.querySelectorAll('.tree-item').forEach(el => {
-    if (el.getAttribute('data-id') === itemId) {
-      const nameElement = el.querySelector('.item-name');
-      const typeElement = el.querySelector('.item-type');
-      const creatorElement = el.querySelector('.item-creator');
-      const locationElement = el.querySelector('.item-location');
-      const sizeElement = el.querySelector('.item-size');
-      
-      if (nameElement && typeElement && creatorElement && locationElement && sizeElement) {
-        const details = `
-          <div class="detail-item">
-            <strong>Name:</strong> ${nameElement.innerHTML}
-          </div>
-          <div class="detail-item">
-            <strong>Type:</strong> ${typeElement.textContent || 'N/A'}
-          </div>
-          <div class="detail-item">
-            <strong>Creator:</strong> ${creatorElement.textContent || 'N/A'}
-          </div>
-          <div class="detail-item">
-            <strong>Location:</strong> ${locationElement.textContent || 'N/A'}
-          </div>
-          <div class="detail-item">
-            <strong>Size:</strong> ${sizeElement.textContent || 'N/A'}
-          </div>
-        `;
-        
-        gameDetails.innerHTML = details;
-      }
-    }
-  });
-}
-
 
 export class Main {
   public settingsManager: SettingsManager;
@@ -247,7 +188,7 @@ export class Main {
       
       // Restaurar el item seleccionado si existe
         if (this.settingsManager.appSettings.selected_tree_item) {
-        this.modTree.selectTreeItem(this.settingsManager.appSettings.selected_tree_item);
+        this.modTree.selectTreeItem(main, this.settingsManager.appSettings.selected_tree_item);
       }
       
       // Update status bar with result
