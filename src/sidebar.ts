@@ -60,11 +60,8 @@ export class Sidebar {
           
           // Add active class to clicked button
           button.classList.add("active");
-
-          console.log("Game selected changed");
-          const isChecked = (e.target as HTMLInputElement).checked;
           const buttonId = button.dataset.id ? button.dataset.id : '';
-          main.handleGameSelectedChange(buttonId, isChecked);
+          main.handleGameSelectedChange(buttonId);
           e.stopPropagation(); // Prevent the row selection from triggering
         });
         

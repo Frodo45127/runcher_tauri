@@ -5,7 +5,6 @@ import { ModTree, TreeCategory } from "./modTree";
 import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
 
-
 // Store the main instance, which should contain everything in the app.
 let main: Main;
 
@@ -64,6 +63,10 @@ export class Main {
           const startY = mouseEvent.clientY;
           const startHeight = parseInt(window.getComputedStyle(panel).height, 10);
           
+          /**
+           * On mouse move.
+           * @param {MouseEvent} moveEvent - The mouse event.
+           */
           function onMouseMove(moveEvent: MouseEvent) {
             const dy = moveEvent.clientY - startY;
             const newHeight = startHeight + dy;
@@ -71,15 +74,18 @@ export class Main {
               (panel as HTMLElement).style.height = `${newHeight}px`;
             }
           }
-          
+
+          /**
+           * On mouse up.
+           */
           function onMouseUp() {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             
             // Save the new height to settings
             if (panelId) {
-              this.settingsManager.appSettings.panel_heights[panelId] = parseInt(window.getComputedStyle(panel).height, 10);
-              this.settingsManager.saveSettings();
+              main.settingsManager.appSettings.panel_heights[panelId] = parseInt(window.getComputedStyle(panel).height, 10);
+              main.settingsManager.saveSettings();
             }
             
             // Make the last panel expand to fill remaining space
@@ -105,6 +111,10 @@ export class Main {
         const startX = mouseEvent.clientX;
         const startWidth = this.settingsManager.appSettings.right_panel_width;
         
+        /**
+         * On mouse move.
+         * @param {MouseEvent} moveEvent - The mouse event.
+         */
         function onMouseMove(moveEvent: MouseEvent) {
           // Calculate how much to resize based on mouse movement
           const dx = moveEvent.clientX - startX;
@@ -113,15 +123,18 @@ export class Main {
           
           // Update CSS variable for right panel width
           document.documentElement.style.setProperty('--right-panel-width', `${newWidth}px`);
-          this.settingsManager.appSettings.right_panel_width = newWidth;
+          main.settingsManager.appSettings.right_panel_width = newWidth;
         }
-        
+
+        /**
+         * On mouse up.
+         */
         function onMouseUp() {
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
           
           // Save the new width to settings
-          this.settingsManager.saveSettings();
+          main.settingsManager.saveSettings();
         }
         
         document.addEventListener('mousemove', onMouseMove);
@@ -171,9 +184,8 @@ export class Main {
   /**
    * Handles the game selected change.
    * @param {string} gameId - The id of the game.
-   * @param {boolean} isChecked - Whether the game is checked.
    */
-  public async handleGameSelectedChange(gameId: string, isChecked: boolean) {
+  public async handleGameSelectedChange(gameId: string) {
     try {
       const [treeData, listData] = await invoke("handle_change_game_selected", { gameId: gameId }) as [TreeCategory[], ListItem[]];
       this.modTree.renderTree(this, treeData);      

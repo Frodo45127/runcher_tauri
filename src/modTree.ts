@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Main } from "./main";
-import { ListItem, PackList } from "./packList";
+import { ListItem } from "./packList";
 import { SettingsManager } from "./settings";
 
 export interface TreeItem {
@@ -154,7 +154,7 @@ export class ModTree {
     const normalizedSearchText = searchText.toLowerCase().trim();
     settingsManager.appSettings.tree_filter_value = normalizedSearchText;
     settingsManager.saveSettings();
-    
+
     // If search text is empty, show all items
     if (normalizedSearchText === '') {
       this.categoryElements.forEach(element => element.classList.remove('hidden'));

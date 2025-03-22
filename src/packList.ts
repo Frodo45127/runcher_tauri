@@ -16,12 +16,10 @@ export interface ListItem {
 
 export class PackList {
   private listElements: Map<string, HTMLElement>;
-  private selectedListItemId: string;
   private listFilterInput: HTMLInputElement;
 
   constructor(main: Main) {
     this.listElements = new Map();
-    this.selectedListItemId = '';
     this.listFilterInput = document.getElementById('list-filter') as HTMLInputElement;
 
     this.listFilterInput.addEventListener('input', () => {
@@ -64,7 +62,6 @@ export class PackList {
           
           // Select this item
           listItem.classList.add("selected");
-          this.selectedListItemId = item.id;
         });
         
         listContainer.appendChild(listItem);
