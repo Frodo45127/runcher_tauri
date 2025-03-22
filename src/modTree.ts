@@ -451,9 +451,36 @@ export class ModTree {
       main.settingsManager.appSettings.selected_tree_item = itemId;
       main.settingsManager.saveSettings();
       this.showItemDetails(itemId);
+      
+      // Sync with the pack list (search for a pack that matches this item)
+      this.syncListWithTreeSelection(main, itemId);
     } else if (this.selectedItems.size > 1) {
       // Si hay múltiples elementos seleccionados, mostrar información sobre selección múltiple
       this.showMultipleItemsDetails(this.selectedItems);
+    }
+  }
+
+  /**
+   * Sync the tree selection with the pack list.
+   * @param {Main} main - The main instance of the application.
+   * @param {string} itemId - The id of the item selected.
+   */
+  private syncListWithTreeSelection(main: Main, itemId: string) {
+    const itemElement = this.itemElements.get(itemId);
+    if (!itemElement) return;
+    
+    const nameElement = itemElement.querySelector('.item-name');
+    if (nameElement) {
+      const modName = this.stripHtml(nameElement.innerHTML);
+      
+      const listItems = document.querySelectorAll('.list-item');
+      for (const item of listItems) {
+        const packName = item.children[0].textContent;
+        if (packName && modName.includes(packName)) {
+          main.packList.selectListItem(item.getAttribute('data-id') || '');
+          break;
+        }
+      }
     }
   }
 
@@ -720,6 +747,46 @@ export class ModTree {
         return size * 1024 * 1024 * 1024;
       default:
         return size;
+    }
+  }
+
+  /**
+   * Highlight an item in the tree based on the pack name.
+   * @param {string} packName - The name of the pack to highlight.
+   */
+  public highlightTreeItemByPack(packName: string) {
+    const normalizedPackName = packName.toLowerCase();  
+    let foundItem: string | null = null;
+  
+    this.itemElements.forEach((element, itemId) => {
+      const itemNameElement = element.querySelector('.item-name');
+      if (itemNameElement) {
+        const itemText = this.stripHtml(itemNameElement.innerHTML).toLowerCase();   
+        if (itemText.includes(normalizedPackName)) {
+          foundItem = itemId;
+        }
+      }
+    });
+    
+    if (foundItem) {
+      this.selectTreeItem(
+        { settingsManager: { appSettings: {}, saveSettings: () => {} } } as Main, 
+        foundItem,
+        false,
+        false
+      );
+    }
+  }
+
+  /**
+   * Select an item from the tree from the pack list.
+   * @param {Main} main - The main instance of the application.
+   * @param {string} itemId - The id of the item to select.
+   */
+  public syncWithListSelection(main: Main, itemId: string) {
+    if (itemId && this.itemElements.has(itemId)) {
+      this.selectTreeItem(main, itemId, false, false);
+      main.packList.selectListItem(itemId);
     }
   }
 }

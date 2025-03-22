@@ -895,6 +895,50 @@ struct ListItem {
     steam_id: String,
 }
 
+#[tauri::command]
+async fn move_list_item(app: tauri::AppHandle, item_id: &str, direction: &str) -> Result<Vec<ListItem>, String> {
+
+    // PLACEHOLDER
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+
+    //game_config.mods_mut().get_mut(mod_id).unwrap().set_enabled(is_checked);
+
+    let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
+    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
+    
+    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
+
+    *GAME_LOAD_ORDER.write().unwrap() = load_order;
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+
+    Ok(items)
+}
+
+#[tauri::command]
+async fn reorder_list_items(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<ListItem>, String> {
+
+    // PLACEHOLDER
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+
+    //game_config.mods_mut().get_mut(mod_id).unwrap().set_enabled(is_checked);
+
+    let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
+    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
+    
+    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
+
+    *GAME_LOAD_ORDER.write().unwrap() = load_order;
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+
+    Ok(items)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -924,7 +968,9 @@ pub fn run() {
             get_available_languages,
             get_available_date_formats,
             browse_folder,
-            handle_change_game_selected
+            handle_change_game_selected,
+            move_list_item,
+            reorder_list_items
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
