@@ -32,6 +32,8 @@ export class ModTree {
   private itemElements: Map<string, HTMLElement>;
   private treeFilterInput: HTMLInputElement;
   private selectedItems: Set<string>;
+  private currentSortField: string = 'name';
+  private sortDirection: 'asc' | 'desc' = 'asc';
       
   constructor(main: Main) {
     this.categoryElements = new Map();
@@ -48,6 +50,8 @@ export class ModTree {
    * Clear and render the mod tree.
    * @param {Main} main - The main instance of the application.
    * @param {TreeCategory[]} categories - The categories to render.
+   * 
+   * TODO: Split this into two functions: one for the tree header, and one for the tree body.
    */
   public async renderTree(main: Main, categories: TreeCategory[]) {
     const treeContainer = document.getElementById('tree-container');
@@ -59,6 +63,28 @@ export class ModTree {
     
     treeContainer.innerHTML = '';
     
+    // Reorderable headers.
+    const treeHeader = document.createElement('div');
+    treeHeader.className = 'tree-header';
+    treeHeader.innerHTML = `
+      <div class="header-column sortable" data-sort="name">Nombre <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="type">Tipo <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="creator">Creador <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="size">Tamaño <i class="fa-solid fa-sort"></i></div>
+    `;
+    
+    // Add click events to the sortable columns
+    const sortableColumns = treeHeader.querySelectorAll('.sortable');
+    sortableColumns.forEach(column => {
+      column.addEventListener('click', () => {
+        const field = column.getAttribute('data-sort') || 'name';
+        this.sortTreeItems(main, categories, field);
+      });
+    });
+    
+    treeContainer.appendChild(treeHeader);
+    
+    // Then render the categories and their items
     categories.forEach(category => {
       const categoryElement = document.createElement('div');
       categoryElement.className = 'tree-category';
@@ -94,7 +120,11 @@ export class ModTree {
       itemsContainer.className = 'category-items';
       itemsContainer.id = `children-${categoryElement.getAttribute('data-id')}`;
       
-      category.children.forEach(item => {
+      // Sort the mod items (not the categories) by the current sort column..
+      const sortedItems = [...category.children];
+      this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
+      
+      sortedItems.forEach(item => {
         const itemElement = document.createElement('div');
         itemElement.className = 'tree-item tree-child';
         itemElement.dataset.id = CSS.escape(item.id);
@@ -164,6 +194,7 @@ export class ModTree {
       }
     });
 
+    this.updateSortIndicators();
     this.filterTreeItems(main.settingsManager, main.settingsManager.appSettings.tree_filter_value);
   }
 
@@ -329,7 +360,7 @@ export class ModTree {
     });
     
     // Drag leave event
-    element.addEventListener("dragleave", (e) => {
+    element.addEventListener("dragleave", () => {
       element.classList.remove("drag-over");
     });
     
@@ -571,6 +602,124 @@ export class ModTree {
       }
     } catch (error) {
       console.error("Failed to handle items drop:", error);
+    }
+  }
+
+  /**
+   * Sort the items of the last level of the tree and re-render.
+   * @param {Main} main - The main instance of the application.
+   * @param {TreeCategory[]} categories - The categories to sort.
+   * @param {string} field - The field to sort by.
+   */
+  private sortTreeItems(main: Main, categories: TreeCategory[], field: string) {
+     if (this.currentSortField === field) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.currentSortField = field;
+      this.sortDirection = 'asc';
+    }
+    
+    // Re-render the tree with the sorted items
+    this.renderTree(main, categories);
+  }
+  
+  /**
+   * Update the sort indicators in the headers.
+   */
+  private updateSortIndicators() {
+    const headers = document.querySelectorAll('.header-column.sortable');
+    headers.forEach(header => {
+      const field = header.getAttribute('data-sort') || '';
+      const icon = header.querySelector('i');
+      
+      if (field === this.currentSortField) {
+        icon?.classList.remove('fa-sort');
+        icon?.classList.add(this.sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+      } else {
+        icon?.classList.remove('fa-sort-up', 'fa-sort-down');
+        icon?.classList.add('fa-sort');
+      }
+    });
+  }
+  
+  /**
+   * Sort an array of items by a specific field.
+   * @param {TreeItem[]} items - The items to sort.
+   * @param {string} field - The field to sort by.
+   * @param {'asc' | 'desc'} direction - The direction of sorting.
+   */
+  private sortItems(items: TreeItem[], field: string, direction: 'asc' | 'desc') {
+    items.sort((a, b) => {
+      let valueA: string | number = '';
+      let valueB: string | number = '';
+      
+      switch (field) {
+        case 'name':
+          valueA = this.stripHtml(a.name).toLowerCase();
+          valueB = this.stripHtml(b.name).toLowerCase();
+          break;
+        case 'type':
+          valueA = (a.type || '').toLowerCase();
+          valueB = (b.type || '').toLowerCase();
+          break;
+        case 'creator':
+          valueA = (a.creator || '').toLowerCase();
+          valueB = (b.creator || '').toLowerCase();
+          break;
+        case 'size':
+          valueA = this.parseSize(a.size);
+          valueB = this.parseSize(b.size);
+          break;
+        default:
+          valueA = (a.name || '').toLowerCase();
+          valueB = (b.name || '').toLowerCase();
+      }
+      
+      // Comparar los valores según la dirección de ordenación
+      if (valueA < valueB) {
+        return direction === 'asc' ? -1 : 1;
+      }
+      if (valueA > valueB) {
+        return direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }
+  
+  /**
+   * Remove HTML tags from a string.
+   * @param {string} html - The string with HTML tags.
+   * @returns {string} - The string without HTML tags.
+   */
+  private stripHtml(html: string): string {
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+  
+  /**
+   * Convert a size string (e.g. "10.5 MB") to a comparable number.
+   * @param {string} sizeStr - The size string.
+   * @returns {number} - The size in bytes.
+   */
+  private parseSize(sizeStr: string): number {
+    if (!sizeStr) return 0;
+    
+    const match = sizeStr.match(/(\d+(\.\d+)?) (KB|MB|GB)/i);
+    if (!match) return 0;
+    
+    const size = parseFloat(match[1]);
+    const unit = match[3].toUpperCase();
+    
+    switch (unit) {
+      case 'KB':
+        return size * 1024;
+      case 'MB':
+        return size * 1024 * 1024;
+      case 'GB':
+        return size * 1024 * 1024 * 1024;
+      default:
+        return size;
     }
   }
 }
