@@ -14,6 +14,7 @@ export class Main {
   public modTree: ModTree;
   public packList: PackList;
   public settingsModal: SettingsModal;
+  public statusMessage: HTMLElement;
 
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
@@ -23,7 +24,8 @@ export class Main {
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
     this.settingsModal = new SettingsModal();
-       
+    this.statusMessage = document.querySelector('.status-message') as HTMLElement;
+
     // Add event listener for launch button
     this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
     this.launchBtn.addEventListener("click", () => this.launchGame());
@@ -145,8 +147,6 @@ export class Main {
  
   // Launch game function
   public async launchGame() {
-    // Update status bar
-    const statusMessage = document.querySelector(".status-message");
     try {
 
       const button = document.querySelector('.sidebar-btn.active') as HTMLElement;
@@ -156,24 +156,14 @@ export class Main {
           id: id 
         });
 
-        // Update status bar
-        const statusMessage = document.querySelector(".status-message");
-        if (statusMessage) {
-          statusMessage.textContent = result as string;
-        }
+        main.statusMessage.textContent = result as string;
       }
       else {
-        if (statusMessage) {
-          statusMessage.textContent = "No game selected";
-        }
+        main.statusMessage.textContent = "No game selected";
       }
     } catch (error) {
       console.error("Failed to launch game:", error);
-      
-      // Update status bar with error
-      if (statusMessage) {
-        statusMessage.textContent = `Error: ${error}`;
-      }
+      main.statusMessage.textContent = `Error: ${error}`;
     }
   }
 
@@ -201,12 +191,6 @@ export class Main {
       // Restaurar el item seleccionado si existe
       if (this.settingsManager.appSettings.selected_tree_item) {
         this.modTree.selectTreeItem(this, this.settingsManager.appSettings.selected_tree_item);
-      }
-      
-      // Update status bar with result
-      const statusMessage = document.querySelector(".status-message");
-      if (statusMessage) {
-        //statusMessage.textContent = result as string;
       }
       
       // Save settings after change

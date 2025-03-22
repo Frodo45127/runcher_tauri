@@ -577,11 +577,7 @@ export class ModTree {
     try {
       const result = await invoke("handle_item_drop", { sourceId, targetId });
       
-      // Update status bar with result
-      const statusMessage = document.querySelector(".status-message");
-      if (statusMessage) {
-        statusMessage.textContent = result as string;
-      }
+      main.statusMessage.textContent = result as string;
       
       // Reload tree data to reflect changes
       //await this.renderTree(main, treeData);
@@ -601,11 +597,7 @@ export class ModTree {
    */
   public async handleMultipleItemsDrop(main: Main, sourceIds: string[], targetId: string) {
     try {
-      // Mostrar mensaje de estado
-      const statusMessage = document.querySelector(".status-message");
-      if (statusMessage) {
-        statusMessage.textContent = `Moviendo ${sourceIds.length} elementos...`;
-      }
+      main.statusMessage.textContent = `Moviendo ${sourceIds.length} elementos...`;
       
       // Procesar cada elemento
       const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
@@ -623,10 +615,7 @@ export class ModTree {
         }
       }
 
-      // Actualizar mensaje de estado
-      if (statusMessage) {
-        statusMessage.textContent = `${sourceIds.length} elementos movidos exitosamente`;
-      }
+      main.statusMessage.textContent = `${sourceIds.length} elementos movidos exitosamente`;
     } catch (error) {
       console.error("Failed to handle items drop:", error);
     }

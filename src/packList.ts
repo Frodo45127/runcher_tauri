@@ -224,10 +224,7 @@ export class PackList {
       
       this.renderListItems(main, result);
       
-      const statusMessage = document.querySelector('.status-message');
-      if (statusMessage) {
-        statusMessage.textContent = 'Elemento movido hacia arriba';
-      }
+      main.statusMessage.textContent = 'Elemento movido hacia arriba';
     } catch (error) {
       console.error('Error al mover el elemento hacia arriba:', error);
     }
@@ -246,11 +243,8 @@ export class PackList {
       }) as ListItem[];
       
       this.renderListItems(main, result);
-      
-      const statusMessage = document.querySelector('.status-message');
-      if (statusMessage) {
-        statusMessage.textContent = 'Elemento movido hacia abajo';
-      }
+
+      main.statusMessage.textContent = 'Elemento movido hacia abajo';
     } catch (error) {
       console.error('Error al mover el elemento hacia abajo:', error);
     }
@@ -271,10 +265,7 @@ export class PackList {
       
       this.renderListItems(main, result);
       
-      const statusMessage = document.querySelector('.status-message');
-      if (statusMessage) {
-        statusMessage.textContent = 'Elementos reordenados';
-      }
+      main.statusMessage.textContent = 'Elementos reordenados';
     } catch (error) {
       console.error('Error al reordenar los elementos:', error);
     }
