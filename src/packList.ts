@@ -1,3 +1,6 @@
+import { SettingsManager } from "./settings";
+import { Main } from "./main";
+
 /**
  * This file contains the functions for the pack list.
  */

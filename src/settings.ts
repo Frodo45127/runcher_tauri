@@ -76,7 +76,7 @@ export class SettingsManager {
   public async applySettings(main: Main) {
     try {
       if (this.isLoaded) { 
-        await main.sidebar.updateSidebarIcons(this.appSettings);
+        await main.sidebar.updateSidebarIcons(this);
         
         const treeFilter = document.getElementById('tree-filter') as HTMLInputElement;
         if (treeFilter && this.appSettings.tree_filter_value) {
