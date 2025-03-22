@@ -13,6 +13,15 @@ export class SettingsModal {
   private restoreDefaultsBtn: HTMLElement;
   private cancelSettingsBtn: HTMLElement;
   private saveSettingsBtn: HTMLElement;
+  private gamePathsContainer: HTMLElement;
+
+  private checkUpdatesToggle: HTMLInputElement;
+  private checkSchemaUpdatesToggle: HTMLInputElement;
+  private checkSqlUpdatesToggle: HTMLInputElement;
+  private languageSelect: HTMLSelectElement;
+  private dateFormatSelect: HTMLSelectElement;
+  private defaultGameSelect: HTMLSelectElement;
+
 
   constructor() {
     this.modal = document.getElementById('settings-modal');
@@ -22,10 +31,20 @@ export class SettingsModal {
     this.restoreDefaultsBtn = document.getElementById('restore-defaults');
     this.cancelSettingsBtn = document.getElementById('cancel-settings');
     this.saveSettingsBtn = document.getElementById('save-settings');
+    this.gamePathsContainer = document.getElementById('game-paths-container');
+
+    // Default values for checkboxes
+    this.checkUpdatesToggle = document.getElementById('check-updates-toggle');    
+    this.checkSchemaUpdatesToggle = document.getElementById('check-schema-updates-toggle');
+    this.checkSqlUpdatesToggle = document.getElementById('check-sql-updates-toggle');
+    this.languageSelect = document.getElementById('language-select');
+    this.dateFormatSelect = document.getElementById('date-format-select');
+    this.defaultGameSelect = document.getElementById('default-game-select');
   }
 
   /**
    * Open the settings modal dialog and populates it with the current settings.
+   * @param {Main} main - The main instance of the application.
    */ 
   public openSettingsModal(main: Main) {
     this.closeBtn.addEventListener('click', this.closeSettingsModal);
@@ -82,39 +101,15 @@ export class SettingsModal {
    * Restore the default settings.
    */ 
   public restoreDefaultSettings() {
-    // Default values for checkboxes
-    const checkUpdatesToggle = document.getElementById('check-updates-toggle') as HTMLInputElement;
-    if (checkUpdatesToggle) {
-      checkUpdatesToggle.checked = true;
-    }
+    this.checkUpdatesToggle.checked = true;
+    this.checkSchemaUpdatesToggle.checked = true;
+    this.checkSqlUpdatesToggle.checked = true;
+    this.languageSelect.value = 'English';
+    this.dateFormatSelect.value = 'DD/MM/YYYY';
     
-    const checkSchemaUpdatesToggle = document.getElementById('check-schema-updates-toggle') as HTMLInputElement;
-    if (checkSchemaUpdatesToggle) {
-      checkSchemaUpdatesToggle.checked = true;
-    }
-    
-    const checkSqlUpdatesToggle = document.getElementById('check-sql-updates-toggle') as HTMLInputElement;
-    if (checkSqlUpdatesToggle) {
-      checkSqlUpdatesToggle.checked = true;
-    }
-    
-    // Default values for dropdowns
-    const languageSelect = document.getElementById('language-select') as HTMLSelectElement;
-    if (languageSelect) {
-      languageSelect.value = 'English';
-    }
-    
-    const dateFormatSelect = document.getElementById('date-format-select') as HTMLSelectElement;
-    if (dateFormatSelect) {
-      dateFormatSelect.value = 'DD/MM/YYYY';
-    }
-    
-    const defaultGameSelect = document.getElementById('default-game-select') as HTMLSelectElement;
-    if (defaultGameSelect) {
-      // Set to first option as default
-      if (defaultGameSelect.options.length > 0) {
-        defaultGameSelect.selectedIndex = 0;
-      }
+    // Set to first option as default
+    if (this.defaultGameSelect.options.length > 0) {
+      this.defaultGameSelect.selectedIndex = 0;
     }
     
     // Default values for other inputs
@@ -127,6 +122,7 @@ export class SettingsModal {
 
   /**
    * Save the settings from the settings modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   saveSettingsModal(main: Main) {
     this.getSettingsFromModal(main);
@@ -136,24 +132,21 @@ export class SettingsModal {
 
   /**
    * Load the available languages for the settings modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   async loadAvailableLanguages(main: Main) {
     try {
       const languages = await invoke('get_available_languages') as string[];
-      const languageSelect = document.getElementById('language-select') as HTMLSelectElement;
+      this.languageSelect.innerHTML = '';
+      languages.forEach(language => {
+        const option = document.createElement('option');
+        option.value = language;
+        option.textContent = language;
+        this.languageSelect.appendChild(option);
+      });
       
-      if (languageSelect) {
-        languageSelect.innerHTML = '';
-        languages.forEach(language => {
-          const option = document.createElement('option');
-          option.value = language;
-          option.textContent = language;
-          languageSelect.appendChild(option);
-        });
-        
-        // Set current value from settings
-        languageSelect.value = main.settingsManager.appSettings.language;
-      }
+      // Set current value from settings
+      this.languageSelect.value = main.settingsManager.appSettings.language;
     } catch (error) {
       console.error('Failed to load available languages:', error);
     }
@@ -161,24 +154,21 @@ export class SettingsModal {
 
   /**
    * Load the available date formats for the settings modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   async loadAvailableDateFormats(main: Main) {
     try {
       const dateFormats = await invoke('get_available_date_formats') as string[];
-      const dateFormatSelect = document.getElementById('date-format-select') as HTMLSelectElement;
+      this.dateFormatSelect.innerHTML = '';
+      dateFormats.forEach(format => {
+        const option = document.createElement('option');
+        option.value = format;
+        option.textContent = format;
+        this.dateFormatSelect.appendChild(option);
+      });
       
-      if (dateFormatSelect) {
-        dateFormatSelect.innerHTML = '';
-        dateFormats.forEach(format => {
-          const option = document.createElement('option');
-          option.value = format;
-          option.textContent = format;
-          dateFormatSelect.appendChild(option);
-        });
-        
-        // Set current value from settings
-        dateFormatSelect.value = main.settingsManager.appSettings.date_format;
-      }
+      // Set current value from settings
+      this.dateFormatSelect.value = main.settingsManager.appSettings.date_format;
     } catch (error) {
       console.error('Failed to load available date formats:', error);
     }
@@ -186,24 +176,21 @@ export class SettingsModal {
 
   /**
    * Load the available games for the settings modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   async loadAvailableGames(main: Main) {
     try {
       const icons = await invoke("get_sidebar_icons") as SidebarIcon[];
-      const defaultGameSelect = document.getElementById('default-game-select') as HTMLSelectElement;
+      this.defaultGameSelect.innerHTML = '';
+      icons.forEach(icon => {
+        const option = document.createElement('option');
+        option.value = icon.id;
+        option.textContent = icon.name;
+        this.defaultGameSelect.appendChild(option);
+      });
       
-      if (defaultGameSelect) {
-        defaultGameSelect.innerHTML = '';
-        icons.forEach(icon => {
-          const option = document.createElement('option');
-          option.value = icon.id;
-          option.textContent = icon.name;
-          defaultGameSelect.appendChild(option);
-        });
-        
-        // Set current value from settings
-        defaultGameSelect.value = main.settingsManager.appSettings.default_game;
-      }
+      // Set current value from settings
+      this.defaultGameSelect.value = main.settingsManager.appSettings.default_game;
     } catch (error) {
       console.error('Failed to load available games:', error);
     }
@@ -211,23 +198,12 @@ export class SettingsModal {
 
   /**
    * Load the settings from the settings to the modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   public loadSettingsToModal(main: Main) {
-    // Load checkbox values
-    const checkUpdatesToggle = document.getElementById('check-updates-toggle') as HTMLInputElement;
-    if (checkUpdatesToggle) {
-      checkUpdatesToggle.checked = main.settingsManager.appSettings.check_updates_on_start;
-    }
-    
-    const checkSchemaUpdatesToggle = document.getElementById('check-schema-updates-toggle') as HTMLInputElement;
-    if (checkSchemaUpdatesToggle) {
-      checkSchemaUpdatesToggle.checked = main.settingsManager.appSettings.check_schema_updates_on_start;
-    }
-    
-    const checkSqlUpdatesToggle = document.getElementById('check-sql-updates-toggle') as HTMLInputElement;
-    if (checkSqlUpdatesToggle) {
-      checkSqlUpdatesToggle.checked = main.settingsManager.appSettings.check_sql_scripts_updates_on_start;
-    }
+    this.checkUpdatesToggle.checked = main.settingsManager.appSettings.check_updates_on_start;    
+    this.checkSchemaUpdatesToggle.checked = main.settingsManager.appSettings.check_schema_updates_on_start;
+    this.checkSqlUpdatesToggle.checked = main.settingsManager.appSettings.check_sql_scripts_updates_on_start;
     
     // Load dropdown values
     this.loadAvailableLanguages(main);
@@ -240,130 +216,87 @@ export class SettingsModal {
 
   /**
    * Save the settings from the modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   public getSettingsFromModal(main: Main) {
-    // Get checkbox values
-    const checkUpdatesToggle = document.getElementById('check-updates-toggle') as HTMLInputElement;
-    if (checkUpdatesToggle) {
-      main.settingsManager.appSettings.check_updates_on_start = checkUpdatesToggle.checked;
-    }
+    main.settingsManager.appSettings.check_updates_on_start = this.checkUpdatesToggle.checked;
+    main.settingsManager.appSettings.check_schema_updates_on_start = this.checkSchemaUpdatesToggle.checked;
+    main.settingsManager.appSettings.check_sql_scripts_updates_on_start = this.checkSqlUpdatesToggle.checked;
+    main.settingsManager.appSettings.language = this.languageSelect.value;
+    main.settingsManager.appSettings.date_format = this.dateFormatSelect.value;
+    main.settingsManager.appSettings.default_game = this.defaultGameSelect.value;
     
-    const checkSchemaUpdatesToggle = document.getElementById('check-schema-updates-toggle') as HTMLInputElement;
-    if (checkSchemaUpdatesToggle) {
-      main.settingsManager.appSettings.check_schema_updates_on_start = checkSchemaUpdatesToggle.checked;
-    }
-    
-    const checkSqlUpdatesToggle = document.getElementById('check-sql-updates-toggle') as HTMLInputElement;
-    if (checkSqlUpdatesToggle) {
-      main.settingsManager.appSettings.check_sql_scripts_updates_on_start = checkSqlUpdatesToggle.checked;
-    }
-    
-    // Get dropdown values
-    const languageSelect = document.getElementById('language-select') as HTMLSelectElement;
-    if (languageSelect) {
-      main.settingsManager.appSettings.language = languageSelect.value;
-    }
-    
-    const dateFormatSelect = document.getElementById('date-format-select') as HTMLSelectElement;
-    if (dateFormatSelect) {
-      main.settingsManager.appSettings.date_format = dateFormatSelect.value;
-    }
-    
-    const defaultGameSelect = document.getElementById('default-game-select') as HTMLSelectElement;
-    if (defaultGameSelect) {
-      main.settingsManager.appSettings.default_game = defaultGameSelect.value;
-    }
-    
-    // Get game paths
     this.getGamePathsFromModal(main);
   }
 
   /**
    * Load the game paths for the settings modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   public async loadGamePaths(main: Main) {
     try {
       const icons = await invoke("get_sidebar_icons") as SidebarIcon[];
-      const gamePathsContainer = document.getElementById('game-paths-container');
-      
-      if (gamePathsContainer) {
-        gamePathsContainer.innerHTML = '';
+      this.gamePathsContainer.innerHTML = '';
         
-        for (const icon of icons) {
-          const pathItem = document.createElement('div');
-          pathItem.className = 'game-path-item';
-          
-          // Current path value from settings (or empty string if not set)
-          const currentPath = main.settingsManager.appSettings.paths[icon.id] || '';
-          // Locked state (default to false if not set)
-          const isLocked = main.settingsManager.appSettings.paths[`${icon.id}_locked`] === 'true';
-          
-          // Create the path row with label, input and browse button
-          const pathRow = document.createElement('div');
-          pathRow.className = 'path-row';
-          
-          const label = document.createElement('div');
-          label.className = 'path-label';
-          label.textContent = icon.name;
-          
-          const inputContainer = document.createElement('div');
-          inputContainer.className = 'path-input-container';
-          
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.className = 'path-input';
-          input.value = currentPath;
-          input.id = `path-input-${icon.id}`;
-          input.disabled = isLocked;
-          
-          const browseBtn = document.createElement('button');
-          browseBtn.className = 'path-browse-btn';
-          browseBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
-          browseBtn.title = 'Browse';
-          browseBtn.disabled = isLocked;
-          browseBtn.addEventListener('click', () => this.openFolderDialog(icon.id));
-          
-          // Create the lock checkbox container
-          const lockContainer = document.createElement('div');
-          lockContainer.className = 'lock-container';
-          
-          const lockCheckbox = document.createElement('input');
-          lockCheckbox.type = 'checkbox';
-          lockCheckbox.className = 'lock-checkbox';
-          lockCheckbox.id = `lock-checkbox-${icon.id}`;
-          lockCheckbox.checked = isLocked;
-          
-          const lockLabel = document.createElement('label');
-          lockLabel.className = 'lock-label';
-          lockLabel.textContent = 'Updates Locked';
-          lockLabel.htmlFor = `lock-checkbox-${icon.id}`;
-          
-          // Add event listener to toggle input and button disabled state
-          lockCheckbox.addEventListener('change', (e) => {
-            const isChecked = (e.target as HTMLInputElement).checked;
-            input.disabled = isChecked;
-            browseBtn.disabled = isChecked;
-          });
-          
-          // Agregar componentes al contenedor de checkbox
-          lockContainer.appendChild(lockCheckbox);
-          lockContainer.appendChild(lockLabel);
-          
-          // Agregar componentes al contenedor de inputs
-          inputContainer.appendChild(input);
-          inputContainer.appendChild(browseBtn);
-          inputContainer.appendChild(lockContainer);
-          
-          // Agregar componentes a la fila
-          pathRow.appendChild(label);
-          pathRow.appendChild(inputContainer);
-          
-          // Agregar la fila al elemento de path
-          pathItem.appendChild(pathRow);
-          
-          // Add to the container
-          gamePathsContainer.appendChild(pathItem);
-        }
+      for (const icon of icons) {
+        const pathItem = document.createElement('div');
+        pathItem.className = 'game-path-item';
+        
+        const currentPath = main.settingsManager.appSettings.paths[icon.id] || '';
+        const isLocked = main.settingsManager.appSettings.paths[`${icon.id}_locked`] === 'true';
+        
+        // Create the path row with label, input and browse button
+        const pathRow = document.createElement('div');
+        pathRow.className = 'path-row';
+        
+        const label = document.createElement('div');
+        label.className = 'path-label';
+        label.textContent = icon.name;
+        
+        const inputContainer = document.createElement('div');
+        inputContainer.className = 'path-input-container';
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'path-input';
+        input.value = currentPath;
+        input.id = `path-input-${icon.id}`;
+        input.disabled = isLocked;
+        
+        const browseBtn = document.createElement('button');
+        browseBtn.className = 'path-browse-btn';
+        browseBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
+        browseBtn.title = 'Browse';
+        browseBtn.disabled = isLocked;
+        browseBtn.addEventListener('click', () => this.openFolderDialog(icon.id));
+        
+        const lockContainer = document.createElement('div');
+        lockContainer.className = 'lock-container';
+        
+        const lockCheckbox = document.createElement('input');
+        lockCheckbox.type = 'checkbox';
+        lockCheckbox.className = 'lock-checkbox';
+        lockCheckbox.id = `lock-checkbox-${icon.id}`;
+        lockCheckbox.checked = isLocked;
+        
+        const lockLabel = document.createElement('label');
+        lockLabel.className = 'lock-label';
+        lockLabel.textContent = 'Updates Locked';
+        lockLabel.htmlFor = `lock-checkbox-${icon.id}`;
+        
+        lockContainer.appendChild(lockCheckbox);
+        lockContainer.appendChild(lockLabel);
+        
+        inputContainer.appendChild(input);
+        inputContainer.appendChild(browseBtn);
+        inputContainer.appendChild(lockContainer);
+        
+        pathRow.appendChild(label);
+        pathRow.appendChild(inputContainer);
+        
+        pathItem.appendChild(pathRow);
+        
+        this.gamePathsContainer.appendChild(pathItem);
       }
     } catch (error) {
       console.error('Failed to load game paths:', error);
@@ -376,60 +309,37 @@ export class SettingsModal {
    */ 
   public async openFolderDialog(gameId: string) {
     try {
-      // Obtener la ruta actual del campo de texto
       const input = document.getElementById(`path-input-${gameId}`) as HTMLInputElement;
       const currentPath = input ? input.value : '';
-
-      // Llamar a la función Rust con la ruta actual
       const result = await invoke('browse_folder', { 
         title: 'Select Game Directory',
         currentPath: currentPath
       });
       
-      // Actualizar el campo de entrada con la ruta seleccionada
+      // Update the input with the selected path.
       if (input && result) {
         input.value = result as string;
       }
     } catch (error) {
       console.error('Failed to open folder dialog:', error);
-      
-      // Mostrar un mensaje al usuario indicando que debe introducir la ruta manualmente
-      const input = document.getElementById(`path-input-${gameId}`) as HTMLInputElement;
-      if (input) {
-        input.focus();
-        // Si hay un mensaje específico del error, mostrarlo
-        if (typeof error === 'string') {
-          alert(error);
-        } else {
-          alert('Please enter the path manually. The folder selection dialog could not be opened.');
-        }
-      }
     }
   }
 
   /**
    * Get the game paths from the modal.
+   * @param {Main} main - The main instance of the application.
    */ 
   public getGamePathsFromModal(main: Main) {
-    // Get sidebar icons
-    const gamePathsContainer = document.getElementById('game-paths-container');
-    if (!gamePathsContainer) return;
-    
-    // Get all path items
-    const pathItems = gamePathsContainer.querySelectorAll('.game-path-item');
-    
+    const pathItems = this.gamePathsContainer.querySelectorAll('.game-path-item');    
     pathItems.forEach((item) => {
-      // Get the game ID from the input ID
       const input = item.querySelector('.path-input') as HTMLInputElement;
       if (!input) return;
       
       const gameId = input.id.replace('path-input-', '');
       const checkbox = item.querySelector(`#lock-checkbox-${gameId}`) as HTMLInputElement;
-      
-      // Update the path in settings
       main.settingsManager.appSettings.paths[gameId] = input.value;
       
-      // Update the locked state in settings
+      // TODO: Properly check the read-only state of the lock file.
       if (checkbox) {
         main.settingsManager.appSettings.paths[`${gameId}_locked`] = checkbox.checked ? 'true' : 'false';
       }

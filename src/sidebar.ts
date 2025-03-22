@@ -21,7 +21,7 @@ export class Sidebar {
 
   /**
    * Load sidebar icons from Rust
-   * @param {Function} handleGameSelectedChange - The function to handle the game selected change.
+   * @param {Main} main - The main instance of the application.
    */
   public async loadSidebarIcons(main: Main) {
     try {

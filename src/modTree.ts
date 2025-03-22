@@ -41,7 +41,8 @@ export class ModTree {
  
   /**
    * Clear and render the mod tree.
-   * @param {AppSettings} appSettings - The app settings.
+   * @param {SettingsManager} settingsManager - The settings manager instance.
+   * @param {PackList} packList - The pack list instance.
    * @param {TreeCategory[]} categories - The categories to render.
    */
   public async renderTree(settingsManager: SettingsManager, packList: PackList, categories: TreeCategory[]) {
@@ -142,7 +143,7 @@ export class ModTree {
 
   /**
    * Filter tree items based on search text.
-   * @param {AppSettings} appSettings - The app settings.
+   * @param {SettingsManager} settingsManager - The settings manager instance.
    * @param {string} searchText - The text to filter the tree items.
    */
   public async filterTreeItems(settingsManager: SettingsManager, searchText: string) {
@@ -292,6 +293,7 @@ export class ModTree {
 
   /**
    * Handle checkbox change (mod toggling).
+   * @param {PackList} packList - The pack list instance.
    * @param {string} itemId - The id of the item to change.
    * @param {boolean} isChecked - The new state of the checkbox.
    */

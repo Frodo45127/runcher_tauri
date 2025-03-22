@@ -69,6 +69,7 @@ export class PackList {
 
   /**
    * Filters the pack list using the value provided.
+   * @param {SettingsManager} settingsManager - The settings manager instance.
    * @param {string} searchText - The value to filter the pack list.
    */ 
   public filterListItems(settingsManager: SettingsManager, searchText: string) {

@@ -51,6 +51,7 @@ export class SettingsManager {
 
   /**
    * Load app settings.
+   * @param {Main} main - The main instance of the application.
    */
   public async loadSettings(main: Main) {
     try {
@@ -68,7 +69,10 @@ export class SettingsManager {
     }
   }
   
-  // Load app settings
+  /**
+   * Apply app settings.
+   * @param {Main} main - The main instance of the application.
+   */
   public async applySettings(main: Main) {
     try {
       if (this.isLoaded) { 
@@ -96,7 +100,9 @@ export class SettingsManager {
     }
   }
 
-  // Save app settings
+  /**
+   * Save app settings.
+   */
   public async saveSettings() {
     try {
       await invoke('save_settings', { 
