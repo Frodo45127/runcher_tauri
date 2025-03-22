@@ -517,13 +517,13 @@ async fn browse_folder(app: tauri::AppHandle, title: String, current_path: Strin
 }
 
 #[tauri::command]
-async fn handle_change_game_selected(app: tauri::AppHandle, game_id: String) -> Result<Vec<TreeCategory>, String> {
+async fn handle_change_game_selected(app: tauri::AppHandle, game_id: String) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
     let old_game = GAME_SELECTED.read().unwrap().clone();
     let old_game_id = old_game.key();
     change_game_selected(app, &game_id, old_game_id == game_id, false).await.map_err(|e| format!("Error loading data: {}", e))
 }
 
-async fn change_game_selected(app: tauri::AppHandle, game_id: &str, reload_same_game: bool, skip_network_update: bool) -> Result<Vec<TreeCategory>, String> {
+async fn change_game_selected(app: tauri::AppHandle, game_id: &str, reload_same_game: bool, skip_network_update: bool) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
     let old_game = GAME_SELECTED.read().unwrap().clone();
     let old_game_id = old_game.key();
     use futures_util::TryFutureExt;
@@ -534,11 +534,11 @@ async fn change_game_selected(app: tauri::AppHandle, game_id: &str, reload_same_
         let result = load_data(&app, &game_id, skip_network_update);
         result.map_err(|e| format!("Error loading data: {}", e)).await
     } else {
-        Ok(vec![])
+        Ok((vec![], vec![]))
     }
 }
 
-async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: bool) -> anyhow::Result<Vec<TreeCategory>> {
+async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: bool) -> anyhow::Result<(Vec<TreeCategory>, Vec<ListItem>)> {
 
     // We may receive invalid games here, so rule out the invalid ones.
     let supported_games = SupportedGames::default();
@@ -586,8 +586,14 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
                 show_dialog(self.main_window(), error, false);
             }
 */
+            let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+
+            let _ = game_config.update_mod_list(&app, &game, &game_path, &mut load_order, false)?;
 
             let mods = load_mods(&app, &game, &game_config).await?;
+            let items = load_packs(&app, &game_config, &game, &game_path, &load_order).await?;
+            
+            *GAME_LOAD_ORDER.write().unwrap() = load_order;
 /*
             // Load the mods to the UI. This does an early return, just in case you add something after this.
             match self.load_mods_to_ui(game, &game_path, skip_network_update) {
@@ -602,7 +608,7 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
             }
 */
 
-            Ok(mods)
+            Ok((mods, items))
         },
         None => Err(anyhow!("Game {} is not a valid game.", game_id)),
     }
@@ -752,6 +758,8 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
                             flags &= !ItemFlag::ItemIsUserCheckable.to_int();
                             item_mod_name.set_flags(QFlags::from(flags));
                         }*/
+
+                        item.is_checked = modd.enabled(game, &game_data_path);
 
                         cat_item.children.push(item);
                     }
