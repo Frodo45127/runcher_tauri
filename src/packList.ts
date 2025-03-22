@@ -31,9 +31,10 @@ export class PackList {
 
   /**
    *  Render list items.
+   * @param {Main} main - The main instance of the application.
    * @param {ListItem[]} listData - The list data to render.
    */ 
-  public renderListItems(listData: ListItem[]) {
+  public renderListItems(main: Main, listData: ListItem[]) {
     const listContainer = document.getElementById("list-items-container");
     
     if (listContainer) {
@@ -69,6 +70,8 @@ export class PackList {
         listContainer.appendChild(listItem);
         this.listElements.set(item.id, listItem);
       });
+
+      this.filterListItems(main.settingsManager, main.settingsManager.appSettings.list_filter_value);
     }
   }
 
@@ -80,6 +83,7 @@ export class PackList {
   public filterListItems(settingsManager: SettingsManager, searchText: string) {
     const normalizedSearchText = searchText.toLowerCase().trim();
     settingsManager.appSettings.list_filter_value = normalizedSearchText;
+    settingsManager.saveSettings();
     
     if (normalizedSearchText === '') {
       this.listElements.forEach(element => element.classList.remove('hidden'));

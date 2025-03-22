@@ -177,7 +177,7 @@ export class Main {
     try {
       const [treeData, listData] = await invoke("handle_change_game_selected", { gameId: gameId }) as [TreeCategory[], ListItem[]];
       this.modTree.renderTree(this, treeData);      
-      this.packList.renderListItems(listData);
+      this.packList.renderListItems(this, listData);
         
       // Expandir categorías guardadas
       Object.keys(this.settingsManager.appSettings.tree_open_state).forEach(categoryId => {
@@ -187,8 +187,8 @@ export class Main {
       });
       
       // Restaurar el item seleccionado si existe
-        if (this.settingsManager.appSettings.selected_tree_item) {
-        this.modTree.selectTreeItem(main, this.settingsManager.appSettings.selected_tree_item);
+      if (this.settingsManager.appSettings.selected_tree_item) {
+        this.modTree.selectTreeItem(this, this.settingsManager.appSettings.selected_tree_item);
       }
       
       // Update status bar with result

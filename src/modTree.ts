@@ -114,7 +114,7 @@ export class ModTree {
         const checkbox = itemElement.querySelector('.item-checkbox')?.getElementsByTagName('input')[0] as HTMLInputElement;
         if (checkbox) {
           checkbox.addEventListener('change', () => {
-            this.handleCheckboxChange(main.packList, itemElement.getAttribute('data-id') || '', checkbox.checked);
+            this.handleCheckboxChange(main, itemElement.getAttribute('data-id') || '', checkbox.checked);
           });
         }
         
@@ -141,6 +141,8 @@ export class ModTree {
         this.toggleCategoryExpansion(main.settingsManager, category.id, true);
       }
     });
+
+    this.filterTreeItems(main.settingsManager, main.settingsManager.appSettings.tree_filter_value);
   }
 
   /**
@@ -151,6 +153,7 @@ export class ModTree {
   public async filterTreeItems(settingsManager: SettingsManager, searchText: string) {
     const normalizedSearchText = searchText.toLowerCase().trim();
     settingsManager.appSettings.tree_filter_value = normalizedSearchText;
+    settingsManager.saveSettings();
     
     // If search text is empty, show all items
     if (normalizedSearchText === '') {
@@ -293,20 +296,24 @@ export class ModTree {
     });
   }
 
-  // Función para seleccionar un item del árbol
+  /**
+   * Select a tree item.
+   * @param {Main} main - The main instance of the application.
+   * @param {string} itemId - The id of the item to select.
+   */
   public selectTreeItem(main: Main, itemId: string) {
-    // Quitar la selección actual
     const currentSelected = document.querySelector('.tree-item.selected');
     if (currentSelected) {
       currentSelected.classList.remove('selected');
     }
     
-    // Seleccionar el nuevo item
-    const newSelected = document.querySelector(`.tree-item[data-id="${itemId}"]`);
+    const items = document.querySelectorAll(`.tree-item`);
+    const newSelected = Array.from(items)
+      .find(item => item.getAttribute('data-id') === itemId);
+
     if (newSelected) {
       newSelected.classList.add('selected');
       
-      // Asegurarse de que la categoría esté expandida
       const categoryContainer = newSelected.closest('.tree-category');
       if (categoryContainer) {
         const categoryId = categoryContainer.getAttribute('data-id');
@@ -318,16 +325,17 @@ export class ModTree {
         }
       }
       
-      // Actualizar el item seleccionado en la configuración
       main.settingsManager.appSettings.selected_tree_item = itemId;
       main.settingsManager.saveSettings();
       
-      // Mostrar detalles del item (si corresponde)
       this.showItemDetails(itemId);
     }
   }
 
-  // Función para mostrar detalles del item seleccionado
+  /**
+   * Show item details.
+   * @param {string} itemId - The id of the item to show details for.
+   */
   public showItemDetails(itemId: string) {
     const gameDetails = document.getElementById('game-details');
     if (!gameDetails) return;
@@ -369,11 +377,11 @@ export class ModTree {
 
   /**
    * Handle checkbox change (mod toggling).
-   * @param {PackList} packList - The pack list instance.
+   * @param {Main} main - The main instance of the application.
    * @param {string} itemId - The id of the item to change.
    * @param {boolean} isChecked - The new state of the checkbox.
    */
-  public async handleCheckboxChange(packList: PackList, itemId: string, isChecked: boolean) {
+  public async handleCheckboxChange(main: Main, itemId: string, isChecked: boolean) {
     try {
       // Llamar a la función Rust para manejar el cambio del checkbox
       const listData = await invoke('handle_checkbox_change', { 
@@ -381,7 +389,7 @@ export class ModTree {
         isChecked: isChecked 
       }) as ListItem[];
 
-      packList.renderListItems(listData);
+      main.packList.renderListItems(main, listData);
     
       // Actualizar la UI visualmente si es necesario
       //const checkbox = document.querySelector(`#check-${itemId}`) as HTMLInputElement;
