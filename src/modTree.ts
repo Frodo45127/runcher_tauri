@@ -31,11 +31,13 @@ export class ModTree {
   private categoryElements: Map<string, HTMLElement>;
   private itemElements: Map<string, HTMLElement>;
   private treeFilterInput: HTMLInputElement;
+  private selectedItems: Set<string>;
       
   constructor(main: Main) {
     this.categoryElements = new Map();
     this.itemElements = new Map();
     this.treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
+    this.selectedItems = new Set<string>();
 
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
@@ -63,7 +65,20 @@ export class ModTree {
       categoryElement.dataset.id = CSS.escape(category.id);
 
       // Add drag and drop event listeners
-      this.setupDragAndDrop(main, categoryElement);
+      this.setupDrop(main, categoryElement);
+        
+      // Evento para seleccionar item
+      //categoryElement.addEventListener('click', (e) => {
+      //  this.selectTreeItem(
+      //    main, 
+      //    categoryElement.getAttribute('data-id') || '',
+      //    e.ctrlKey,
+      //    e.shiftKey
+      //  );
+      //});
+
+      // Hacer que los elementos sean arrastrables
+      //categoryElement.setAttribute('draggable', 'true');
 
       const categoryHeader = document.createElement('div');
       categoryHeader.className = 'category-header';
@@ -72,7 +87,6 @@ export class ModTree {
         <span class="category-name">${category.id}</span>
       `;
       categoryHeader.addEventListener('click', () => {
-        console.log(categoryElement.getAttribute('data-id'));
         this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '')
       });
 
@@ -119,14 +133,22 @@ export class ModTree {
         }
         
         // Add drag and drop event listeners
-        this.setupDragAndDrop(main, itemElement);
+        this.setupDrag(main, itemElement);
 
         // Evento para seleccionar item
         itemContent.addEventListener('click', (e) => {
           if (e.target !== checkbox) {
-            this.selectTreeItem(main, itemElement.getAttribute('data-id') || '');
+            this.selectTreeItem(
+              main, 
+              itemElement.getAttribute('data-id') || '',
+              e.ctrlKey,
+              e.shiftKey
+            );
           }
         });
+
+        // Hacer que los elementos sean arrastrables
+        itemElement.setAttribute('draggable', 'true');
 
         this.itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);
       });
@@ -259,39 +281,69 @@ export class ModTree {
   }
 
   // Setup drag and drop for an element
-  public async setupDragAndDrop(main: Main, element: HTMLElement) {
-    // Drag start event
+  public async setupDrag(main: Main, element: HTMLElement) {
     element.addEventListener("dragstart", (e) => {
-      e.dataTransfer?.setData("text/plain", element.dataset.id || "");
+      const selectedIds = Array.from(this.selectedItems).join(',');
+      e.dataTransfer?.setData("text/plain", selectedIds);
+
+      if (!this.selectedItems.has(element.dataset.id || '')) {
+        this.selectTreeItem(
+          main, 
+          element.dataset.id || '',
+          false,
+          false
+        );
+      }
+      
       element.classList.add("dragging");
+      
+      this.selectedItems.forEach(id => {
+        const el = this.itemElements.get(id);
+        if (el) el.classList.add("dragging");
+      });
+
+      // Do not propagate the event to the parent, if it has a parent. Otherwise this triggers a double event.
+      e.stopPropagation();
     });
-    
-    // Drag end event
+
     element.addEventListener("dragend", () => {
       element.classList.remove("dragging");
+
+      this.selectedItems.forEach(id => {
+        const el = this.itemElements.get(id);
+        if (el) el.classList.remove("dragging");
+      });
     });
-    
+  }
+
+  
+  // Setup drag and drop for an element
+  public async setupDrop(main: Main, element: HTMLElement) {
+
     // Drag over event
     element.addEventListener("dragover", (e) => {
       e.preventDefault();
+      (e.dataTransfer as DataTransfer).dropEffect = "move";
+
       element.classList.add("drag-over");
     });
     
     // Drag leave event
-    element.addEventListener("dragleave", () => {
+    element.addEventListener("dragleave", (e) => {
       element.classList.remove("drag-over");
     });
     
     // Drop event
     element.addEventListener("drop", (e) => {
       e.preventDefault();
+
       element.classList.remove("drag-over");
-      
-      const sourceId = e.dataTransfer?.getData("text/plain");
+
+      const sourceIds = e.dataTransfer?.getData("text/plain").split(',');
       const targetId = element.dataset.id;
       
-      if (sourceId && targetId && sourceId !== targetId) {
-        this.handleItemDrop(main, sourceId, targetId);
+      if (sourceIds && targetId && sourceIds.length > 0) {
+        this.handleMultipleItemsDrop(main, sourceIds, targetId);
       }
     });
   }
@@ -300,35 +352,77 @@ export class ModTree {
    * Select a tree item.
    * @param {Main} main - The main instance of the application.
    * @param {string} itemId - The id of the item to select.
+   * @param {boolean} isCtrlPressed - Whether Ctrl key is pressed (for multi-select).
+   * @param {boolean} isShiftPressed - Whether Shift key is pressed (for range selection).
    */
-  public selectTreeItem(main: Main, itemId: string) {
-    const currentSelected = document.querySelector('.tree-item.selected');
-    if (currentSelected) {
-      currentSelected.classList.remove('selected');
+  public selectTreeItem(main: Main, itemId: string, isCtrlPressed: boolean = false, isShiftPressed: boolean = false) {
+    // Implementar lógica de selección múltiple
+    if (!isCtrlPressed && !isShiftPressed) {
+      // Selección normal: quitar selección de todos los demás ítems
+      const currentlySelected = document.querySelectorAll('.tree-item.selected');
+      currentlySelected.forEach(item => {
+        item.classList.remove('selected');
+      });
+      this.selectedItems.clear();
     }
     
-    const items = document.querySelectorAll(`.tree-item`);
-    const newSelected = Array.from(items)
-      .find(item => item.getAttribute('data-id') === itemId);
-
-    if (newSelected) {
-      newSelected.classList.add('selected');
+    const itemElement = this.itemElements.get(itemId);
+    if (!itemElement) return;
+    
+    if (isShiftPressed && this.selectedItems.size > 0) {
+      // Selección por rango: seleccionar todos los ítems entre el último y este
+      const items = Array.from(document.querySelectorAll('.tree-item'));
+      const lastSelectedId = Array.from(this.selectedItems)[this.selectedItems.size - 1];
+      const lastSelectedIndex = items.findIndex(item => item.getAttribute('data-id') === lastSelectedId);
+      const currentIndex = items.findIndex(item => item.getAttribute('data-id') === itemId);
       
-      const categoryContainer = newSelected.closest('.tree-category');
-      if (categoryContainer) {
-        const categoryId = categoryContainer.getAttribute('data-id');
-        if (categoryId) {
-          const categoryItems = categoryContainer.querySelector('.category-items');
-          if (categoryItems && categoryItems.classList.contains('hidden')) {
-            this.toggleCategoryExpansion(main.settingsManager, categoryId);
-          }
+      // Determinar el rango (inicio y fin)
+      const start = Math.min(lastSelectedIndex, currentIndex);
+      const end = Math.max(lastSelectedIndex, currentIndex);
+      
+      // Seleccionar todos los ítems en el rango
+      for (let i = start; i <= end; i++) {
+        const id = items[i].getAttribute('data-id');
+        if (id) {
+          this.selectedItems.add(id);
+          items[i].classList.add('selected');
         }
       }
-      
+    } else if (isCtrlPressed) {
+      // Selección con Ctrl: toggle selección para este ítem
+      if (this.selectedItems.has(itemId)) {
+        this.selectedItems.delete(itemId);
+        itemElement.classList.remove('selected');
+      } else {
+        this.selectedItems.add(itemId);
+        itemElement.classList.add('selected');
+      }
+    } else {
+      // Selección simple de un elemento
+      this.selectedItems.add(itemId);
+      itemElement.classList.add('selected');
+    }
+    
+    // Asegurar que la categoría esté expandida
+    const categoryContainer = itemElement.closest('.tree-category');
+    if (categoryContainer) {
+      const categoryId = categoryContainer.getAttribute('data-id');
+      if (categoryId) {
+        const categoryItems = categoryContainer.querySelector('.category-items');
+        if (categoryItems && categoryItems.classList.contains('hidden')) {
+          this.toggleCategoryExpansion(main.settingsManager, categoryId);
+        }
+      }
+    }
+    
+    if (this.selectedItems.size === 1) {
+      // Si solo hay un elemento seleccionado, actualizar configuración y mostrar detalles
       main.settingsManager.appSettings.selected_tree_item = itemId;
       main.settingsManager.saveSettings();
-      
       this.showItemDetails(itemId);
+    } else if (this.selectedItems.size > 1) {
+      // Si hay múltiples elementos seleccionados, mostrar información sobre selección múltiple
+      this.showMultipleItemsDetails(this.selectedItems);
     }
   }
 
@@ -376,6 +470,25 @@ export class ModTree {
   }
 
   /**
+   * Display details for multiple selected items
+   * @param {Set<string>} selectedIds - Set of selected item IDs
+   */
+  private showMultipleItemsDetails(selectedIds: Set<string>) {
+    const gameDetails = document.getElementById('game-details');
+    if (!gameDetails) return;
+    
+    const count = selectedIds.size;
+    gameDetails.innerHTML = `
+      <div class="detail-item">
+        <strong>${count} elementos seleccionados</strong>
+      </div>
+      <div class="detail-item">
+        <p>Puede arrastrar los elementos seleccionados a otra categoría.</p>
+      </div>
+    `;
+  }
+
+  /**
    * Handle checkbox change (mod toggling).
    * @param {Main} main - The main instance of the application.
    * @param {string} itemId - The id of the item to change.
@@ -419,6 +532,45 @@ export class ModTree {
       await main.settingsManager.saveSettings();
     } catch (error) {
       console.error("Failed to handle item drop:", error);
+    }
+  }
+
+  /**
+   * Handle multiple items being dropped
+   * @param {Main} main - The main instance of the application
+   * @param {string[]} sourceIds - Array of source item IDs
+   * @param {string} targetId - Target item ID
+   */
+  public async handleMultipleItemsDrop(main: Main, sourceIds: string[], targetId: string) {
+    try {
+      // Mostrar mensaje de estado
+      const statusMessage = document.querySelector(".status-message");
+      if (statusMessage) {
+        statusMessage.textContent = `Moviendo ${sourceIds.length} elementos...`;
+      }
+      
+      // Procesar cada elemento
+      const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
+      await invoke("handle_item_drop", { sourceIds: movedIds, targetId });
+
+      // By default, we don't move anything in the UI. Instead we move it in the backend, and if it works, 
+      // we manually search the entries in the tree and move them.
+      const target = this.categoryElements.get(targetId);
+      if (!target) return;
+
+      for (const sourceId of sourceIds) {
+        const itemElement = this.itemElements.get(sourceId);
+        if (itemElement) {
+          target.appendChild(itemElement);
+        }
+      }
+
+      // Actualizar mensaje de estado
+      if (statusMessage) {
+        statusMessage.textContent = `${sourceIds.length} elementos movidos exitosamente`;
+      }
+    } catch (error) {
+      console.error("Failed to handle items drop:", error);
     }
   }
 }

@@ -432,17 +432,42 @@ async fn handle_checkbox_change(app: tauri::AppHandle, mod_id: &str, is_checked:
     let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
     
+    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
+
     *GAME_LOAD_ORDER.write().unwrap() = load_order;
-    *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+
     Ok(items)
 }
 
 #[tauri::command]
-fn handle_item_drop(source_id: &str, target_id: &str) -> Result<String, String> {
-    println!("Item {} dropped onto {}", source_id, target_id);
-    // Here you would implement logic to handle the reordering, moving between categories, etc.
+fn handle_item_drop(app: tauri::AppHandle, mut source_ids: Vec<String>, target_id: &str) -> Result<String, String> {
+    let mod_ids = source_ids.iter_mut()
+        .map(|id| id.replace("\\", ""))
+        .collect::<Vec<String>>();
 
-    Ok(format!("Moved item {} to {}", source_id, target_id))
+    let target_id = target_id.replace("\\", "");
+
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+
+    // Only proceed if the category is valid.
+    if !game_config.categories().contains_key(&target_id) {
+        return Err(format!("Category {} not found", &target_id));
+    }
+
+    for mods in game_config.categories_mut().values_mut() {
+        mods.retain(|x| !mod_ids.contains(x));
+    }
+    
+    if let Some(target_mods) = game_config.categories_mut().get_mut(&target_id) {
+        target_mods.extend(mod_ids);
+    }
+
+    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+
+    Ok(format!("Moved item {} to {}", source_ids.join(","), target_id))
 }
 
 #[tauri::command]

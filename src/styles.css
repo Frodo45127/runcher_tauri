@@ -179,6 +179,7 @@ body {
 
 .tree-item.selected {
   background-color: var(--panel-selected);
+  border-left: 3px solid var(--primary-color);
 }
 
 .item-content {
@@ -266,6 +267,32 @@ body {
 .tree-item.drag-over {
   background-color: var(--drag-over-bg);
   border: 1px dashed var(--primary-color);
+}
+
+.tree-item.selected {
+  background-color: var(--panel-selected);
+  border-left: 3px solid var(--primary-color);
+}
+
+.multi-select-info {
+  padding: 12px;
+  background-color: var(--panel-bg);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.multi-select-info .count {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+/* Cursor para elementos arrastrables */
+[draggable="true"] {
+  cursor: grab;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .tree-child {
