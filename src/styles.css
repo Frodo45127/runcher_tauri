@@ -260,10 +260,32 @@ body {
   margin-right: 10px;
 }
 
+.empty-drop-element {
+  height: 2px;
+  transition: all .07s linear;
+}
+
+.empty-drop-element.drag-over {
+  background-color: var(--drag-over-bg);
+  height: 40px;
+}
+
 /* Expandable Tree Styles */
 .tree-category {
   font-weight: bold;
   position: relative;
+  transition: background-color 0.2s;
+}
+
+.tree-category.dragging {
+  opacity: 0.6;
+  border: 2px dashed var(--primary-color);
+  background-color: var(--panel-bg);
+}
+
+.tree-category.drag-over {
+  background-color: var(--drag-over-bg);
+  border: 2px dashed var(--primary-color);
 }
 
 .tree-category::before {
@@ -646,8 +668,8 @@ body {
   background-color: var(--sidebar-hover);
 }
 
-/* Game Details Styles */
-#game-details {
+/* Mod Details Styles */
+#mod-details {
   min-height: 100px;
 }
 

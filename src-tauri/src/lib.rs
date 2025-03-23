@@ -417,10 +417,8 @@ fn get_sidebar_icons() -> Vec<SidebarIcon> {
 }
 
 #[tauri::command]
-async fn handle_checkbox_change(app: tauri::AppHandle, mod_id: &str, is_checked: bool) -> Result<Vec<ListItem>, String> {
+async fn handle_mod_toggled(app: tauri::AppHandle, mod_id: &str, is_checked: bool) -> Result<Vec<ListItem>, String> {
     println!("Mod {} checkbox changed to: {}", mod_id, is_checked);
-    // Here you would implement actual logic to handle the checkbox change
-    // For example, adding to favorites, marking for download, etc.
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
@@ -441,33 +439,34 @@ async fn handle_checkbox_change(app: tauri::AppHandle, mod_id: &str, is_checked:
 }
 
 #[tauri::command]
-fn handle_item_drop(app: tauri::AppHandle, mut source_ids: Vec<String>, target_id: &str) -> Result<String, String> {
-    let mod_ids = source_ids.iter_mut()
+fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, category_id: &str) -> Result<TreeCategory, String> {
+    let mod_ids = mod_ids.iter_mut()
         .map(|id| id.replace("\\", ""))
         .collect::<Vec<String>>();
 
-    let target_id = target_id.replace("\\", "");
+    let category_id = category_id.replace("\\", "");
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
 
     // Only proceed if the category is valid.
-    if !game_config.categories().contains_key(&target_id) {
-        return Err(format!("Category {} not found", &target_id));
+    if !game_config.categories().contains_key(&category_id) {
+        return Err(format!("Category {} not found", &category_id));
     }
 
     for mods in game_config.categories_mut().values_mut() {
         mods.retain(|x| !mod_ids.contains(x));
     }
     
-    if let Some(target_mods) = game_config.categories_mut().get_mut(&target_id) {
+    if let Some(target_mods) = game_config.categories_mut().get_mut(&category_id) {
         target_mods.extend(mod_ids);
     }
 
     game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
 
-    Ok(format!("Moved item {} to {}", source_ids.join(","), target_id))
+    // FIXME: Regenerate and return the category correctly.
+    Ok(TreeCategory::default())
 }
 
 #[tauri::command]
@@ -485,7 +484,7 @@ fn init_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
 
 // Load settings from config file
 #[tauri::command]
-fn load_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
+fn load_settings() -> Result<AppSettings, String> {
     Ok(SETTINGS.read().unwrap().clone())
 }
 
@@ -939,6 +938,43 @@ async fn reorder_list_items(app: tauri::AppHandle, source_id: &str, target_id: &
     Ok(items)
 }
 
+#[tauri::command]
+async fn reorder_categories(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<String>, String> {
+    
+    // TODO: Move this to a sanitizer function.
+    let source_id = source_id.replace("\\", "");
+    let target_id = target_id.replace("\\", "");
+    
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    
+    let mut categories_order = game_config.categories_order().to_vec();
+    let source_index = categories_order.iter().position(|id| id == &source_id)
+        .ok_or_else(|| format!("Source category '{}' not found", source_id))?;
+    let target_index = categories_order.iter().position(|id| id == &target_id)
+        .ok_or_else(|| format!("Target category '{}' not found", target_id))?;
+    
+    // Do nothing if they are the same category or already in the desired order.
+    if source_index == target_index {
+        return Ok(categories_order);
+    }
+    
+    let source_category = categories_order.remove(source_index);
+    let new_target_index = if source_index < target_index {
+        target_index - 1
+    } else {
+        target_index
+    };
+    
+    categories_order.insert(new_target_index, source_category);
+    game_config.set_categories_order(categories_order.to_vec());
+    game_config.save(&app, &game_info).map_err(|e| format!("Error al guardar la configuración: {}", e))?;
+    
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+    
+    Ok(categories_order)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -959,8 +995,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             launch_game,
             get_sidebar_icons,
-            handle_checkbox_change,
-            handle_item_drop,
+            handle_mod_toggled,
+            handle_mod_category_change,
             init_settings,
             load_settings,
             save_settings,
@@ -970,7 +1006,8 @@ pub fn run() {
             browse_folder,
             handle_change_game_selected,
             move_list_item,
-            reorder_list_items
+            reorder_list_items,
+            reorder_categories
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

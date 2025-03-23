@@ -12,7 +12,15 @@ export default tseslint.config(
       jsdoc,
     },
     rules: {
-      'jsdoc/require-description': 'warn'
+      'jsdoc/require-description': 'warn',
+      'jsdoc/no-undefined-types': [
+        'warn', 
+        {
+          'definedTypes': [
+            'HTMLElement'
+          ]
+        }
+      ]
     }
   }
 );

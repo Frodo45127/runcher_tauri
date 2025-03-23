@@ -34,12 +34,14 @@ export class ModTree {
   private selectedItems: Set<string>;
   private currentSortField: string = 'name';
   private sortDirection: 'asc' | 'desc' = 'asc';
+  private categoriesOrder: string[];
       
   constructor(main: Main) {
     this.categoryElements = new Map();
     this.itemElements = new Map();
     this.treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
     this.selectedItems = new Set<string>();
+    this.categoriesOrder = [];
 
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
@@ -67,10 +69,10 @@ export class ModTree {
     const treeHeader = document.createElement('div');
     treeHeader.className = 'tree-header';
     treeHeader.innerHTML = `
-      <div class="header-column sortable" data-sort="name">Nombre <i class="fa-solid fa-sort"></i></div>
-      <div class="header-column sortable" data-sort="type">Tipo <i class="fa-solid fa-sort"></i></div>
-      <div class="header-column sortable" data-sort="creator">Creador <i class="fa-solid fa-sort"></i></div>
-      <div class="header-column sortable" data-sort="size">Tamaño <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="name">Name <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="type">Type <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="creator">Creator <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="size">Size <i class="fa-solid fa-sort"></i></div>
     `;
     
     // Add click events to the sortable columns
@@ -78,6 +80,8 @@ export class ModTree {
     sortableColumns.forEach(column => {
       column.addEventListener('click', () => {
         const field = column.getAttribute('data-sort') || 'name';
+
+        // FIXME: this causes issues when we sort after reordering or moving mods between categories.
         this.sortTreeItems(main, categories, field);
       });
     });
@@ -89,23 +93,15 @@ export class ModTree {
       const categoryElement = document.createElement('div');
       categoryElement.className = 'tree-category';
       categoryElement.dataset.id = CSS.escape(category.id);
+      this.setupDragCategory(categoryElement);
 
-      // Add drag and drop event listeners
+      // Empty drop element for categories inbetweeners.
+      const emptyDropElement = document.createElement('div');
+      emptyDropElement.className = 'empty-drop-element';
+      categoryElement.appendChild(emptyDropElement);
       this.setupDrop(main, categoryElement);
-        
-      // Evento para seleccionar item
-      //categoryElement.addEventListener('click', (e) => {
-      //  this.selectTreeItem(
-      //    main, 
-      //    categoryElement.getAttribute('data-id') || '',
-      //    e.ctrlKey,
-      //    e.shiftKey
-      //  );
-      //});
-
-      // Hacer que los elementos sean arrastrables
-      //categoryElement.setAttribute('draggable', 'true');
-
+      
+      // Category header, with the expander and the name.
       const categoryHeader = document.createElement('div');
       categoryHeader.className = 'category-header';
       categoryHeader.innerHTML = `
@@ -116,11 +112,12 @@ export class ModTree {
         this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '')
       });
 
+      // Items container, where the mod items are listed.
       const itemsContainer = document.createElement('div');
       itemsContainer.className = 'category-items';
       itemsContainer.id = `children-${categoryElement.getAttribute('data-id')}`;
       
-      // Sort the mod items (not the categories) by the current sort column..
+      // Sort the mod items (not the categories) by the current sort column.
       const sortedItems = [...category.children];
       this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
       
@@ -129,8 +126,7 @@ export class ModTree {
         itemElement.className = 'tree-item tree-child';
         itemElement.dataset.id = CSS.escape(item.id);
         itemElement.dataset.categoryId = categoryElement.getAttribute('data-id') || '';
-        // Para HTML seguro, usar createTextNode o implementar sanitización
-        // El name puede contener HTML por design en el backend
+
         const itemContent = document.createElement('div');
         itemContent.className = 'item-content';
         itemContent.innerHTML = `
@@ -154,18 +150,18 @@ export class ModTree {
         itemElement.appendChild(itemContent);
         itemsContainer.appendChild(itemElement);
 
-        // Evento para manejo de checkbox
+        // Event for toggling a mod through its checkbox.
         const checkbox = itemElement.querySelector('.item-checkbox')?.getElementsByTagName('input')[0] as HTMLInputElement;
         if (checkbox) {
           checkbox.addEventListener('change', () => {
-            this.handleCheckboxChange(main, itemElement.getAttribute('data-id') || '', checkbox.checked);
+            this.handleModToggled(main, itemElement.getAttribute('data-id') || '', checkbox.checked);
           });
         }
         
         // Add drag and drop event listeners
-        this.setupDrag(main, itemElement);
+        this.setupDragMod(main, itemElement);
 
-        // Evento para seleccionar item
+        // Event for selecting an item.
         itemContent.addEventListener('click', (e) => {
           if (e.target !== checkbox) {
             this.selectTreeItem(
@@ -176,9 +172,6 @@ export class ModTree {
             );
           }
         });
-
-        // Hacer que los elementos sean arrastrables
-        itemElement.setAttribute('draggable', 'true');
 
         this.itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);
       });
@@ -283,7 +276,12 @@ export class ModTree {
   }
 
 
-  // Toggle category expansion
+  /**
+   * Toggle category expansion, hiding or showing the mods it contains.
+   * @param {SettingsManager} settingsManager - The settings manager instance.
+   * @param {string} categoryId - The id of the category to toggle.
+   * @param {boolean} forceState - If true, force the category to be expanded. If false, toggle the state of the category.
+   */
   public async toggleCategoryExpansion(settingsManager: SettingsManager, categoryId: string, forceState?: boolean) {
     categoryId = CSS.escape(categoryId);
 
@@ -294,8 +292,6 @@ export class ModTree {
     if (!childrenContainer) return;
     
     const isExpanded = categoryElement.classList.contains('expanded');
-    
-    // If forceState is provided, use it, otherwise toggle
     const newState = forceState !== undefined ? forceState : !isExpanded;
     
     if (newState) {
@@ -311,73 +307,9 @@ export class ModTree {
     settingsManager.saveSettings();
   }
 
-  // Setup drag and drop for an element
-  public async setupDrag(main: Main, element: HTMLElement) {
-    element.addEventListener("dragstart", (e) => {
-      const selectedIds = Array.from(this.selectedItems).join(',');
-      e.dataTransfer?.setData("text/plain", selectedIds);
-
-      if (!this.selectedItems.has(element.dataset.id || '')) {
-        this.selectTreeItem(
-          main, 
-          element.dataset.id || '',
-          false,
-          false
-        );
-      }
-      
-      element.classList.add("dragging");
-      
-      this.selectedItems.forEach(id => {
-        const el = this.itemElements.get(id);
-        if (el) el.classList.add("dragging");
-      });
-
-      // Do not propagate the event to the parent, if it has a parent. Otherwise this triggers a double event.
-      e.stopPropagation();
-    });
-
-    element.addEventListener("dragend", () => {
-      element.classList.remove("dragging");
-
-      this.selectedItems.forEach(id => {
-        const el = this.itemElements.get(id);
-        if (el) el.classList.remove("dragging");
-      });
-    });
-  }
-
-  
-  // Setup drag and drop for an element
-  public async setupDrop(main: Main, element: HTMLElement) {
-
-    // Drag over event
-    element.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      (e.dataTransfer as DataTransfer).dropEffect = "move";
-
-      element.classList.add("drag-over");
-    });
-    
-    // Drag leave event
-    element.addEventListener("dragleave", () => {
-      element.classList.remove("drag-over");
-    });
-    
-    // Drop event
-    element.addEventListener("drop", (e) => {
-      e.preventDefault();
-
-      element.classList.remove("drag-over");
-
-      const sourceIds = e.dataTransfer?.getData("text/plain").split(',');
-      const targetId = element.dataset.id;
-      
-      if (sourceIds && targetId && sourceIds.length > 0) {
-        this.handleMultipleItemsDrop(main, sourceIds, targetId);
-      }
-    });
-  }
+  /************************
+   * Selection
+   ************************/
 
   /**
    * Select a tree item.
@@ -387,9 +319,7 @@ export class ModTree {
    * @param {boolean} isShiftPressed - Whether Shift key is pressed (for range selection).
    */
   public selectTreeItem(main: Main, itemId: string, isCtrlPressed: boolean = false, isShiftPressed: boolean = false) {
-    // Implementar lógica de selección múltiple
     if (!isCtrlPressed && !isShiftPressed) {
-      // Selección normal: quitar selección de todos los demás ítems
       const currentlySelected = document.querySelectorAll('.tree-item.selected');
       currentlySelected.forEach(item => {
         item.classList.remove('selected');
@@ -401,17 +331,14 @@ export class ModTree {
     if (!itemElement) return;
     
     if (isShiftPressed && this.selectedItems.size > 0) {
-      // Selección por rango: seleccionar todos los ítems entre el último y este
       const items = Array.from(document.querySelectorAll('.tree-item'));
       const lastSelectedId = Array.from(this.selectedItems)[this.selectedItems.size - 1];
       const lastSelectedIndex = items.findIndex(item => item.getAttribute('data-id') === lastSelectedId);
       const currentIndex = items.findIndex(item => item.getAttribute('data-id') === itemId);
       
-      // Determinar el rango (inicio y fin)
       const start = Math.min(lastSelectedIndex, currentIndex);
       const end = Math.max(lastSelectedIndex, currentIndex);
       
-      // Seleccionar todos los ítems en el rango
       for (let i = start; i <= end; i++) {
         const id = items[i].getAttribute('data-id');
         if (id) {
@@ -420,7 +347,6 @@ export class ModTree {
         }
       }
     } else if (isCtrlPressed) {
-      // Selección con Ctrl: toggle selección para este ítem
       if (this.selectedItems.has(itemId)) {
         this.selectedItems.delete(itemId);
         itemElement.classList.remove('selected');
@@ -429,12 +355,10 @@ export class ModTree {
         itemElement.classList.add('selected');
       }
     } else {
-      // Selección simple de un elemento
       this.selectedItems.add(itemId);
       itemElement.classList.add('selected');
     }
     
-    // Asegurar que la categoría esté expandida
     const categoryContainer = itemElement.closest('.tree-category');
     if (categoryContainer) {
       const categoryId = categoryContainer.getAttribute('data-id');
@@ -447,16 +371,13 @@ export class ModTree {
     }
     
     if (this.selectedItems.size === 1) {
-      // Si solo hay un elemento seleccionado, actualizar configuración y mostrar detalles
       main.settingsManager.appSettings.selected_tree_item = itemId;
       main.settingsManager.saveSettings();
-      this.showItemDetails(itemId);
+      this.showModDetails(itemId);
       
-      // Sync with the pack list (search for a pack that matches this item)
       this.syncListWithTreeSelection(main, itemId);
     } else if (this.selectedItems.size > 1) {
-      // Si hay múltiples elementos seleccionados, mostrar información sobre selección múltiple
-      this.showMultipleItemsDetails(this.selectedItems);
+      this.showMultipleModsDetails(this.selectedItems);
     }
   }
 
@@ -485,144 +406,194 @@ export class ModTree {
   }
 
   /**
-   * Show item details.
-   * @param {string} itemId - The id of the item to show details for.
+   * Highlight an item in the tree based on the pack name.
+   * @param {string} packName - The name of the pack to highlight.
    */
-  public showItemDetails(itemId: string) {
-    const gameDetails = document.getElementById('game-details');
-    if (!gameDetails) return;
-        
-    // Aquí tendríamos que buscar en los datos cargados el item con el ID correspondiente
-    // Esta es una implementación simplificada
-    document.querySelectorAll('.tree-item').forEach(el => {
-      if (el.getAttribute('data-id') === itemId) {
-        const nameElement = el.querySelector('.item-name');
-        const typeElement = el.querySelector('.item-type');
-        const creatorElement = el.querySelector('.item-creator');
-        const locationElement = el.querySelector('.item-location');
-        const sizeElement = el.querySelector('.item-size');
-        
-        if (nameElement && typeElement && creatorElement && locationElement && sizeElement) {
-          const details = `
-            <div class="detail-item">
-              <strong>Name:</strong> ${nameElement.innerHTML}
-            </div>
-            <div class="detail-item">
-              <strong>Type:</strong> ${typeElement.textContent || 'N/A'}
-            </div>
-            <div class="detail-item">
-              <strong>Creator:</strong> ${creatorElement.textContent || 'N/A'}
-            </div>
-            <div class="detail-item">
-              <strong>Location:</strong> ${locationElement.textContent || 'N/A'}
-            </div>
-            <div class="detail-item">
-              <strong>Size:</strong> ${sizeElement.textContent || 'N/A'}
-            </div>
-          `;
-          
-          gameDetails.innerHTML = details;
+  public highlightTreeItemByPack(packName: string) {
+    const normalizedPackName = packName.toLowerCase();  
+    let foundItem: string | null = null;
+  
+    this.itemElements.forEach((element, itemId) => {
+      const itemNameElement = element.querySelector('.item-name');
+      if (itemNameElement) {
+        const itemText = this.stripHtml(itemNameElement.innerHTML).toLowerCase();   
+        if (itemText.includes(normalizedPackName)) {
+          foundItem = itemId;
+        }
+      }
+    });
+    
+    if (foundItem) {
+      this.selectTreeItem(
+        { settingsManager: { appSettings: {}, saveSettings: () => {} } } as Main, 
+        foundItem,
+        false,
+        false
+      );
+    }
+  }
+
+  /************************
+   * Drag and Drop
+   ************************/
+ 
+  /**
+   * Setup drag event for categories
+   * @param {HTMLElement} element - The category element to setup drag for
+   */
+  private async setupDragCategory(element: HTMLElement) {
+    element.setAttribute('draggable', 'true');
+
+    element.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", "category:" + (element.dataset.id || ''));     
+      element.classList.add("dragging");
+      e.stopPropagation();
+    });
+
+    element.addEventListener("dragend", () => {
+      element.classList.remove("dragging");
+    });
+  }
+
+  /**
+   * Setup drag event for mods
+   * @param {Main} main - The main instance of the application
+   * @param {HTMLElement} element - The mod element to setup drag for
+   */
+  private async setupDragMod(main: Main, element: HTMLElement) {
+    element.setAttribute('draggable', 'true');
+
+    element.addEventListener("dragstart", (e) => {
+      
+      // Do not propagate the event to the parent, if it has a parent. Otherwise this triggers a double event.
+      e.stopPropagation();
+      
+      if (!this.selectedItems.has(element.dataset.id || '')) {
+        this.selectTreeItem(
+          main, 
+          element.dataset.id || '',
+          e.ctrlKey,
+          e.shiftKey
+        );
+      }
+
+      const selectedIds = Array.from(this.selectedItems).join(',');
+      e.dataTransfer?.setData("text/plain", selectedIds);
+      this.setupDragging(element);
+    });
+
+    element.addEventListener("dragend", () => {
+      this.removeDragging(element);
+    });
+  }
+
+  /**
+   * Setup the dragging state for an element. Supports categories and mods.
+   * @param {HTMLElement} element - The element to setup dragging for
+   */
+  private setupDragging(element: HTMLElement) {
+    element.classList.add("dragging");
+      
+    if (!element.classList.contains('tree-category')) {
+      this.selectedItems.forEach(id => {
+        const el = this.itemElements.get(id);
+        if (el) el.classList.add("dragging");
+      });
+    }
+  }
+
+  /**
+   * Remove the dragging state for an element. Supports categories and mods.
+   * @param {HTMLElement} element - The element to remove dragging for
+   */
+  private removeDragging(element: HTMLElement) {
+    element.classList.remove("dragging");
+    
+    if (!element.classList.contains('tree-category')) {
+      this.selectedItems.forEach(id => {
+        const el = this.itemElements.get(id);
+        if (el) el.classList.remove("dragging");
+      });
+    }
+  }
+
+  /**
+   * Setup the drag-over state for an element. Supports categories and mods.
+   * @param {HTMLElement} element - The element to setup drag-over for
+   */
+  private setupDragOver(element: HTMLElement) {
+    if (element.classList.contains('tree-category')) {
+      const emptyElement = element.firstChild as HTMLElement;
+      if (!emptyElement.classList.contains('drag-over')) {
+        emptyElement.classList.add('drag-over');
+      }
+    }
+
+    if (!element.classList.contains('drag-over')) {
+      element.classList.add("drag-over");
+    }
+  }
+
+  /**
+   * Remove the drag-over state for an element. Supports categories and mods.
+   * @param {HTMLElement} element - The element to remove drag-over for
+   */
+  private removeDragOver(element: HTMLElement) {
+    if (element.classList.contains('tree-category')) {
+      const emptyElement = element.firstChild as HTMLElement;
+      emptyElement.classList.remove('drag-over');
+    }
+    element.classList.remove("drag-over");
+  }
+
+  /**
+   * Setup drop listeners for an element.
+   * @param {Main} main - The main instance of the application
+   * @param {HTMLElement} element - The element to setup drag and drop for
+   */
+  private async setupDrop(main: Main, element: HTMLElement) {
+
+    element.addEventListener("dragenter", () => {
+      this.setupDragOver(element);
+    });
+
+    element.addEventListener("dragover", (e) => {
+      this.setupDragOver(element);
+      e.preventDefault();
+    });
+    
+    element.addEventListener("dragleave", () => {
+      this.removeDragOver(element);
+    });
+    
+    element.addEventListener("drop", (e) => {
+      this.removeDragOver(element);
+      e.preventDefault();
+
+      const sourceData = e.dataTransfer?.getData("text/plain");
+      const targetId = element.dataset.id;
+
+      // If the sourceData starts with "category:", it's a category being dragged.
+      if (sourceData && sourceData.startsWith("category:")) {
+        const sourceId = sourceData.replace("category:", "");
+        if (targetId && sourceId !== targetId) {
+          this.handleCategoryReorder(main, sourceId, targetId);
+        }
+      } 
+      
+      // Otherwise, it's a mod being dragged.
+      else {
+        const sourceIds = sourceData ? sourceData.split(',') : [];
+        if (targetId && sourceIds.length > 0) {
+          this.handleModDrop(main, sourceIds, targetId);
         }
       }
     });
   }
 
-  /**
-   * Display details for multiple selected items
-   * @param {Set<string>} selectedIds - Set of selected item IDs
-   */
-  private showMultipleItemsDetails(selectedIds: Set<string>) {
-    const gameDetails = document.getElementById('game-details');
-    if (!gameDetails) return;
-    
-    const count = selectedIds.size;
-    gameDetails.innerHTML = `
-      <div class="detail-item">
-        <strong>${count} elementos seleccionados</strong>
-      </div>
-      <div class="detail-item">
-        <p>Puede arrastrar los elementos seleccionados a otra categoría.</p>
-      </div>
-    `;
-  }
-
-  /**
-   * Handle checkbox change (mod toggling).
-   * @param {Main} main - The main instance of the application.
-   * @param {string} itemId - The id of the item to change.
-   * @param {boolean} isChecked - The new state of the checkbox.
-   */
-  public async handleCheckboxChange(main: Main, itemId: string, isChecked: boolean) {
-    try {
-      // Llamar a la función Rust para manejar el cambio del checkbox
-      const listData = await invoke('handle_checkbox_change', { 
-        modId: itemId.replace(/\\/g, ''), 
-        isChecked: isChecked 
-      }) as ListItem[];
-
-      main.packList.renderListItems(main, listData);
-    
-      // Actualizar la UI visualmente si es necesario
-      //const checkbox = document.querySelector(`#check-${itemId}`) as HTMLInputElement;
-      //if (checkbox) {
-      //  checkbox.checked = isChecked;
-      //}
-    } catch (error) {
-      console.error('Failed to handle checkbox change:', error);
-    }
-  }
-
-  // Handle item drop
-  public async handleItemDrop(main: Main, sourceId: string, targetId: string) {
-    try {
-      const result = await invoke("handle_item_drop", { sourceId, targetId });
-      
-      main.statusMessage.textContent = result as string;
-      
-      // Reload tree data to reflect changes
-      //await this.renderTree(main, treeData);
-      
-      // Save settings after change
-      await main.settingsManager.saveSettings();
-    } catch (error) {
-      console.error("Failed to handle item drop:", error);
-    }
-  }
-
-  /**
-   * Handle multiple items being dropped
-   * @param {Main} main - The main instance of the application
-   * @param {string[]} sourceIds - Array of source item IDs
-   * @param {string} targetId - Target item ID
-   */
-  public async handleMultipleItemsDrop(main: Main, sourceIds: string[], targetId: string) {
-    try {
-      main.statusMessage.textContent = `Moviendo ${sourceIds.length} elementos...`;
-      
-      // Procesar cada elemento
-      const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
-      await invoke("handle_item_drop", { sourceIds: movedIds, targetId });
-
-      // By default, we don't move anything in the UI. Instead we move it in the backend, and if it works, 
-      // we manually search the entries in the tree and move them.
-      const target = this.categoryElements.get(targetId);
-      if (!target) return;
-
-      const targetContainer = target.querySelector('.category-items');
-      if (!targetContainer) return;
-
-      for (const sourceId of sourceIds) {
-        const itemElement = this.itemElements.get(sourceId);
-        if (itemElement) {
-          targetContainer.appendChild(itemElement);
-        }
-      }
-
-      main.statusMessage.textContent = `${sourceIds.length} elementos movidos exitosamente`;
-    } catch (error) {
-      console.error("Failed to handle items drop:", error);
-    }
-  }
+  /************************
+   * Sorting
+   ************************/
 
   /**
    * Sort the items of the last level of the tree and re-render.
@@ -631,7 +602,7 @@ export class ModTree {
    * @param {string} field - The field to sort by.
    */
   private sortTreeItems(main: Main, categories: TreeCategory[], field: string) {
-     if (this.currentSortField === field) {
+    if (this.currentSortField === field) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       this.currentSortField = field;
@@ -694,7 +665,6 @@ export class ModTree {
           valueB = (b.name || '').toLowerCase();
       }
       
-      // Comparar los valores según la dirección de ordenación
       if (valueA < valueB) {
         return direction === 'asc' ? -1 : 1;
       }
@@ -705,6 +675,161 @@ export class ModTree {
     });
   }
   
+  /************************
+   * Handles
+   ************************/
+
+  /**
+   * Handle category reordering
+   * @param {Main} main - The main instance of the application
+   * @param {string} sourceId - The source category ID
+   * @param {string} targetId - The target category ID
+   */
+  public async handleCategoryReorder(main: Main, sourceId: string, targetId: string) {
+    try {
+      main.statusMessage.textContent = `Reordering categories...`;
+      this.categoriesOrder = await invoke("reorder_categories", { sourceId, targetId });
+      
+      const sourceCat = this.categoryElements.get(sourceId);
+      const targetCat = this.categoryElements.get(targetId);
+      
+      if (sourceCat && targetCat) {
+        const container = sourceCat.parentNode;
+        if (container) {
+          container.insertBefore(sourceCat, targetCat);
+        }
+      }
+      
+      main.statusMessage.textContent = `Categories reordered successfully`;
+    } catch (error) {
+      console.error("Failed to reorder categories:", error);
+      main.statusMessage.textContent = `Error reordering categories: ${error}`;
+    }
+  }
+
+  /**
+   * Handle toggling a mod through its checkbox.
+   * @param {Main} main - The main instance of the application.
+   * @param {string} itemId - The id of the item to change.
+   * @param {boolean} isChecked - The new state of the checkbox.
+   */
+  public async handleModToggled(main: Main, itemId: string, isChecked: boolean) {
+    try {
+      const listData = await invoke('handle_mod_toggled', { 
+        modId: itemId.replace(/\\/g, ''), 
+        isChecked: isChecked 
+      }) as ListItem[];
+
+      main.packList.renderListItems(main, listData);
+    } catch (error) {
+      console.error('Failed to handle mod toggled:', error);
+    }
+  }
+
+  /**
+   * Handle multiple items being dropped
+   * @param {Main} main - The main instance of the application
+   * @param {string[]} sourceIds - Array of source item IDs
+   * @param {string} targetId - Target item ID
+   */
+  public async handleModDrop(main: Main, sourceIds: string[], targetId: string) {
+    try {
+      main.statusMessage.textContent = `Moving ${sourceIds.length} mods...`;
+      
+      // FIXME: Get the category returned from the backend and use it to rebuild the category node with the correct order.
+      const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
+      await invoke("handle_mod_category_change", { modIds: movedIds, categoryId: targetId });
+
+      // By default, we don't move anything in the UI. Instead we move it in the backend, and if it works, 
+      // we manually search the entries in the tree and move them.
+      const target = this.categoryElements.get(targetId);
+      if (!target) return;
+
+      const targetContainer = target.querySelector('.category-items');
+      if (!targetContainer) return;
+
+      // Mods are added at the end of the target category. 
+      for (const sourceId of sourceIds) {
+        const itemElement = this.itemElements.get(sourceId);
+        if (itemElement) {
+          targetContainer.appendChild(itemElement);
+        }
+      }
+
+      main.statusMessage.textContent = `${sourceIds.length} mods moved successfully`;
+    } catch (error) {
+      console.error("Failed to handle items drop:", error);
+    }
+  }
+
+  /************************
+   * Mod details
+   ************************/
+
+  /**
+   * Show mod details.
+   * @param {string} itemId - The id of the mod to show details for.
+   */
+  public showModDetails(itemId: string) {
+    const modDetails = document.getElementById('mod-details');
+    if (!modDetails) return;
+        
+    document.querySelectorAll('.tree-item').forEach(el => {
+      if (el.getAttribute('data-id') === itemId) {
+        const nameElement = el.querySelector('.item-name');
+        const typeElement = el.querySelector('.item-type');
+        const creatorElement = el.querySelector('.item-creator');
+        const locationElement = el.querySelector('.item-location');
+        const sizeElement = el.querySelector('.item-size');
+        
+        if (nameElement && typeElement && creatorElement && locationElement && sizeElement) {
+          const details = `
+            <div class="detail-item">
+              <strong>Name:</strong> ${nameElement.innerHTML}
+            </div>
+            <div class="detail-item">
+              <strong>Type:</strong> ${typeElement.textContent || 'N/A'}
+            </div>
+            <div class="detail-item">
+              <strong>Creator:</strong> ${creatorElement.textContent || 'N/A'}
+            </div>
+            <div class="detail-item">
+              <strong>Location:</strong> ${locationElement.textContent || 'N/A'}
+            </div>
+            <div class="detail-item">
+              <strong>Size:</strong> ${sizeElement.textContent || 'N/A'}
+            </div>
+          `;
+          
+          modDetails.innerHTML = details;
+        }
+      }
+    });
+  }
+
+  /**
+   * Display details for multiple selected mods.
+   * @param {Set<string>} selectedIds - Set of selected mod IDs
+   */
+  private showMultipleModsDetails(selectedIds: Set<string>) {
+    const modDetails = document.getElementById('mod-details');
+    if (!modDetails) return;
+    
+    const count = selectedIds.size;
+    modDetails.innerHTML = `
+      <div class="detail-item">
+        <strong>${count} mods selected</strong>
+      </div>
+      <div class="detail-item">
+        <p>You can drag the selected mods to another category.</p>
+      </div>
+    `;
+  }
+
+  /************************
+   * Utils
+   ************************/
+
   /**
    * Remove HTML tags from a string.
    * @param {string} html - The string with HTML tags.
@@ -739,46 +864,6 @@ export class ModTree {
         return size * 1024 * 1024 * 1024;
       default:
         return size;
-    }
-  }
-
-  /**
-   * Highlight an item in the tree based on the pack name.
-   * @param {string} packName - The name of the pack to highlight.
-   */
-  public highlightTreeItemByPack(packName: string) {
-    const normalizedPackName = packName.toLowerCase();  
-    let foundItem: string | null = null;
-  
-    this.itemElements.forEach((element, itemId) => {
-      const itemNameElement = element.querySelector('.item-name');
-      if (itemNameElement) {
-        const itemText = this.stripHtml(itemNameElement.innerHTML).toLowerCase();   
-        if (itemText.includes(normalizedPackName)) {
-          foundItem = itemId;
-        }
-      }
-    });
-    
-    if (foundItem) {
-      this.selectTreeItem(
-        { settingsManager: { appSettings: {}, saveSettings: () => {} } } as Main, 
-        foundItem,
-        false,
-        false
-      );
-    }
-  }
-
-  /**
-   * Select an item from the tree from the pack list.
-   * @param {Main} main - The main instance of the application.
-   * @param {string} itemId - The id of the item to select.
-   */
-  public syncWithListSelection(main: Main, itemId: string) {
-    if (itemId && this.itemElements.has(itemId)) {
-      this.selectTreeItem(main, itemId, false, false);
-      main.packList.selectListItem(itemId);
     }
   }
 }
