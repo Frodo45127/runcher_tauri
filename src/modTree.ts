@@ -608,10 +608,13 @@ export class ModTree {
       const target = this.categoryElements.get(targetId);
       if (!target) return;
 
+      const targetContainer = target.querySelector('.category-items');
+      if (!targetContainer) return;
+
       for (const sourceId of sourceIds) {
         const itemElement = this.itemElements.get(sourceId);
         if (itemElement) {
-          target.appendChild(itemElement);
+          targetContainer.appendChild(itemElement);
         }
       }
 
