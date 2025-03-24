@@ -34,7 +34,7 @@ export class ModTree {
   private selectedItems: Set<string>;
   private currentSortField: string = 'name';
   private sortDirection: 'asc' | 'desc' = 'asc';
-  private categoriesOrder: string[];
+  public categories: TreeCategory[];
   private dragCounter: number;
   private dragOverElement: HTMLElement | null;
   private draggingCategory: boolean;
@@ -44,7 +44,7 @@ export class ModTree {
     this.itemElements = new Map();
     this.treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
     this.selectedItems = new Set<string>();
-    this.categoriesOrder = [];
+    this.categories = [];
     this.dragCounter = 0;
     this.dragOverElement = null;
     this.draggingCategory = false;
@@ -56,11 +56,10 @@ export class ModTree {
   /**
    * Clear and render the mod tree.
    * @param {Main} main - The main instance of the application.
-   * @param {TreeCategory[]} categories - The categories to render.
    * 
    * TODO: Split this into two functions: one for the tree header, and one for the tree body.
    */
-  public async renderTree(main: Main, categories: TreeCategory[]) {
+  public async renderTree(main: Main) {
     const treeContainer = document.getElementById('tree-container');
     if (!treeContainer) return;
 
@@ -85,16 +84,14 @@ export class ModTree {
     sortableColumns.forEach(column => {
       column.addEventListener('click', () => {
         const field = column.getAttribute('data-sort') || 'name';
-
-        // FIXME: this causes issues when we sort after reordering or moving mods between categories.
-        this.sortTreeItems(main, categories, field);
+        this.sortTreeItems(main, field);
       });
     });
     
     treeContainer.appendChild(treeHeader);
     
     // Then render the categories and their items
-    categories.forEach(category => {
+    this.categories.forEach(category => {
       const categoryElement = document.createElement('div');
       categoryElement.className = 'tree-category';
       categoryElement.dataset.id = CSS.escape(category.id);
@@ -651,10 +648,9 @@ export class ModTree {
   /**
    * Sort the items of the last level of the tree and re-render.
    * @param {Main} main - The main instance of the application.
-   * @param {TreeCategory[]} categories - The categories to sort.
    * @param {string} field - The field to sort by.
    */
-  private sortTreeItems(main: Main, categories: TreeCategory[], field: string) {
+  private sortTreeItems(main: Main, field: string) {
     if (this.currentSortField === field) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
@@ -663,7 +659,7 @@ export class ModTree {
     }
     
     // Re-render the tree with the sorted items
-    this.renderTree(main, categories);
+    this.renderTree(main);
   }
   
   /**
@@ -741,8 +737,17 @@ export class ModTree {
   public async handleCategoryReorder(main: Main, sourceId: string, targetId: string) {
     try {
       main.statusMessage.textContent = `Reordering categories...`;
-      this.categoriesOrder = await invoke("reorder_categories", { sourceId, targetId });
+      await invoke("reorder_categories", { sourceId, targetId });
       
+      // Reorder the categories in the cached categories array.
+      const sourceIndex = this.categories.findIndex(c => c.id === sourceId);
+      let targetIndex = this.categories.findIndex(c => c.id === targetId);
+      if (targetIndex > sourceIndex) {
+        targetIndex--;
+      }
+      const [movedCategory] = this.categories.splice(sourceIndex, 1);
+      this.categories.splice(targetIndex, 0, movedCategory);
+
       const sourceCat = this.categoryElements.get(sourceId);
       const targetCat = this.categoryElements.get(targetId);
       
@@ -789,7 +794,6 @@ export class ModTree {
     try {
       main.statusMessage.textContent = `Moving ${sourceIds.length} mods...`;
       
-      // FIXME: Get the category returned from the backend and use it to rebuild the category node with the correct order.
       const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
       await invoke("handle_mod_category_change", { modIds: movedIds, categoryId: targetId });
 
@@ -801,10 +805,18 @@ export class ModTree {
       const targetContainer = target.querySelector('.category-items');
       if (!targetContainer) return;
 
-      // Mods are added at the end of the target category. 
+      // Mods are added at the end of the target category. We also need to update the cached categories, 
+      // so we can re-render the tree with the correct order after sorting it.
+      const targetCategory = this.categories.find(c => c.id === targetId) as TreeCategory;
       for (const sourceId of sourceIds) {
         const itemElement = this.itemElements.get(sourceId);
         if (itemElement && itemElement.dataset.categoryId !== targetId) {
+
+          const sourceCategory = this.categories.find(c => CSS.escape(c.id) === itemElement.dataset.categoryId) as TreeCategory;
+          const modIndex = sourceCategory.children.findIndex(c => CSS.escape(c.id) === sourceId);
+          const movedMod = sourceCategory.children.splice(modIndex, 1)[0];
+          targetCategory.children.push(movedMod);
+
           itemElement.dataset.categoryId = targetId;
           targetContainer.appendChild(itemElement);
         }

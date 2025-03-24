@@ -439,7 +439,7 @@ async fn handle_mod_toggled(app: tauri::AppHandle, mod_id: &str, is_checked: boo
 }
 
 #[tauri::command]
-fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, category_id: &str) -> Result<TreeCategory, String> {
+fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, category_id: &str) -> Result<(), String> {
     let mod_ids = mod_ids.iter_mut()
         .map(|id| id.replace("\\", ""))
         .collect::<Vec<String>>();
@@ -465,8 +465,7 @@ fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, c
     game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
 
-    // FIXME: Regenerate and return the category correctly.
-    Ok(TreeCategory::default())
+    Ok(())
 }
 
 #[tauri::command]

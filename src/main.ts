@@ -178,7 +178,8 @@ export class Main {
   public async handleGameSelectedChange(gameId: string) {
     try {
       const [treeData, listData] = await invoke("handle_change_game_selected", { gameId: gameId }) as [TreeCategory[], ListItem[]];
-      this.modTree.renderTree(this, treeData);      
+      this.modTree.categories = treeData;
+      this.modTree.renderTree(this);      
       this.packList.renderListItems(this, listData);
         
       // Expandir categorías guardadas
