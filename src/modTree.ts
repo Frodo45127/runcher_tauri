@@ -782,6 +782,7 @@ export class ModTree {
       for (const sourceId of sourceIds) {
         const itemElement = this.itemElements.get(sourceId);
         if (itemElement) {
+          itemElement.dataset.categoryId = targetId;
           targetContainer.appendChild(itemElement);
         }
       }
