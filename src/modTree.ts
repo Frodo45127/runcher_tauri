@@ -38,6 +38,9 @@ export class ModTree {
   private dragCounter: number;
   private dragOverElement: HTMLElement | null;
   private draggingCategory: boolean;
+  private treeContainer: HTMLElement;
+  private treeHeader: HTMLElement;
+  
       
   constructor(main: Main) {
     this.categoryElements = new Map();
@@ -48,6 +51,30 @@ export class ModTree {
     this.dragCounter = 0;
     this.dragOverElement = null;
     this.draggingCategory = false;
+    this.treeContainer = document.getElementById('tree-container') as HTMLElement;
+
+    // Reorderable headers. Done here so we can recycle them when re-rendering the tree.
+    this.treeHeader = document.createElement('div');
+    this.treeHeader.className = 'tree-header';
+    this.treeHeader.innerHTML = `
+      <div class="header-column sortable" data-sort="name">Name <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="type">Type <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="creator">Creator <i class="fa-solid fa-sort"></i></div>
+      <div class="header-column sortable" data-sort="size">Size <i class="fa-solid fa-sort"></i></div>
+    `;
+    
+    // Add click events to the sortable columns
+    const sortableColumns = this.treeHeader.querySelectorAll('.sortable');
+    sortableColumns.forEach(column => {
+      column.addEventListener('click', () => {
+        const field = column.getAttribute('data-sort') || 'name';
+        this.sortTreeItems(main, field);
+      });
+    });
+
+    this.treeContainer.appendChild(this.treeHeader);
+
+
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
     });
@@ -60,35 +87,14 @@ export class ModTree {
    * TODO: Split this into two functions: one for the tree header, and one for the tree body.
    */
   public async renderTree(main: Main) {
-    const treeContainer = document.getElementById('tree-container');
-    if (!treeContainer) return;
 
     // Clear maps for filtering
     this.categoryElements.clear();
     this.itemElements.clear();
     
-    treeContainer.innerHTML = '';
-    
-    // Reorderable headers.
-    const treeHeader = document.createElement('div');
-    treeHeader.className = 'tree-header';
-    treeHeader.innerHTML = `
-      <div class="header-column sortable" data-sort="name">Name <i class="fa-solid fa-sort"></i></div>
-      <div class="header-column sortable" data-sort="type">Type <i class="fa-solid fa-sort"></i></div>
-      <div class="header-column sortable" data-sort="creator">Creator <i class="fa-solid fa-sort"></i></div>
-      <div class="header-column sortable" data-sort="size">Size <i class="fa-solid fa-sort"></i></div>
-    `;
-    
-    // Add click events to the sortable columns
-    const sortableColumns = treeHeader.querySelectorAll('.sortable');
-    sortableColumns.forEach(column => {
-      column.addEventListener('click', () => {
-        const field = column.getAttribute('data-sort') || 'name';
-        this.sortTreeItems(main, field);
-      });
-    });
-    
-    treeContainer.appendChild(treeHeader);
+    this.treeContainer.removeChild(this.treeHeader);
+    this.treeContainer.innerHTML = '';
+    this.treeContainer.appendChild(this.treeHeader);
     
     // Then render the categories and their items
     this.categories.forEach(category => {
@@ -187,7 +193,7 @@ export class ModTree {
       categoryElement.appendChild(emptyModDropElement);
       this.setupDrop(main, categoryElement);
 
-      treeContainer.appendChild(categoryElement);
+      this.treeContainer.appendChild(categoryElement);
 
       this.categoryElements.set(categoryElement.getAttribute('data-id') || '', categoryElement);
 
@@ -672,7 +678,7 @@ export class ModTree {
       const icon = header.querySelector('i');
       
       if (field === this.currentSortField) {
-        icon?.classList.remove('fa-sort');
+        icon?.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
         icon?.classList.add(this.sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
       } else {
         icon?.classList.remove('fa-sort-up', 'fa-sort-down');
