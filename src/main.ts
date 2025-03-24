@@ -4,7 +4,7 @@ import { Sidebar } from "./sidebar";
 import { ModTree, TreeCategory } from "./modTree";
 import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
-
+import { ModDetailsPanel } from "./modDetails";
 // Store the main instance, which should contain everything in the app.
 let main: Main;
 
@@ -14,6 +14,7 @@ export class Main {
   public modTree: ModTree;
   public packList: PackList;
   public settingsModal: SettingsModal;
+  public modDetails: ModDetailsPanel;
   public statusMessage: HTMLElement;
 
   private launchBtn: HTMLButtonElement;
@@ -24,6 +25,7 @@ export class Main {
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
     this.settingsModal = new SettingsModal();
+    this.modDetails = new ModDetailsPanel();
     this.statusMessage = document.querySelector('.status-message') as HTMLElement;
 
     // Add event listener for launch button
@@ -181,15 +183,16 @@ export class Main {
       this.modTree.categories = treeData;
       this.modTree.renderTree(this);      
       this.packList.renderListItems(this, listData);
+      this.modDetails.clearContent();
         
-      // Expandir categorías guardadas
+      // Expand the categories saved in the settings.
       Object.keys(this.settingsManager.appSettings.tree_open_state).forEach(categoryId => {
         if (this.settingsManager.appSettings.tree_open_state[categoryId]) {
           this.modTree.toggleCategoryExpansion(this.settingsManager, categoryId, true);
         }
       });
       
-      // Restaurar el item seleccionado si existe
+      // Restore the selected item if it exists.
       if (this.settingsManager.appSettings.selected_tree_item) {
         this.modTree.selectTreeItem(this, this.settingsManager.appSettings.selected_tree_item);
       }

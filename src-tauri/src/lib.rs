@@ -699,6 +699,7 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
 
                         item.creator = modd.creator_name().to_owned();
                         item.r#type = modd.pack_type().to_string();
+                        item.description = modd.description().to_owned();
 
                         // TODO: show discrepancies between steam's reported data and real data.
                         item.size = if *modd.file_size() != 0 {
@@ -880,6 +881,7 @@ struct TreeItem {
     size: String,
     created: u64,
     updated: u64,
+    description: String,
     is_checked: bool,
 }
 

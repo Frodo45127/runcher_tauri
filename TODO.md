@@ -21,7 +21,7 @@ TODO:
         - [ ] Missing dependencies detection (workshop && internal)
         - [x] Hightlight related packs in Pack View.
         - [ ] Mod details view:
-            - [ ] Info from the mod page.
+            - [x] Info from the mod page.
             - [ ] Open mod folder.
             - [ ] Open mod page in browser.
     - [ ] Pack Management:

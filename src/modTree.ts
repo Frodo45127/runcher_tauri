@@ -16,6 +16,7 @@ export interface TreeItem {
   is_checked: boolean;
   status?: string;
   last_played?: string;
+  description?: string;
 }
 
 export interface TreeCategory {
@@ -83,8 +84,6 @@ export class ModTree {
   /**
    * Clear and render the mod tree.
    * @param {Main} main - The main instance of the application.
-   * 
-   * TODO: Split this into two functions: one for the tree header, and one for the tree body.
    */
   public async renderTree(main: Main) {
 
@@ -124,7 +123,7 @@ export class ModTree {
       const itemsContainer = document.createElement('div');
       itemsContainer.className = 'category-items';
       itemsContainer.id = `children-${categoryElement.getAttribute('data-id')}`;
-      
+
       // Sort the mod items (not the categories) by the current sort column.
       const sortedItems = [...category.children];
       this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
@@ -179,6 +178,10 @@ export class ModTree {
               e.shiftKey
             );
           }
+        });
+
+        itemContent.addEventListener('dblclick', () => {
+          main.modDetails.toggleModDetails(main, itemElement.getAttribute('data-id') || '');
         });
 
         this.itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);
@@ -388,11 +391,8 @@ export class ModTree {
     if (this.selectedItems.size === 1) {
       main.settingsManager.appSettings.selected_tree_item = itemId;
       main.settingsManager.saveSettings();
-      this.showModDetails(itemId);
       
       this.syncListWithTreeSelection(main, itemId);
-    } else if (this.selectedItems.size > 1) {
-      this.showMultipleModsDetails(this.selectedItems);
     }
   }
 
@@ -835,67 +835,44 @@ export class ModTree {
   }
 
   /************************
-   * Mod details
+   * Getters
    ************************/
 
   /**
-   * Show mod details.
-   * @param {string} itemId - The id of the mod to show details for.
+   * Get an item element by its id.
+   * @param {string} id - The id of the item.
+   * @returns {HTMLElement} - The item element.
    */
-  public showModDetails(itemId: string) {
-    const modDetails = document.getElementById('mod-details');
-    if (!modDetails) return;
-        
-    document.querySelectorAll('.tree-item').forEach(el => {
-      if (el.getAttribute('data-id') === itemId) {
-        const nameElement = el.querySelector('.item-name');
-        const typeElement = el.querySelector('.item-type');
-        const creatorElement = el.querySelector('.item-creator');
-        const locationElement = el.querySelector('.item-location');
-        const sizeElement = el.querySelector('.item-size');
-        
-        if (nameElement && typeElement && creatorElement && locationElement && sizeElement) {
-          const details = `
-            <div class="detail-item">
-              <strong>Name:</strong> ${nameElement.innerHTML}
-            </div>
-            <div class="detail-item">
-              <strong>Type:</strong> ${typeElement.textContent || 'N/A'}
-            </div>
-            <div class="detail-item">
-              <strong>Creator:</strong> ${creatorElement.textContent || 'N/A'}
-            </div>
-            <div class="detail-item">
-              <strong>Location:</strong> ${locationElement.textContent || 'N/A'}
-            </div>
-            <div class="detail-item">
-              <strong>Size:</strong> ${sizeElement.textContent || 'N/A'}
-            </div>
-          `;
-          
-          modDetails.innerHTML = details;
-        }
-      }
-    });
+  public getItemElementById(id: string): HTMLElement {
+    return this.itemElements.get(id) as HTMLElement;
   }
 
   /**
-   * Display details for multiple selected mods.
-   * @param {Set<string>} selectedIds - Set of selected mod IDs
+   * Get a mod details element by its id.
+   * @param {string} id - The id of the mod.
+   * @returns {TreeItem | null} - The mod details element.
    */
-  private showMultipleModsDetails(selectedIds: Set<string>) {
-    const modDetails = document.getElementById('mod-details');
-    if (!modDetails) return;
-    
-    const count = selectedIds.size;
-    modDetails.innerHTML = `
-      <div class="detail-item">
-        <strong>${count} mods selected</strong>
-      </div>
-      <div class="detail-item">
-        <p>You can drag the selected mods to another category.</p>
-      </div>
-    `;
+  public getModDetailsElementById(id: string): TreeItem | null {
+    let modDetails: TreeItem | null = null;
+    const idUnescaped = id.replace(/\\/g, '');
+    for (const category of this.categories) {
+      const mod = category.children.find(item => item.id === idUnescaped);
+
+      if (mod) {
+        modDetails = mod;
+        break;
+      }
+    }
+
+    return modDetails
+  }
+
+  /**
+   * Get the parent element of the tree.
+   * @returns {HTMLElement} - The parent element of the tree.
+   */
+  public getTreeParentElement(): HTMLElement {
+    return this.treeContainer.parentElement as HTMLElement;
   }
 
   /************************
