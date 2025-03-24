@@ -1,0 +1,113 @@
+TODO:
+- For 1.0:
+    - [ ] Categories Management:
+        - [ ] Add
+        - [ ] Remove
+        - [ ] Rename
+        - [x] Reorder (D&D)
+    - [ ] Mods Management:
+        - [x] Toggle
+        - [ ] Add (install)
+        - [ ] Remove (uninstall || unsubscribe)
+        - [x] Reorder (with table headers)
+        - [x] Filter
+        - [x] Move between categories
+        - [ ] Update (force-download)
+        - [ ] Upload (publish || update published) (publish may be restricted as the vanilla launcher does not see mods published by other launchers)
+        - [ ] Lock (prevent updates)
+        - [ ] Copy to data (or alternatives)
+        - [ ] Copy to secondary
+        - [ ] Outdated detection
+        - [ ] Missing dependencies detection (workshop && internal)
+        - [x] Hightlight related packs in Pack View.
+        - [ ] Mod details view:
+            - [ ] Info from the mod page.
+            - [ ] Open mod folder.
+            - [ ] Open mod page in browser.
+    - [ ] Pack Management:
+        - [x] Filter
+        - [ ] Reorder (d&d && buttons in the list)
+        - [ ] Clearly show dependencies in load order.
+        - [x] Hightlight related mods in Mod View.
+        - [x] Full automatic load order.
+        - [ ] Manual load order:
+            - [ ] New mods to their automatic place
+            - [ ] Load order rules (set_pack_precedence & company)
+    - [ ] Advanced Management:
+        - [ ] Data view:
+            - [ ] Implement efficient way of getting the merged content of all the files in the load order (tricky, too many files).
+            - [ ] Tree of the merged content of all the files in the load order:
+                - [ ] Details of with pack they belong to
+                - [ ] Open file with default program.
+                - [ ] Choose to load specific file from a specific pack (through load order options).
+                - [ ] Filter.
+                - [ ] Reorder (tree headers)
+            - [ ] Diagnostics:
+                - [ ] Integrate RPFM's diagnostics (at least the more relevant ones).
+            - [ ] Conflict detection.
+            - [ ] Conflict resolution (though patches applied on launch).
+    - [ ] Launch options:
+        - [ ] Running game detection.
+        - [ ] Dynamic menu (mainly for SQL scripts).
+        - [ ] Move unit multiplier to SQL script.
+        - [ ] Autoapply translation patches
+        - [ ] Make more evident the patches applied on launch.
+        - [ ] Launch to save.
+        - [ ] Support custom launch flags from yaml.
+        - [ ] Support for post-launch log error detection.
+        - [ ] Dll injection? (low priority, as there is a lot of things to get working first and it needs investigation)
+    - [ ] Profiles:
+        - [ ] Select and apply profile.
+        - [ ] Profile manager:
+            - [ ] Create Profile
+            - [ ] Delete Profile
+            - [ ] Rename Profile
+            - [ ] Create Profile autorun shortcut.
+            - [ ] Show profile details.
+            - [ ] Profile sharing (copy mod list || copy to collection).
+            - [ ] Profile import (from load order || from collection).
+    - [ ] 3rd Party Integration:
+        - [ ] Workshop:
+            - [ ] Collections support (for improved mod list sharing).
+            - [ ] Dependencies support.
+            - [ ] Force-download support.
+            - [x] Pull mod info support.
+            - [x] BIN mod support.
+            - [x] Shogun 2 maps support.
+            - [ ] Upload support.
+            - [ ] Creator name support (so I can get rid of using the web API to get the mod creator's name).
+            - [ ] Support for uploading the generated pack (from launch options) as an unlisted mod for mod list sharing (need to figure out the best way to do this).
+            - [ ] Open in browser (workshop page).
+        - [ ] Epic? (I only have one game on Epic, so testing is going to be a pain).
+        - [ ] Nexus? (does anybody use this in Total War?)
+        - [ ] Loverslab? (serious doubts)
+        - [ ] Github? (maybe for generating mod packs from repos? Though this overlaps with RPFM MyMod Import feature)
+        - [ ] Moddb? (maybe for older games?)
+    - [ ] Multiplatform Support:
+        - [x] Windows
+        - [ ] Linux:
+            - [ ] Port windows-specific ifs (mainly related with executable paths and args)
+        - [ ] MacOS (nice to have, but I don't have a mac for testing)
+    - [ ] Status bar:
+        - [ ] Loading bar for background processes.
+        - [ ] Links to Github, Discord, Patreon, About, Updater.
+    - [ ] Open folder menu:
+        - [ ] Quick access to game folder.
+        - [ ] Quick access to data.
+        - [ ] Quick access to secondary.
+        - [ ] Quick access to content.
+        - [ ] Quick access to game config.
+        - [ ] Quick access to config.
+        - [ ] Quick access to error logs.
+    - [ ] Auto-updater:
+        - [ ] Check for updates.
+        - [ ] Download and install updates.
+        - [ ] Download and install updates (schemas).
+        - [ ] Download and install updates (sql scripts).
+    - [ ] Configurable settings.
+    - [ ] Configurable tools support.
+    - [ ] First time user experience:
+        - [ ] Pretty installer?
+        - [ ] Welcome message.
+        - [ ] Quick tour.
+        
