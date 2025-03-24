@@ -37,6 +37,7 @@ export class ModTree {
   private categoriesOrder: string[];
   private dragCounter: number;
   private dragOverElement: HTMLElement | null;
+  private draggingCategory: boolean;
       
   constructor(main: Main) {
     this.categoryElements = new Map();
@@ -46,7 +47,7 @@ export class ModTree {
     this.categoriesOrder = [];
     this.dragCounter = 0;
     this.dragOverElement = null;
-
+    this.draggingCategory = false;
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
     });
@@ -182,6 +183,13 @@ export class ModTree {
       
       categoryElement.appendChild(categoryHeader);
       categoryElement.appendChild(itemsContainer);
+
+      // Empty drop element for mods at the end of categories.
+      const emptyModDropElement = document.createElement('div');
+      emptyModDropElement.className = 'empty-drop-element';
+      categoryElement.appendChild(emptyModDropElement);
+      this.setupDrop(main, categoryElement);
+
       treeContainer.appendChild(categoryElement);
 
       this.categoryElements.set(categoryElement.getAttribute('data-id') || '', categoryElement);
@@ -449,9 +457,11 @@ export class ModTree {
     element.setAttribute('draggable', 'true');
 
     element.addEventListener("dragstart", (e) => {
+      this.draggingCategory = true;
+      e.stopPropagation();
+      
       e.dataTransfer?.setData("text/plain", "category:" + (element.dataset.id || ''));     
       element.classList.add("dragging");
-      e.stopPropagation();
     });
 
     element.addEventListener("dragend", () => {
@@ -469,6 +479,7 @@ export class ModTree {
 
     element.addEventListener("dragstart", (e) => {
       this.dragCounter = 0;
+      this.draggingCategory = false;
 
       // Do not propagate the event to the parent, if it has a parent. Otherwise this triggers a double event.
       e.stopPropagation();
@@ -535,9 +546,16 @@ export class ModTree {
    */
   private setupDragOver(element: HTMLElement) {
     if (element.classList.contains('tree-category')) {
-      const emptyElement = element.firstChild as HTMLElement;
-      if (!emptyElement.classList.contains('drag-over')) {
-        emptyElement.classList.add('drag-over');
+      if (this.draggingCategory) {
+        const emptyElement = element.firstChild as HTMLElement;
+        if (!emptyElement.classList.contains('drag-over')) {
+          emptyElement.classList.add('drag-over');
+        }
+      } else {
+        const emptyElement = element.lastChild as HTMLElement;
+        if (!emptyElement.classList.contains('drag-over')) {
+          emptyElement.classList.add('drag-over');
+        }
       }
     }
 
@@ -552,8 +570,13 @@ export class ModTree {
    */
   private removeDragOver(element: HTMLElement) {
     if (element.classList.contains('tree-category')) {
-      const emptyElement = element.firstChild as HTMLElement;
-      emptyElement.classList.remove('drag-over');
+      if (this.draggingCategory) {
+        const emptyElement = element.firstChild as HTMLElement;
+        emptyElement.classList.remove('drag-over');
+      } else {
+        const emptyElement = element.lastChild as HTMLElement;
+        emptyElement.classList.remove('drag-over');
+      }
     }
     element.classList.remove("drag-over");
   }
