@@ -35,6 +35,8 @@ export class ModTree {
   private currentSortField: string = 'name';
   private sortDirection: 'asc' | 'desc' = 'asc';
   private categoriesOrder: string[];
+  private dragCounter: number;
+  private dragOverElement: HTMLElement | null;
       
   constructor(main: Main) {
     this.categoryElements = new Map();
@@ -42,6 +44,8 @@ export class ModTree {
     this.treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
     this.selectedItems = new Set<string>();
     this.categoriesOrder = [];
+    this.dragCounter = 0;
+    this.dragOverElement = null;
 
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
@@ -464,7 +468,8 @@ export class ModTree {
     element.setAttribute('draggable', 'true');
 
     element.addEventListener("dragstart", (e) => {
-      
+      this.dragCounter = 0;
+
       // Do not propagate the event to the parent, if it has a parent. Otherwise this triggers a double event.
       e.stopPropagation();
       
@@ -484,6 +489,13 @@ export class ModTree {
 
     element.addEventListener("dragend", () => {
       this.removeDragging(element);
+
+      // Cleanup any remaining drag-over elements, as this can happen outside the dragover element 
+      // and we don't have another way to clean them up.
+      if (this.dragOverElement !== null) {
+        this.removeDragOver(this.dragOverElement);
+        this.dragOverElement = null;
+      }
     });
   }
 
@@ -553,7 +565,18 @@ export class ModTree {
    */
   private async setupDrop(main: Main, element: HTMLElement) {
 
+    // NOTE: dragenter is called twice. Why? Nested draggable divs. Anyway, to avoid the double call causing problems,
+    // we have to store the element in the dragOverElement variable and check if we actually moved to another element.
     element.addEventListener("dragenter", () => {
+      this.dragCounter++;
+
+      if (this.dragOverElement === null) {
+        this.dragOverElement = element;
+      } else if (this.dragOverElement.getAttribute('data-id') !== element.getAttribute('data-id')) {
+        this.removeDragOver(this.dragOverElement);
+        this.dragOverElement = element;
+      }
+
       this.setupDragOver(element);
     });
 
@@ -562,8 +585,15 @@ export class ModTree {
       e.preventDefault();
     });
     
+    // NOTE: dragEnter already controls when the element should have a drag-over state. 
+    // This is just for the situation where we leave the element and the new one is not a dropzone.
     element.addEventListener("dragleave", () => {
-      this.removeDragOver(element);
+      this.dragCounter--;
+
+      if (this.dragCounter === 0 && this.dragOverElement) {
+        this.removeDragOver(this.dragOverElement);
+        this.dragOverElement = null;
+      }
     });
     
     element.addEventListener("drop", (e) => {
