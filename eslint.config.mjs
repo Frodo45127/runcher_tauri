@@ -17,7 +17,8 @@ export default tseslint.config(
         'warn', 
         {
           'definedTypes': [
-            'HTMLElement'
+            'HTMLElement',
+            'DragEvent'
           ]
         }
       ]
