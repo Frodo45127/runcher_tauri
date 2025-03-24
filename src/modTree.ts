@@ -781,7 +781,7 @@ export class ModTree {
       // Mods are added at the end of the target category. 
       for (const sourceId of sourceIds) {
         const itemElement = this.itemElements.get(sourceId);
-        if (itemElement) {
+        if (itemElement && itemElement.dataset.categoryId !== targetId) {
           itemElement.dataset.categoryId = targetId;
           targetContainer.appendChild(itemElement);
         }
