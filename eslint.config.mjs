@@ -18,7 +18,8 @@ export default tseslint.config(
         {
           'definedTypes': [
             'HTMLElement',
-            'DragEvent'
+            'DragEvent',
+            'MouseEvent'
           ]
         }
       ]
