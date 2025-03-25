@@ -422,9 +422,10 @@ export class ModTree {
 
   /**
    * Highlight an item in the tree based on the pack name.
+   * @param {Main} main - The main instance of the application.
    * @param {string} packName - The name of the pack to highlight.
    */
-  public highlightTreeItemByPack(packName: string) {
+  public highlightTreeItemByPack(main: Main, packName: string) {
     const normalizedPackName = packName.toLowerCase();  
     let foundItem: string | null = null;
   
@@ -440,7 +441,7 @@ export class ModTree {
     
     if (foundItem) {
       this.selectTreeItem(
-        { settingsManager: { appSettings: {}, saveSettings: () => {} } } as Main, 
+        main, 
         foundItem,
         false,
         false

@@ -191,7 +191,7 @@ export class PackList {
    * @param {string} packName - The name of the selected pack.
    */
   private syncWithTreeSelection(main: Main, packName: string) {
-    main.modTree.highlightTreeItemByPack(packName);
+    main.modTree.highlightTreeItemByPack(main, packName);
   }
 
   /**
