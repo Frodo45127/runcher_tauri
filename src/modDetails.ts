@@ -1,4 +1,5 @@
 import { Main } from "./main";
+import { steamFormatToHtml } from "./utils/steamFormat";
 
 export class ModDetailsPanel {
   private slidingPanel: HTMLElement;
@@ -103,7 +104,7 @@ export class ModDetailsPanel {
         <div class="mod-detail-section">
           <h3>Description</h3>
           <div class="mod-description">
-            ${modDetails.description}
+            ${steamFormatToHtml(modDetails.description)}
           </div>
         </div>
       ` : ''}
