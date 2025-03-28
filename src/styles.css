@@ -530,7 +530,6 @@ body {
 }
 
 .list-item.drag-over {
-  transform: translateY(100%);
   background-color: var(--drag-over-bg);
   border: 2px dashed var(--primary-color);
 }

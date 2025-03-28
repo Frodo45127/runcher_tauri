@@ -156,10 +156,10 @@ export class PackList {
    * @param {HTMLElement} element - The element to which the events will be applied.
    */
   private setupDragDrop(main: Main, element: HTMLElement) {
-    let dragOverTimeout: number | null = null;
-
     element.setAttribute('draggable', 'true');
+
     element.addEventListener('dragstart', (e) => {
+      this.dragCounter = 0;
       this.setupDragging(element);
       e.dataTransfer?.setData('text/plain', element.dataset.id || '');
       
@@ -169,45 +169,46 @@ export class PackList {
     
     element.addEventListener('dragend', () => {
       this.removeDragging(element);
+
+      // Cleanup any remaining drag-over elements, as this can happen outside the dragover element 
+      // and we don't have another way to clean them up.
+      if (this.dragOverElement !== null) {
+        this.removeDragOver(this.dragOverElement);
+        this.dragOverElement = null;
+      }
+
       element.style.zIndex = '';
       
-      // Clean any pending timeout
-      if (dragOverTimeout) {
-        clearTimeout(dragOverTimeout);
-        dragOverTimeout = null;
-      }
+      // Remove the dragover state from all elements of the list.
+      //main.packList.listElements.forEach(item => {
+      //  this.removeDragOver(item);
+      //});
     });
 
     element.addEventListener("dragenter", () => {
+      this.dragCounter++;
+
+      if (this.dragOverElement === null) {
+        this.dragOverElement = element;
+      } else if (this.dragOverElement.getAttribute('data-id') !== element.getAttribute('data-id')) {
+        this.removeDragOver(this.dragOverElement);
+        this.dragOverElement = element;
+      }
+
+      this.setupDragOver(element);
     });
     
     element.addEventListener('dragover', (e) => {
+      this.setupDragOver(element);
       e.preventDefault();
-
-      // Clean previous timeout if exists
-      if (dragOverTimeout) {
-        clearTimeout(dragOverTimeout);
-      }
-      
-      // Add the class with a small delay to avoid flickering
-      dragOverTimeout = window.setTimeout(() => {
-        this.setupDragOver(element);
-      }, 50);
     });
     
-    element.addEventListener('dragleave', (e) => {
-      // Check if the element we are over is the current element
-      const rect = element.getBoundingClientRect();
-      const x = e.clientX;
-      const y = e.clientY;
-      
-      if (
-        x <= rect.left ||
-        x >= rect.right ||
-        y <= rect.top ||
-        y >= rect.bottom
-      ) {
-        this.removeDragOver(element);
+    element.addEventListener('dragleave', () => {
+      this.dragCounter--;
+
+      if (this.dragCounter === 0 && this.dragOverElement) {
+        this.removeDragOver(this.dragOverElement);
+        this.dragOverElement = null;
       }
     });
     
