@@ -29,7 +29,6 @@ export class PackList {
   private sortDirection: 'asc' | 'desc' = 'asc';
   private dragCounter: number;
   private dragOverElement: HTMLElement | null;
-  private dragOverTimeout: number | null;
 
   constructor(main: Main) {
     this.listElements = new Map();
@@ -38,7 +37,6 @@ export class PackList {
     this.listContainer = document.getElementById('list-items-container') as HTMLElement;
     this.dragCounter = 0;
     this.dragOverElement = null;
-    this.dragOverTimeout = null;
 
     this.listFilterInput.addEventListener('input', () => {
       this.filterListItems(main.settingsManager, this.listFilterInput.value);
