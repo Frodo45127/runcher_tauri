@@ -53,6 +53,12 @@ pub struct LoadOrder {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum LoadOrderDirectionMove {
+    Up,
+    Down,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ImportedLoadOrderMode {
     Runcher(String),
     Modlist(String),
@@ -340,6 +346,52 @@ impl LoadOrder {
         }
 
         folder_paths.push_str(&folder_paths_mods);
+    }
+
+    pub fn move_mod_in_direction(
+        &mut self,
+        mod_id: &str,
+        direction: LoadOrderDirectionMove,
+    ) {
+        self.automatic = false;
+        if let Some(index) = self.mods.iter().position(|id| id == mod_id) {
+            match direction {
+                LoadOrderDirectionMove::Up => {
+                    if index > 0 {
+                        self.mods.swap(index, index - 1);
+                    }
+                }
+                LoadOrderDirectionMove::Down => {
+                    if index < self.mods.len() - 1 {
+                        self.mods.swap(index, index + 1);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn move_mod_above_another(
+        &mut self,
+        source_id: &str,
+        target_id: &str,
+    ) {
+        if source_id == target_id {
+            return;
+        }
+
+        self.automatic = false;
+        if let Some(index) = self.mods.iter().position(|id| id == source_id) {
+            if let Some(mut index_target) = self.mods.iter().position(|id| id == target_id) {
+                
+                // Compensate for the index shift after removing the source mod.
+                if index_target > index {
+                    index_target -= 1;
+                }
+
+                self.mods.remove(index);
+                self.mods.insert(index_target, source_id.to_string());
+            }
+        }
     }
 
     fn process_mod(

@@ -513,11 +513,49 @@ body {
 }
 
 .list-item {
-  display: flex;
-  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  position: relative;
+}
+
+.list-item.dragging {
+  opacity: 0.5;
+  background-color: var(--panel-bg);
+  border: 2px dashed var(--primary-color);
+}
+
+.list-item.drag-over {
+  transform: translateY(100%);
+  background-color: var(--drag-over-bg);
+  border: 2px dashed var(--primary-color);
+}
+
+.list-item.drag-over::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 100%;
+  height: 2px;
+  background-color: var(--primary-color);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
 }
 
 .list-item > div {
@@ -546,16 +584,6 @@ body {
 
 .list-item.selected {
   background-color: var(--tree-selected);
-}
-
-.list-item.dragging {
-  opacity: 0.6;
-  border: 1px dashed var(--primary-color);
-}
-
-.list-item.drag-over {
-  background-color: var(--drag-over-bg);
-  border: 1px dashed var(--primary-color);
 }
 
 /* Estilos para los botones de movimiento */

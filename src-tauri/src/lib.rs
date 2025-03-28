@@ -12,9 +12,10 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 use tauri::Listener;
+use serde::{Serialize, Deserialize};
 
 use crate::mod_manager::game_config::GameConfig;
-use crate::mod_manager::load_order::LoadOrder;
+use crate::mod_manager::load_order::{LoadOrder, LoadOrderDirectionMove};
 use crate::mod_manager::profiles::Profile;
 
 mod mod_manager;
@@ -572,7 +573,7 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
             //let schema_path = schemas_path().unwrap().join(game.schema_file_name());
             //*SCHEMA.write().unwrap() = Schema::load(&schema_path, None).ok();
             *GAME_SELECTED.write().unwrap() = game.clone();
-
+            
             // Trigger an update of all game configs, just in case one needs update.
             let _ = GameConfig::update(game.key());
 
@@ -896,45 +897,34 @@ struct ListItem {
 }
 
 #[tauri::command]
-async fn move_list_item(app: tauri::AppHandle, item_id: &str, direction: &str) -> Result<Vec<ListItem>, String> {
-
-    // PLACEHOLDER
+async fn move_pack_in_load_order_in_direction(app: tauri::AppHandle, mod_id: &str, direction: LoadOrderDirectionMove) -> Result<Vec<ListItem>, String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
-    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+    let mod_id = mod_id.replace("\\", "");
 
-    //game_config.mods_mut().get_mut(mod_id).unwrap().set_enabled(is_checked);
-
-    let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
+    load_order.move_mod_in_direction(&mod_id, direction);
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
-    
-    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
 
     *GAME_LOAD_ORDER.write().unwrap() = load_order;
-    *GAME_CONFIG.lock().unwrap() = Some(game_config);
 
     Ok(items)
 }
 
 #[tauri::command]
-async fn reorder_list_items(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<ListItem>, String> {
-
-    // PLACEHOLDER
+async fn move_pack_in_load_order(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<ListItem>, String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
-    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+    let source_id = source_id.replace("\\", "");
+    let target_id = target_id.replace("\\", "");
 
-    //game_config.mods_mut().get_mut(mod_id).unwrap().set_enabled(is_checked);
-
-    let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
+    load_order.move_mod_above_another(&source_id, &target_id);
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
-    
-    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
 
     *GAME_LOAD_ORDER.write().unwrap() = load_order;
-    *GAME_CONFIG.lock().unwrap() = Some(game_config);
 
     Ok(items)
 }
@@ -1006,8 +996,8 @@ pub fn run() {
             get_available_date_formats,
             browse_folder,
             handle_change_game_selected,
-            move_list_item,
-            reorder_list_items,
+            move_pack_in_load_order_in_direction,
+            move_pack_in_load_order,
             reorder_categories
         ])
         .run(tauri::generate_context!())

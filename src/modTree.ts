@@ -785,7 +785,7 @@ export class ModTree {
         isChecked: isChecked 
       }) as ListItem[];
 
-      main.packList.renderListItems(main, listData);
+      main.packList.renderPackList(main, listData);
     } catch (error) {
       console.error('Failed to handle mod toggled:', error);
     }
