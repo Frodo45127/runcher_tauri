@@ -6,7 +6,11 @@ import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
 import { ModDetailsPanel } from "./modDetails";
 // Store the main instance, which should contain everything in the app.
-let main: Main;
+declare global {
+
+  /* eslint no-var: "off" */
+  var main: Main;
+}
 
 export class Main {
   public settingsManager: SettingsManager;
@@ -217,5 +221,5 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.error('Error during window ready notification:', error);
   } 
 
-  main = new Main();
+  globalThis.main = new Main();
 });
