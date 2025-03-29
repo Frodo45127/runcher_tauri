@@ -21,6 +21,10 @@
       <div class="main-content">
         <!-- Tree view -->
         <div class="tree-view">
+          <div id="tree-loading-overlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading mods...</div>
+          </div>
           <div id="tree-container">
             <!-- Will be populated dynamically -->
           </div>
@@ -52,6 +56,10 @@
             <div class="resize-handle"></div>
             <div class="list-container">
               <div class="list-view">
+                <div id="list-loading-overlay" class="loading-overlay">
+                  <div class="loading-spinner"></div>
+                  <div class="loading-text">Loading packs...</div>
+                </div>
                 <div class="list-header">
                   <div class="header-item">Pack</div>
                   <div class="header-item">Type</div>
@@ -80,6 +88,18 @@
           <button class="status-btn"><i class="fa-solid fa-user"></i></button>
         </div>
       </div>
+    </div>
+
+    <!-- Loading Overlays -->
+    <div id="app-loading-overlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading application...</div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div id="progress-bar" class="progress-bar">
+      <div class="progress-fill"></div>
+      <div class="progress-text">0%</div>
     </div>
 
     <!-- Settings Modal -->

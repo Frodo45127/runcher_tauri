@@ -5,6 +5,8 @@ import { ModTree, TreeCategory } from "./modTree";
 import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
 import { ModDetailsPanel } from "./modDetails";
+import { LoadingManager } from "./loadingManager";
+
 // Store the main instance, which should contain everything in the app.
 declare global {
 
@@ -20,11 +22,13 @@ export class Main {
   public settingsModal: SettingsModal;
   public modDetails: ModDetailsPanel;
   public statusMessage: HTMLElement;
+  public loadingManager: LoadingManager;
 
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
 
   constructor() {
+    this.loadingManager = new LoadingManager();
     this.sidebar = new Sidebar(this);
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
@@ -182,11 +186,21 @@ export class Main {
    * @param {string} gameId - The id of the game.
    */
   public async handleGameSelectedChange(gameId: string) {
+
+    // Show the loading indicators.
+    this.loadingManager.showTreeLoading();
+    this.loadingManager.showListLoading();    
+    this.loadingManager.showProgress();
+
     try {
       const [treeData, listData] = await invoke("handle_change_game_selected", { gameId }) as [TreeCategory[], ListItem[]];
+      
       this.modTree.categories = treeData;
       this.modTree.renderTree(this);      
-      this.packList.renderPackList(this, listData);
+      this.loadingManager.hideTreeLoading();
+    
+      await this.packList.renderPackList(this, listData);
+      this.loadingManager.hideListLoading();
       this.modDetails.clearContent();
         
       // Expand the categories saved in the settings.
@@ -206,13 +220,17 @@ export class Main {
     } catch (error) {
       console.error("Failed to handle checkbox change:", error);
     }
+    finally {
+      this.loadingManager.hideTreeLoading();
+      this.loadingManager.hideListLoading();
+      this.loadingManager.hideProgress();
+    }
   }
 }
 
 // Initialize the main instance once the DOM is loaded.
 window.addEventListener("DOMContentLoaded", async () => {
-  console.log('DOM fully loaded');
-  
+  window.name = "main";
   try {
     // Notify Rust that the window is ready
     const response = await invoke('on_window_ready');

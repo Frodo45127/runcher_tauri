@@ -11,7 +11,7 @@ use std::{cell::LazyCell, fs::DirBuilder};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
-use tauri::Listener;
+use tauri::{Emitter, Listener, Manager};
 use serde::{Serialize, Deserialize};
 
 use crate::mod_manager::game_config::GameConfig;
@@ -84,6 +84,16 @@ const VANILLA_MOD_LIST_FILE_NAME: &str = "used_mods.txt";
 const CUSTOM_MOD_LIST_FILE_NAME: &str = "mod_list.txt";
 const USER_SCRIPT_FILE_NAME: &str = "user.script.txt";
 const USER_SCRIPT_EMPIRE_FILE_NAME: &str = "user.empire_script.txt";
+
+/// Progress payload for the progress event. Basically, it's for providing a way to update the progress bar from the Rust side.
+/// The id is:
+/// - 0: Generic 0-100 loading process.
+#[derive(Serialize, Clone)]
+struct ProgressPayload {
+    id: i32,
+    progress: i32,
+    total: i32,
+}
 
 #[tauri::command]
 fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
@@ -610,13 +620,21 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
                 show_dialog(self.main_window(), error, false);
             }
 */
+
+            send_progress_event(&app, 10, 100);
+
             let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
 
             let _ = game_config.update_mod_list(&app, &game, &game_path, &mut load_order, false)?;
 
             let mods = load_mods(&app, &game, &game_config).await?;
+
+            send_progress_event(&app, 50, 100);
+
             let items = load_packs(&app, &game_config, &game, &game_path, &load_order).await?;
-            
+
+            send_progress_event(&app, 90, 100);
+
             *GAME_LOAD_ORDER.write().unwrap() = load_order;
 /*
             // Load the mods to the UI. This does an early return, just in case you add something after this.
@@ -631,6 +649,8 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
                 Err(error) => show_dialog(self.main_window(), error, false),
             }
 */
+
+            send_progress_event(&app, 100, 100);
 
             Ok((mods, items))
         },
@@ -964,6 +984,14 @@ async fn reorder_categories(app: tauri::AppHandle, source_id: &str, target_id: &
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
     
     Ok(categories_order)
+}
+
+
+fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
+    let _ = app.get_webview_window("main").unwrap().emit(
+        "loading://progress",
+        ProgressPayload { id: 0, progress, total },
+    );
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
