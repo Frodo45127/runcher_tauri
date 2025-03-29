@@ -26,7 +26,7 @@ TODO:
             - [ ] Open mod page in browser.
     - [ ] Pack Management:
         - [x] Filter
-        - [ ] Reorder (d&d && buttons in the list)
+        - [x] Reorder (d&d && buttons in the list)
         - [ ] Clearly show dependencies in load order.
         - [x] Hightlight related mods in Mod View.
         - [x] Full automatic load order.
@@ -46,6 +46,9 @@ TODO:
                 - [ ] Integrate RPFM's diagnostics (at least the more relevant ones).
             - [ ] Conflict detection.
             - [ ] Conflict resolution (though patches applied on launch).
+        - [ ] Load Order Sharing:
+            - [ ] Sharing through load order string.
+            - [ ] Sharing through direct vpn tunnel.
     - [ ] Launch options:
         - [ ] Running game detection.
         - [ ] Dynamic menu (mainly for SQL scripts).
