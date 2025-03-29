@@ -54,6 +54,9 @@ regex = "^1"
 # Support for unpacking Shogun 2 maps.
 flate2 = "^1"
 
+# Support for open files in a native way.
+open = "^5"
+
 # Steam Workshop support.
 #steam-workshop-api = "^0.2"
 steam-workshop-api = { git = "https://github.com/Frodo45127/rs-steam-workshop-api.git" }

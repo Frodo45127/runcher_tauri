@@ -4293,6 +4293,7 @@ dependencies = [
  "futures-util",
  "getset",
  "interprocess",
+ "open",
  "rand 0.8.5",
  "rayon",
  "regex",

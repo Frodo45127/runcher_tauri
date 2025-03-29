@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { Main } from "./main";
 import { steamFormatToHtml } from "./utils/steamFormat";
 
@@ -5,6 +6,8 @@ export class ModDetailsPanel {
   private slidingPanel: HTMLElement;
   private arrow: HTMLElement;
   private content: HTMLElement;
+  private openModFolderBtn: HTMLButtonElement;
+  private openModPageBtn: HTMLButtonElement;
   private currentItemId: string;
   
   constructor() {
@@ -26,31 +29,25 @@ export class ModDetailsPanel {
     const panelActions = document.createElement('div');
     panelActions.className = 'panel-actions';
 
-    const openFolderBtn = document.createElement('button');
-    openFolderBtn.className = 'panel-btn';
-    openFolderBtn.title = 'Open Mod Folder';
-    openFolderBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
-    openFolderBtn.addEventListener('click', () => {
-      // TODO: Implement open mod folder functionality
-      console.log('Open mod folder clicked');
-    });
+    this.openModFolderBtn = document.createElement('button');
+    this.openModFolderBtn.className = 'panel-btn';
+    this.openModFolderBtn.title = 'Open Mod Folder';
+    this.openModFolderBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
+    this.openModFolderBtn.addEventListener('click', () => this.openModFolder());
 
-    const openBrowserBtn = document.createElement('button');
-    openBrowserBtn.className = 'panel-btn';
-    openBrowserBtn.title = 'Open Mod Page in Browser';
-    openBrowserBtn.innerHTML = '<i class="fa-solid fa-external-link-alt"></i>';
-    openBrowserBtn.addEventListener('click', () => {
-      // TODO: Implement open mod page in browser functionality
-      console.log('Open mod page in browser clicked');
-    });
+    this.openModPageBtn = document.createElement('button');
+    this.openModPageBtn.className = 'panel-btn';
+    this.openModPageBtn.title = 'Open Mod Page in Browser';
+    this.openModPageBtn.innerHTML = '<i class="fa-solid fa-external-link-alt"></i>';
+    this.openModPageBtn.addEventListener('click', () => this.openModUrl());
 
     const closeButton = document.createElement('button');
     closeButton.className = 'sliding-panel-close';
     closeButton.innerHTML = '<i class="fa-solid fa-times"></i>';
     closeButton.addEventListener('click', () => this.closeSlidingPanel());
 
-    panelActions.appendChild(openFolderBtn);
-    panelActions.appendChild(openBrowserBtn);
+    panelActions.appendChild(this.openModFolderBtn);
+    panelActions.appendChild(this.openModPageBtn);
     header.appendChild(title);
     header.appendChild(panelActions);
     header.appendChild(closeButton);
@@ -137,6 +134,32 @@ export class ModDetailsPanel {
     this.currentItemId = itemId;
     if (!this.slidingPanel.classList.contains('open') && !isSameItem) {
       this.openSlidingPanel();
+    }
+  }
+
+  /**
+   * Open the mod folder in the file explorer.
+   */
+  private async openModFolder() {
+    try {
+      await invoke("open_mod_folder", { 
+        id: this.currentItemId 
+      });
+    } catch (error) {
+      console.error("Failed to open mod folder:", error);
+    }
+  }
+
+  /**
+   * Open the mod url in the browser.
+   */
+  private async openModUrl() {
+    try {
+      await invoke("open_mod_url", { 
+        id: this.currentItemId 
+      });
+    } catch (error) {
+      console.error("Failed to open mod url:", error);
     }
   }
 

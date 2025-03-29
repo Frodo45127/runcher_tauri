@@ -551,6 +551,42 @@ async fn browse_folder(app: tauri::AppHandle, title: String, current_path: Strin
 }
 
 #[tauri::command]
+async fn open_mod_folder(id: String) -> Result<(), String> {
+    let mod_id = id.replace("\\", "");
+    
+    let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let mod_info = game_config.mods().get(&mod_id).unwrap();
+    match mod_info.paths().first().cloned() {
+        Some(mut path) => {
+            path.pop();
+            let _ = open::that(path);
+            Ok(())
+        }
+        None => Err("No path found".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn open_mod_url(id: String) -> Result<(), String> {
+    let mod_id = id.replace("\\", "");
+    if mod_id.is_empty() {
+        return Err("No mod ID found".to_string())
+    }
+
+    let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    let mod_info = game_config.mods().get(&mod_id).unwrap();
+    let remote_id = mod_info.steam_id().clone().unwrap_or_default();
+
+    // TODO: Rewrite this so it's not steam-exclusive.
+    if !remote_id.is_empty() {
+        let _ = open::that("https://steamcommunity.com/sharedfiles/filedetails/?id=".to_string() + &remote_id);
+    } else {
+        return Err("No remote ID found".to_string())
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn handle_change_game_selected(app: tauri::AppHandle, game_id: String) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
     let old_game = GAME_SELECTED.read().unwrap().clone();
     let old_game_id = old_game.key();
@@ -1026,7 +1062,9 @@ pub fn run() {
             handle_change_game_selected,
             move_pack_in_load_order_in_direction,
             move_pack_in_load_order,
-            reorder_categories
+            reorder_categories,
+            open_mod_folder,
+            open_mod_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
