@@ -22,7 +22,7 @@ const enum LoadOrderDirectionMove {
 
 export class PackList {
   private listHeader: HTMLElement;
-  private listContainer: HTMLElement;
+  public listContainer: HTMLElement;
   private listElements: Map<string, HTMLElement>;
   private listFilterInput: HTMLInputElement;
   private currentSortField: string = 'order';

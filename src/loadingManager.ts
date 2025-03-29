@@ -1,4 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
+import { Main } from "./main";
 
 interface ProgressPayload {
   id: number;
@@ -52,30 +53,38 @@ export class LoadingManager {
 
   /**
    * Show the tree loading overlay
+   * @param {Main} main - The main instance.
    */
-  public showTreeLoading() {
+  public showTreeLoading(main: Main) {
     this.treeOverlay.classList.add('active');
+    main.modTree.treeContainer.parentElement?.classList.add('tree-view-overlay');
   }
 
   /**
    * Hide the tree loading overlay
+   * @param {Main} main - The main instance.
    */
-  public hideTreeLoading() {
+  public hideTreeLoading(main: Main) {
     this.treeOverlay.classList.remove('active');
+    main.modTree.treeContainer.parentElement?.classList.remove('tree-view-overlay');
   }
 
   /**
    * Show the list loading overlay
+   * @param {Main} main - The main instance.
    */
-  public showListLoading() {
+  public showListLoading(main: Main) {
     this.listOverlay.classList.add('active');
+    main.packList.listContainer.parentElement?.classList.add('list-view-overlay');
   }
 
   /**
    * Hide the list loading overlay
+   * @param {Main} main - The main instance.
    */
-  public hideListLoading() {
+  public hideListLoading(main: Main) {
     this.listOverlay.classList.remove('active');
+    main.packList.listContainer.parentElement?.classList.remove('list-view-overlay');
   }
 
   /**

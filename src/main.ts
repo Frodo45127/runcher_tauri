@@ -28,7 +28,6 @@ export class Main {
   private settingsBtn: HTMLButtonElement;
 
   constructor() {
-    this.loadingManager = new LoadingManager();
     this.sidebar = new Sidebar(this);
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
@@ -46,113 +45,48 @@ export class Main {
     
     // Once everything is loaded, apply the settings.
     this.settingsManager = new SettingsManager(this);
+    this.loadingManager = new LoadingManager();
 
     // Initialize resizable panels
     this.initializeResizablePanels();
   }
 
   // Initialize resizable panels
-  initializeResizablePanels() {
-    // Set right panel width from settings
-    document.documentElement.style.setProperty('--right-panel-width', `${this.settingsManager.appSettings.right_panel_width}px`);
+  private initializeResizablePanels() {
+    const rightPanel = document.querySelector('.right-panel') as HTMLElement;
+    const resizeHandle = document.querySelector('.horizontal-resize-handle') as HTMLElement;
+    let isResizing = false;
+    let startX: number;
+    let startWidth: number;
 
-    // Vertical resizing for panels
-    const resizables = document.querySelectorAll('.resizable');
-    
-    resizables.forEach((panel: Element) => {
-      const handle = panel.querySelector('.resize-handle');
-      const panelId = (panel as HTMLElement).id;
-      
-      // Apply saved height from settings if available
-      if (panelId && this.settingsManager.appSettings.panel_heights[panelId]) {
-        (panel as HTMLElement).style.height = `${this.settingsManager.appSettings.panel_heights[panelId]}px`;
+    const startResize = (e: MouseEvent) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = rightPanel.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+    };
+
+    const stopResize = () => {
+      isResizing = false;
+      document.body.style.cursor = 'default';
+    };
+
+    const resize = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const width = startWidth - (e.clientX - startX);
+      const minWidth = 200;
+      const maxWidth = window.innerWidth * 0.5;
+
+      if (width >= minWidth && width <= maxWidth) {
+        rightPanel.style.width = `${width}px`;
+        document.documentElement.style.setProperty('--right-panel-width', `${width}px`);
       }
-      
-      if (handle) {
-        handle.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          const mouseEvent = e as MouseEvent;
-          const startY = mouseEvent.clientY;
-          const startHeight = parseInt(window.getComputedStyle(panel).height, 10);
-          
-          /**
-           * On mouse move.
-           * @param {MouseEvent} moveEvent - The mouse event.
-           */
-          function onMouseMove(moveEvent: MouseEvent) {
-            const dy = moveEvent.clientY - startY;
-            const newHeight = startHeight + dy;
-            if (newHeight > 100) { // Minimum height
-              (panel as HTMLElement).style.height = `${newHeight}px`;
-            }
-          }
+    };
 
-          /**
-           * On mouse up.
-           */
-          function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            
-            // Save the new height to settings
-            if (panelId) {
-              main.settingsManager.appSettings.panel_heights[panelId] = parseInt(window.getComputedStyle(panel).height, 10);
-              main.settingsManager.saveSettings();
-            }
-            
-            // Make the last panel expand to fill remaining space
-            const panels = Array.from(resizables);
-            if (panels.length > 0 && panels[panels.length - 1] !== panel) {
-              const lastPanel = panels[panels.length - 1] as HTMLElement;
-              lastPanel.style.flex = '1';
-            }
-          }
-          
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        });
-      }
-    });
-    
-    // Horizontal resizing for main content and right panel
-    const horizontalHandle = document.querySelector('.horizontal-resize-handle');
-    if (horizontalHandle) {
-      horizontalHandle.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        const mouseEvent = e as MouseEvent;
-        const startX = mouseEvent.clientX;
-        const startWidth = this.settingsManager.appSettings.right_panel_width;
-        
-        /**
-         * On mouse move.
-         * @param {MouseEvent} moveEvent - The mouse event.
-         */
-        function onMouseMove(moveEvent: MouseEvent) {
-          // Calculate how much to resize based on mouse movement
-          const dx = moveEvent.clientX - startX;
-          const containerWidth = document.querySelector('.app-container')?.clientWidth || 0;
-          const newWidth = Math.max(200, Math.min(containerWidth * 0.6, startWidth - dx));
-          
-          // Update CSS variable for right panel width
-          document.documentElement.style.setProperty('--right-panel-width', `${newWidth}px`);
-          main.settingsManager.appSettings.right_panel_width = newWidth;
-        }
-
-        /**
-         * On mouse up.
-         */
-        function onMouseUp() {
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-          
-          // Save the new width to settings
-          main.settingsManager.saveSettings();
-        }
-        
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-      });
-    }
+    resizeHandle.addEventListener('mousedown', startResize);
+    document.addEventListener('mousemove', resize);
+    document.addEventListener('mouseup', stopResize);
   }
  
   // Launch game function
@@ -188,8 +122,8 @@ export class Main {
   public async handleGameSelectedChange(gameId: string) {
 
     // Show the loading indicators.
-    this.loadingManager.showTreeLoading();
-    this.loadingManager.showListLoading();    
+    this.loadingManager.showTreeLoading(this);
+    this.loadingManager.showListLoading(this);    
     this.loadingManager.showProgress();
 
     try {
@@ -197,10 +131,10 @@ export class Main {
       
       this.modTree.categories = treeData;
       this.modTree.renderTree(this);      
-      this.loadingManager.hideTreeLoading();
+      this.loadingManager.hideTreeLoading(this);
     
       await this.packList.renderPackList(this, listData);
-      this.loadingManager.hideListLoading();
+      this.loadingManager.hideListLoading(this);
       this.modDetails.clearContent();
         
       // Expand the categories saved in the settings.
@@ -221,8 +155,8 @@ export class Main {
       console.error("Failed to handle checkbox change:", error);
     }
     finally {
-      this.loadingManager.hideTreeLoading();
-      this.loadingManager.hideListLoading();
+      this.loadingManager.hideTreeLoading(this);
+      this.loadingManager.hideListLoading(this);
       this.loadingManager.hideProgress();
     }
   }

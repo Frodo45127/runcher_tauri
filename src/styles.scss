@@ -113,7 +113,7 @@ body {
 }
 .app-container {
 	display: grid;
-	grid-template-columns: 60px 1fr 5px var(--right-panel-width, 300px);
+	grid-template-columns: 60px 80px 1fr 5px var(--right-panel-width, 300px);
 	grid-template-rows: 1fr 30px;
 	height: 100vh;
 	width: 100vw;
@@ -127,12 +127,35 @@ body {
 	align-items: center;
 	padding: 20px 0;
 	overflow-y: auto;
+	gap: 20px;
+}
+.sidebar-section {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+}
+.section-title {
+	color: var(--text-secondary);
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding: 0 10px;
+	width: 100%;
+}
+.sidebar-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+	padding: 0 10px;
 }
 .sidebar-btn {
 	width: 40px;
 	height: 40px;
 	border-radius: 8px;
-	margin-bottom: 15px;
 	background-color: $background-color_3;
 	color: $color_2;
 	border: none;
@@ -140,19 +163,47 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: background-color 0.2s;
+	transition: all 0.2s ease;
+	position: relative;
 	&:hover {
 		background-color: $background-color_4;
+		transform: translateX(2px);
+	}
+	&:active {
+		transform: translateX(0);
 	}
 	i {
-		font-size: 20px;
+		font-size: 18px;
+	}
+	&::after {
+		content: attr(title);
+		position: absolute;
+		left: 100%;
+		top: 50%;
+		transform: translateY(-50%);
+		background-color: $background-color_11;
+		color: $color_1;
+		padding: 6px 12px;
+		border-radius: 4px;
+		font-size: 12px;
+		white-space: nowrap;
+		opacity: 0;
+		visibility: hidden;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		margin-left: 10px;
+		z-index: 1000;
+	}
+	&:hover::after {
+		opacity: 1;
+		visibility: visible;
 	}
 }
 .sidebar-btn.active {
 	background-color: $background-color_5;
 }
 .main-content {
-	grid-column: 2;
+	grid-column: 3;
 	grid-row: 1;
 	padding: 20px;
 	overflow-y: auto;
@@ -161,7 +212,7 @@ body {
 	flex-direction: column;
 }
 .horizontal-resize-handle {
-	grid-column: 3;
+	grid-column: 4;
 	grid-row: 1;
 	background-color: $background-color_7;
 	cursor: col-resize;
@@ -206,8 +257,6 @@ body {
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 	flex: 1;
 	overflow-y: auto;
-	position: relative;
-	overflow: hidden;
 }
 .tree-header {
 	display: flex;
@@ -398,7 +447,7 @@ body {
 	display: none !important;
 }
 .right-panel {
-	grid-column: 4;
+	grid-column: 5;
 	grid-row: 1;
 	background-color: $background-color_11;
 	border-left: 1px solid var(--border-color);
@@ -472,6 +521,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	min-height: 0;
 }
 .list-view {
 	flex: 1;
@@ -480,8 +530,7 @@ body {
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	overflow-y: auto;
 	margin-bottom: 10px;
-	position: relative;
-	overflow: hidden;
+	height: 100%;
 }
 .list-header {
 	display: flex;
@@ -663,7 +712,7 @@ body {
 	}
 }
 .status-bar {
-	grid-column: 1 / span 4;
+	grid-column: 1 / span 5;
 	grid-row: 2;
 	background-color: $background-color_19;
 	color: $color_2;
@@ -1045,10 +1094,10 @@ body {
 }
 .sliding-panel {
 	position: fixed;
-	right: -600px;
+	right: calc(-1 * var(--right-panel-width, 300px));
 	top: 0;
 	bottom: 30px;
-	width: 600px;
+	width: var(--right-panel-width, 300px);
 	background-color: $background-color_11;
 	box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
 	transition: right 0.3s ease-in-out;
@@ -1276,13 +1325,13 @@ code {
 }
 
 /* Tree View specific loading overlay */
-.tree-view {
+.tree-view-overlay {
 	position: relative;
 	overflow: hidden;
 }
 
 /* List View specific loading overlay */
-.list-view {
+.list-view-overlay {
 	position: relative;
 	overflow: hidden;
 }
@@ -1344,4 +1393,145 @@ code {
 	font-size: 12px;
 	font-weight: 500;
 	text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Panel Actions Styles */
+.panel-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.panel-btn {
+	background: none;
+	border: none;
+	color: $color_1;
+	cursor: pointer;
+	padding: 8px;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	&:hover {
+		background-color: $background-color_4;
+		color: $color_2;
+	}
+
+	i {
+		font-size: 16px;
+	}
+
+	&::after {
+		content: attr(title);
+		position: absolute;
+		right: 100%;
+		top: 50%;
+		transform: translateY(-50%);
+		background-color: $background-color_11;
+		color: $color_1;
+		padding: 6px 12px;
+		border-radius: 4px;
+		font-size: 12px;
+		white-space: nowrap;
+		opacity: 0;
+		visibility: hidden;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		margin-right: 10px;
+		z-index: 1000;
+	}
+
+	&:hover::after {
+		opacity: 1;
+		visibility: visible;
+	}
+}
+
+/* Action Panel Styles */
+.action-panel {
+	grid-column: 2;
+	grid-row: 1;
+	background-color: $background-color_2;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 20px 0;
+	overflow-y: auto;
+	gap: 20px;
+	border-right: 1px solid var(--border-color);
+}
+
+.action-section {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+}
+
+.action-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+	padding: 0 10px;
+}
+
+.action-btn {
+	width: 40px;
+	height: 40px;
+	border-radius: 8px;
+	background-color: $background-color_3;
+	color: $color_2;
+	border: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+	position: relative;
+
+	&:hover {
+		background-color: $background-color_4;
+		transform: translateX(2px);
+	}
+
+	&:active {
+		transform: translateX(0);
+	}
+
+	i {
+		font-size: 18px;
+	}
+
+	&::after {
+		content: attr(title);
+		position: absolute;
+		left: 100%;
+		top: 50%;
+		transform: translateY(-50%);
+		background-color: $background-color_11;
+		color: $color_1;
+		padding: 6px 12px;
+		border-radius: 4px;
+		font-size: 12px;
+		white-space: nowrap;
+		opacity: 0;
+		visibility: hidden;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		margin-left: 10px;
+		z-index: 1000;
+	}
+
+	&:hover::after {
+		opacity: 1;
+		visibility: visible;
+	}
+}
+
+.action-btn.active {
+	background-color: $background-color_5;
 }

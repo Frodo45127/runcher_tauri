@@ -39,7 +39,7 @@ export class ModTree {
   private dragCounter: number;
   private dragOverElement: HTMLElement | null;
   private draggingCategory: boolean;
-  private treeContainer: HTMLElement;
+  public treeContainer: HTMLElement;
   private treeHeader: HTMLElement;
   
       

@@ -11,7 +11,7 @@ export class ModDetailsPanel {
     this.currentItemId = '';
 
     this.slidingPanel = document.createElement('div');
-    this.slidingPanel.className = 'sliding-panel';
+    this.slidingPanel.className = 'sliding-panel hidden';
 
     this.arrow = document.createElement('div');
     this.arrow.className = 'arrow-pointer';
@@ -23,12 +23,36 @@ export class ModDetailsPanel {
     const title = document.createElement('h2');
     title.textContent = 'Mod Details';
 
+    const panelActions = document.createElement('div');
+    panelActions.className = 'panel-actions';
+
+    const openFolderBtn = document.createElement('button');
+    openFolderBtn.className = 'panel-btn';
+    openFolderBtn.title = 'Open Mod Folder';
+    openFolderBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
+    openFolderBtn.addEventListener('click', () => {
+      // TODO: Implement open mod folder functionality
+      console.log('Open mod folder clicked');
+    });
+
+    const openBrowserBtn = document.createElement('button');
+    openBrowserBtn.className = 'panel-btn';
+    openBrowserBtn.title = 'Open Mod Page in Browser';
+    openBrowserBtn.innerHTML = '<i class="fa-solid fa-external-link-alt"></i>';
+    openBrowserBtn.addEventListener('click', () => {
+      // TODO: Implement open mod page in browser functionality
+      console.log('Open mod page in browser clicked');
+    });
+
     const closeButton = document.createElement('button');
     closeButton.className = 'sliding-panel-close';
     closeButton.innerHTML = '<i class="fa-solid fa-times"></i>';
     closeButton.addEventListener('click', () => this.closeSlidingPanel());
 
+    panelActions.appendChild(openFolderBtn);
+    panelActions.appendChild(openBrowserBtn);
     header.appendChild(title);
+    header.appendChild(panelActions);
     header.appendChild(closeButton);
 
     // Crear el contenido del panel
@@ -120,7 +144,10 @@ export class ModDetailsPanel {
    * Open the sliding panel.
    */ 
   public openSlidingPanel() {
-    this.slidingPanel.classList.add('open');
+    this.slidingPanel.classList.remove('hidden');
+    setTimeout(() => {
+      this.slidingPanel.classList.add('open');
+    }, 30);
   }
 
   /**
@@ -128,6 +155,9 @@ export class ModDetailsPanel {
    */
   public closeSlidingPanel() {
     this.slidingPanel.classList.remove('open');
+    setTimeout(() => {
+      this.slidingPanel.classList.add('hidden');
+    }, 300);
   }
 
   /**
