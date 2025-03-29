@@ -452,10 +452,10 @@ async fn handle_mod_toggled(app: tauri::AppHandle, mod_id: &str, is_checked: boo
 #[tauri::command]
 fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, category_id: &str) -> Result<(), String> {
     let mod_ids = mod_ids.iter_mut()
-        .map(|id| id.replace("\\", ""))
+        .map(|id| css_deescape(id))
         .collect::<Vec<String>>();
 
-    let category_id = category_id.replace("\\", "");
+    let category_id = css_deescape(category_id);
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -552,7 +552,7 @@ async fn browse_folder(app: tauri::AppHandle, title: String, current_path: Strin
 
 #[tauri::command]
 async fn open_mod_folder(id: String) -> Result<(), String> {
-    let mod_id = id.replace("\\", "");
+    let mod_id = css_deescape(&id);
     
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mod_info = game_config.mods().get(&mod_id).unwrap();
@@ -568,7 +568,7 @@ async fn open_mod_folder(id: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn open_mod_url(id: String) -> Result<(), String> {
-    let mod_id = id.replace("\\", "");
+    let mod_id = css_deescape(&id);
     if mod_id.is_empty() {
         return Err("No mod ID found".to_string())
     }
@@ -958,7 +958,7 @@ async fn move_pack_in_load_order_in_direction(app: tauri::AppHandle, mod_id: &st
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
-    let mod_id = mod_id.replace("\\", "");
+    let mod_id = css_deescape(mod_id);
 
     load_order.move_mod_in_direction(&mod_id, direction);
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
@@ -974,8 +974,8 @@ async fn move_pack_in_load_order(app: tauri::AppHandle, source_id: &str, target_
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
-    let source_id = source_id.replace("\\", "");
-    let target_id = target_id.replace("\\", "");
+    let source_id = css_deescape(source_id);
+    let target_id = css_deescape(target_id);
 
     load_order.move_mod_above_another(&source_id, &target_id);
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
@@ -989,8 +989,8 @@ async fn move_pack_in_load_order(app: tauri::AppHandle, source_id: &str, target_
 async fn reorder_categories(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<String>, String> {
     
     // TODO: Move this to a sanitizer function.
-    let source_id = source_id.replace("\\", "");
-    let target_id = target_id.replace("\\", "");
+    let source_id = css_deescape(source_id);
+    let target_id = css_deescape(target_id);
     
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -1028,6 +1028,13 @@ fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
         "loading://progress",
         ProgressPayload { id: 0, progress, total },
     );
+}
+
+/// CSS de-escape the id to avoid any special characters.
+///
+/// This has to be used in any UI-coming ID, because all UI ids are CSS-escaped to avoid issues with special chars in id fields.
+fn css_deescape(id: &str) -> String {
+    id.replace("\\", "")
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
