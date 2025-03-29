@@ -60,18 +60,21 @@ export class Main {
     let startWidth: number;
 
     const startResize = (e: MouseEvent) => {
+      e.preventDefault();
       isResizing = true;
       startX = e.clientX;
       startWidth = rightPanel.offsetWidth;
       document.body.style.cursor = 'col-resize';
     };
 
-    const stopResize = () => {
+    const stopResize = (e: MouseEvent) => {
+      e.preventDefault();
       isResizing = false;
       document.body.style.cursor = 'default';
     };
 
     const resize = (e: MouseEvent) => {
+      e.preventDefault();
       if (!isResizing) return;
 
       const width = startWidth - (e.clientX - startX);
