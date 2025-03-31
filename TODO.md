@@ -22,8 +22,8 @@ TODO:
         - [x] Hightlight related packs in Pack View.
         - [ ] Mod details view:
             - [x] Info from the mod page.
-            - [ ] Open mod folder.
-            - [ ] Open mod page in browser.
+            - [x] Open mod folder.
+            - [x] Open mod page in browser.
     - [ ] Pack Management:
         - [x] Filter
         - [x] Reorder (d&d && buttons in the list)
@@ -92,7 +92,7 @@ TODO:
             - [ ] Port windows-specific ifs (mainly related with executable paths and args)
         - [ ] MacOS (nice to have, but I don't have a mac for testing)
     - [ ] Status bar:
-        - [ ] Loading bar for background processes.
+        - [x] Loading bar for background processes.
         - [ ] Links to Github, Discord, Patreon, About, Updater.
     - [ ] Open folder menu:
         - [ ] Quick access to game folder.
@@ -107,7 +107,7 @@ TODO:
         - [ ] Download and install updates.
         - [ ] Download and install updates (schemas).
         - [ ] Download and install updates (sql scripts).
-    - [ ] Configurable settings.
+    - [x] Configurable settings.
     - [ ] Configurable tools support.
     - [ ] First time user experience:
         - [ ] Pretty installer?
