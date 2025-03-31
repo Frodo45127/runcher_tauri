@@ -1457,7 +1457,6 @@ code {
 	flex-direction: column;
 	align-items: center;
 	padding: 20px 0;
-	overflow-y: auto;
 	gap: 20px;
 	border-right: 1px solid var(--border-color);
 }
@@ -1471,15 +1470,15 @@ code {
 }
 
 .action-buttons {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
 	gap: 8px;
 	width: 100%;
 	padding: 0 10px;
 }
 
 .action-btn {
-	width: 40px;
+	width: 100%;
 	height: 40px;
 	border-radius: 8px;
 	background-color: $background-color_3;
@@ -1495,6 +1494,7 @@ code {
 	&:hover {
 		background-color: $background-color_4;
 		transform: translateX(2px);
+		z-index: 1000;
 	}
 
 	&:active {
