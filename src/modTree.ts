@@ -41,7 +41,18 @@ export class ModTree {
   private draggingCategory: boolean;
   public treeContainer: HTMLElement;
   private treeHeader: HTMLElement;
-  
+
+  private addCategoryBtn: HTMLButtonElement;
+  private renameCategoryBtn: HTMLButtonElement;
+  private removeCategoryBtn: HTMLButtonElement;
+  private addModBtn: HTMLButtonElement;
+  private removeModBtn: HTMLButtonElement;
+  private downloadModBtn: HTMLButtonElement;
+  private uploadModBtn: HTMLButtonElement;
+  private lockModBtn: HTMLButtonElement;
+  private unlockModBtn: HTMLButtonElement;
+  private copyToSecondaryBtn: HTMLButtonElement;
+  private copyToDataBtn: HTMLButtonElement;
       
   constructor(main: Main) {
     this.categoryElements = new Map();
@@ -53,6 +64,18 @@ export class ModTree {
     this.dragOverElement = null;
     this.draggingCategory = false;
     this.treeContainer = document.getElementById('tree-container') as HTMLElement;
+
+    this.addCategoryBtn = document.getElementById('add-category-btn') as HTMLButtonElement;
+    this.renameCategoryBtn = document.getElementById('rename-category-btn') as HTMLButtonElement;
+    this.removeCategoryBtn = document.getElementById('remove-category-btn') as HTMLButtonElement;
+    this.addModBtn = document.getElementById('add-mod-btn') as HTMLButtonElement;
+    this.removeModBtn = document.getElementById('remove-mod-btn') as HTMLButtonElement;
+    this.downloadModBtn = document.getElementById('download-mod-btn') as HTMLButtonElement;
+    this.uploadModBtn = document.getElementById('upload-mod-btn') as HTMLButtonElement;
+    this.lockModBtn = document.getElementById('lock-mod-btn') as HTMLButtonElement;
+    this.unlockModBtn = document.getElementById('unlock-mod-btn') as HTMLButtonElement;
+    this.copyToSecondaryBtn = document.getElementById('copy-to-secondary-btn') as HTMLButtonElement;
+    this.copyToDataBtn = document.getElementById('copy-to-data-btn') as HTMLButtonElement;
 
     // Reorderable headers. Done here so we can recycle them when re-rendering the tree.
     this.treeHeader = document.createElement('div');
@@ -74,11 +97,22 @@ export class ModTree {
     });
 
     this.treeContainer.appendChild(this.treeHeader);
-
-
     this.treeFilterInput.addEventListener('input', () => {
       this.filterTreeItems(main.settingsManager, this.treeFilterInput.value);
     });
+
+    // Add listeners for all the action buttons in the actions panel.
+    this.addCategoryBtn.addEventListener('click', () => this.addCategory(main));
+    this.renameCategoryBtn.addEventListener('click', () => this.renameCategory(main));
+    this.removeCategoryBtn.addEventListener('click', () => this.removeCategory(main));
+    this.addModBtn.addEventListener('click', () => this.addMod(main));
+    this.removeModBtn.addEventListener('click', () => this.removeMod(main));
+    this.downloadModBtn.addEventListener('click', () => this.downloadMod(main));
+    this.uploadModBtn.addEventListener('click', () => this.uploadMod(main));
+    this.lockModBtn.addEventListener('click', () => this.lockMod(main));
+    this.unlockModBtn.addEventListener('click', () => this.unlockMod(main));
+    this.copyToSecondaryBtn.addEventListener('click', () => this.copyToSecondary(main));
+    this.copyToDataBtn.addEventListener('click', () => this.copyToData(main));
   }
  
   /**
@@ -874,6 +908,54 @@ export class ModTree {
    */
   public getTreeParentElement(): HTMLElement {
     return this.treeContainer.parentElement as HTMLElement;
+  }
+
+  /************************
+   * Actions
+   ************************/
+
+  public async addCategory(main: Main) {
+    console.log('addCategory');
+  }
+  
+  public async renameCategory(main: Main) {
+    console.log('renameCategory');
+  }
+
+  public async removeCategory(main: Main) {
+    console.log('removeCategory');
+  }
+
+  public async addMod(main: Main) {
+    console.log('addMod');
+  }
+  
+  public async removeMod(main: Main) {
+    console.log('removeMod');
+  }
+
+  public async downloadMod(main: Main) {
+    console.log('downloadMod');
+  }
+
+  public async uploadMod(main: Main) {
+    console.log('uploadMod');
+  }
+
+  public async lockMod(main: Main) {
+    console.log('lockMod');
+  }
+
+  public async unlockMod(main: Main) {
+    console.log('unlockMod');
+  }
+
+  public async copyToSecondary(main: Main) {
+    console.log('copyToSecondary');
+  }
+
+  public async copyToData(main: Main) {
+    console.log('copyToData');
   }
 
   /************************
