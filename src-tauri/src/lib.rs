@@ -1022,6 +1022,22 @@ async fn reorder_categories(app: tauri::AppHandle, source_id: &str, target_id: &
     Ok(categories_order)
 }
 
+#[tauri::command]
+async fn create_category(app: tauri::AppHandle, category: &str) -> Result<(), String> {
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+    
+    // Create the category
+    game_config.create_category(category);
+    
+    // Save the changes
+    game_config.save(&app, &game_info).map_err(|e| format!("Error saving configuration: {}", e))?;
+    
+    // Update the game config in memory
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+    
+    Ok(())
+}
 
 fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
     let _ = app.get_webview_window("main").unwrap().emit(
@@ -1071,7 +1087,8 @@ pub fn run() {
             move_pack_in_load_order,
             reorder_categories,
             open_mod_folder,
-            open_mod_url
+            open_mod_url,
+            create_category
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
