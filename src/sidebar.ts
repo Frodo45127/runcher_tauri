@@ -89,6 +89,10 @@ export class Sidebar {
     (this.buttons.get(id) as HTMLButtonElement).click();
   }
 
+  public isAnyGameConfigured(): boolean {
+    return Array.from(this.buttons.values()).some(button => !button.classList.contains("hidden"));
+  }
+
   /**
    * Get the selected button in the sidebar.
    * @returns {string} The id of the selected button.

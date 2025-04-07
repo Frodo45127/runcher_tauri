@@ -28,6 +28,9 @@ export class Main {
   private settingsBtn: HTMLButtonElement;
 
   constructor() {
+    this.loadingManager = new LoadingManager();
+    this.loadingManager.showAppLoading();
+    
     this.sidebar = new Sidebar(this);
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
@@ -45,10 +48,16 @@ export class Main {
     
     // Once everything is loaded, apply the settings.
     this.settingsManager = new SettingsManager(this);
-    this.loadingManager = new LoadingManager();
 
     // Initialize resizable panels
     this.initializeResizablePanels();
+
+    // If no game is detected, just show an error messsage.
+    if (this.sidebar.isAnyGameConfigured()) {
+      this.loadingManager.hideAppLoading();
+    } else {
+      this.statusMessage.textContent = "No game detected";
+    }
   }
 
   // Initialize resizable panels
