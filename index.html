@@ -174,12 +174,6 @@
                   </select>
                 </div>
                 <div class="setting-item">
-                  <label>Default Game</label>
-                  <select id="default-game-select">
-                    <!-- Will be populated dynamically -->
-                  </select>
-                </div>
-                <div class="setting-item">
                   <label>Date Format</label>
                   <select id="date-format-select">
                     <!-- Will be populated dynamically -->
@@ -192,8 +186,28 @@
               <!-- Paths settings content -->
               <div class="setting-group">
                 <h3>Game Paths</h3>
-                <div id="game-paths-container">
+                <div id="paths-message" class="paths-message hidden"></div>
+                <div id="game-paths-container" class="game-path-container">
                   <!-- Game paths will be populated dynamically -->
+                  <template id="game-path-template">
+                    <div class="game-path-item">
+                      <div class="game-path-header">
+                        <div class="input-status"></div>
+                        <span class="game-name"></span>
+                        <div class="game-path-details-container"></div>
+                        <div class="lock-container">
+                          <input type="checkbox" class="lock-checkbox" id="lock-checkbox-">
+                          <label for="lock-checkbox-" class="lock-label">Updates Locked</label>
+                        </div>
+                      </div>
+                      <div class="game-path-input-container">
+                        <input type="text" class="path-input">
+                        <button class="browse-btn"><i class="fa-solid fa-folder-open"></i></button>
+                        <button class="select-game-btn hidden" disabled>Select Game</button>
+                      </div>
+                      <div class="path-error-message hidden"></div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -242,6 +256,7 @@
         <div class="modal-footer">
           <button class="secondary-btn" id="restore-defaults">Restore Defaults</button>
           <div class="button-group">
+            <button class="close-app-btn hidden" id="close-app">Close</button>
             <button class="secondary-btn" id="cancel-settings">Cancel</button>
             <button class="primary-btn" id="save-settings">OK</button>
           </div>

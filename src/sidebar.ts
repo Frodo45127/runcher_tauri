@@ -93,6 +93,11 @@ export class Sidebar {
     return Array.from(this.buttons.values()).some(button => !button.classList.contains("hidden"));
   }
 
+  public isDefaultGameConfigured(defaultGame: string): boolean {
+    const button = this.buttons.get(defaultGame);
+    return button !== undefined && !button.classList.contains("hidden");
+  }
+
   /**
    * Get the selected button in the sidebar.
    * @returns {string} The id of the selected button.

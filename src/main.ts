@@ -46,18 +46,28 @@ export class Main {
     this.settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
     this.settingsBtn.addEventListener('click', () => this.settingsModal.openSettingsModal(this));
     
-    // Once everything is loaded, apply the settings.
-    this.settingsManager = new SettingsManager(this);
+    // Once everything is loaded, load the settings.
+    this.settingsManager = new SettingsManager();
+    this.settingsManager.loadSettings().then(() => {
 
-    // Initialize resizable panels
-    this.initializeResizablePanels();
-
-    // If no game is detected, just show an error messsage.
-    if (this.sidebar.isAnyGameConfigured()) {
+      // Initialize resizable panels
+      this.initializeResizablePanels();
       this.loadingManager.hideAppLoading();
-    } else {
-      this.statusMessage.textContent = "No game detected";
-    }
+
+      // Once here, there are two paths:
+      // - The user has already configured at least one game path (last selected game).
+      // - The user has not configured any game paths, or the last selected game is not configured.
+      // 
+      // In the first case, we can just select the last selected game in the sidebar and that will take care of initializing everything.
+      // In the second case, we need to show the settings modal with an error message, and only allow to either close the app, or 
+      // provide a valid game path.
+      if (this.sidebar.isDefaultGameConfigured(this.settingsManager.appSettings.last_selected_game)) {
+        this.sidebar.updateSidebarIcons(this.settingsManager);
+        this.sidebar.clickSidebarButton(this.settingsManager.appSettings.last_selected_game);
+      } else {
+        this.settingsModal.openWithNoGameDetected(this);
+      }
+    });
   }
 
   // Initialize resizable panels
@@ -132,6 +142,8 @@ export class Main {
    * @param {string} gameId - The id of the game.
    */
   public async handleGameSelectedChange(gameId: string) {
+    // Update the last selected game
+    this.settingsManager.appSettings.last_selected_game = gameId;
 
     // Show the loading indicators.
     this.loadingManager.showTreeLoading(this);

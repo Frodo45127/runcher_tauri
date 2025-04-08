@@ -95,6 +95,10 @@ $border-color_1: var(--primary-color);
 	--panel-selected: #383838;
 	--resize-handle-color: #3a3a3a;
 	--resize-handle-hover: #505050;
+	--success-color: #28a745;
+	--success-hover-color: #218838;
+	--error-color: #dc3545;
+	--disabled-color: #6c757d;
 }
 * {
 	margin: 0;
@@ -1012,69 +1016,6 @@ body {
 		color: $color_1;
 	}
 }
-.game-path-item {
-	margin-bottom: 8px;
-	border-bottom: 1px solid var(--border-color);
-	&:last-child {
-		border-bottom: none;
-	}
-}
-.path-row {
-	display: flex;
-	align-items: center;
-	margin-bottom: 12px;
-	gap: 12px;
-}
-.path-label {
-	width: 200px;
-	color: $color_1;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	flex-shrink: 0;
-}
-.path-input-container {
-	flex: 1;
-	display: flex;
-	gap: 12px;
-	align-items: center;
-}
-.path-input {
-	flex: 1;
-	min-width: 200px;
-	padding: 8px;
-	border-radius: 4px;
-	border: 1px solid var(--border-color);
-	background-color: $background-color_10;
-	color: $color_1;
-}
-.path-browse-btn {
-	background-color: $background-color_11;
-	color: $color_1;
-	border: 1px solid var(--border-color);
-	border-radius: 4px;
-	padding: 8px 12px;
-	cursor: pointer;
-	transition: background-color 0.2s;
-	flex-shrink: 0;
-	&:hover {
-		background-color: $background-color_4;
-	}
-}
-.lock-container {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex-shrink: 0;
-}
-.lock-checkbox {
-	accent-color: var(--primary-color);
-}
-.lock-label {
-	color: $color_1;
-	font-size: 12px;
-	white-space: nowrap;
-}
 .detail-item {
 	margin-bottom: 10px;
 	padding-bottom: 10px;
@@ -1534,3 +1475,130 @@ code {
 .action-btn.active {
 	background-color: $background-color_5;
 }
+
+/* Paths message */
+.paths-message {
+	margin-bottom: 1rem;
+	padding: 0.5rem;
+	border-radius: 4px;
+	background-color: var(--bg-color-light);
+	border: 1px solid var(--border-color);
+}
+
+/* Game paths scrollable container */
+.game-path-container {
+	overflow-y:scroll; 
+	overflow-x:hidden; 
+	height:50vh;
+
+	/* Game path item */
+	.game-path-item {
+		margin-bottom: 1rem;
+		padding: 0.5rem;
+		border-radius: 4px;
+		background-color: var(--bg-color-light);
+		border: 1px solid var(--border-color);
+		
+		.game-path-header {
+			display: flex;
+			margin-bottom: 0.5rem;
+			
+			.input-status {
+				gap: 8px;
+				width: 20px;
+				height: 20px;
+				border-radius: 50%;
+				display: block;
+
+				&.ok {
+					background-color: var(--success-color, #28a745);
+				}
+				
+				&.error {
+					background-color: var(--error-color, #dc3545);
+				}
+			}
+			
+			.game-name {
+				gap: 8px;
+				font-weight: bold;
+				color: var(--text-color);
+			}
+
+			.game-path-details-container {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex-shrink: 0;
+				align-content: flex-end;
+				flex-grow: 1;
+			}
+
+			.lock-container {
+				
+				.lock-checkbox {
+					accent-color: var(--primary-color);
+				}
+
+				.lock-label {
+					color: $color_1;
+					font-size: 12px;
+					white-space: nowrap;
+				}
+			}
+		}
+		
+		.game-path-input-container {
+			display: flex;
+			gap: 0.5rem;
+			align-items: center;
+			
+			.path-input {
+				flex: 1;
+				padding: 0.5rem;
+				border: 1px solid var(--border-color);
+				border-radius: 4px;
+				background-color: var(--input-bg);
+				color: var(--text-color);
+			}
+			
+			.browse-btn {
+				padding: 0.5rem;
+				background-color: var(--primary-color);
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				
+				&:hover {
+					background-color: var(--secondary-color);
+				}
+			}
+			
+			.select-game-btn {
+				padding: 0.5rem 1rem;
+				background-color: var(--success-color, #28a745);
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				
+				&:disabled {
+					background-color: var(--disabled-color, #6c757d);
+					cursor: not-allowed;
+				}
+				
+				&:not(:disabled):hover {
+					background-color: var(--success-hover-color, #218838);
+				}
+			}
+		}
+		
+		.path-error-message {
+			margin-top: 0.5rem;
+			color: var(--error-color, #dc3545);
+			font-size: 0.875rem;
+		}
+	}
+}
+	

@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Main } from "./main";
 
-interface AppSettings {
+export interface AppSettings {
   tree_open_state: { [key: string]: boolean };
   tree_filter_value: string;
   list_filter_value: string;
@@ -15,7 +15,7 @@ interface AppSettings {
   right_panel_width: number;
   paths: { [key: string]: string };
   strings: { [key: string]: string };
-  default_game: string;
+  last_selected_game: string;
   language: string;
   date_format: string;
   check_updates_on_start: boolean;
@@ -27,7 +27,7 @@ export class SettingsManager {
   public isLoaded: boolean;
   public appSettings: AppSettings;
 
-  constructor(main: Main) {
+  constructor() {
     this.isLoaded = false;
     this.appSettings = {
       tree_open_state: {},
@@ -39,22 +39,19 @@ export class SettingsManager {
       right_panel_width: 300,
       paths: {},
       strings: {},
-      default_game: 'warhammer_2',
+      last_selected_game: '',
       language: 'English',
       date_format: 'DD/MM/YYYY',
       check_updates_on_start: true,
       check_schema_updates_on_start: true,
       check_sql_scripts_updates_on_start: true
     };
-
-    this.loadSettings(main);
   }
 
   /**
    * Load app settings.
-   * @param {Main} main - The main instance of the application.
    */
-  public async loadSettings(main: Main) {
+  public async loadSettings() {
     try {
       const settings = await invoke('init_settings') as Partial<AppSettings>;
       this.appSettings = {
@@ -63,8 +60,6 @@ export class SettingsManager {
       };
 
       this.isLoaded = true;
-
-      await this.applySettings(main).then(() => main.sidebar.clickSidebarButton(this.appSettings.default_game));
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -117,7 +112,7 @@ export class SettingsManager {
           right_panel_width: this.appSettings.right_panel_width,
           paths: this.appSettings.paths,
           strings: this.appSettings.strings,
-          default_game: this.appSettings.default_game,
+          last_selected_game: this.appSettings.last_selected_game,
           language: this.appSettings.language,
           date_format: this.appSettings.date_format,
           check_updates_on_start: this.appSettings.check_updates_on_start,
