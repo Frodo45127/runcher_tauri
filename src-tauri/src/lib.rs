@@ -1,18 +1,21 @@
+use anyhow::anyhow;
 use base64::prelude::BASE64_STANDARD;
 use regex::Regex;
-use rpfm_lib::{binary::WriteBytes, games::{
-    supported_games::{SupportedGames, KEY_ARENA, KEY_EMPIRE},
-    GameInfo,
-}};
 use rpfm_lib::schema::Schema;
-use anyhow::anyhow;
+use rpfm_lib::{
+    binary::WriteBytes,
+    games::{
+        supported_games::{SupportedGames, KEY_ARENA, KEY_EMPIRE},
+        GameInfo,
+    },
+};
+use serde::{Deserialize, Serialize};
 use settings::*;
-use std::{cell::LazyCell, fs::DirBuilder};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
+use std::{cell::LazyCell, fs::DirBuilder};
 use tauri::{Emitter, Listener, Manager};
-use serde::{Serialize, Deserialize};
 
 use crate::mod_manager::game_config::GameConfig;
 use crate::mod_manager::load_order::{LoadOrder, LoadOrderDirectionMove};
@@ -40,9 +43,12 @@ static GAME_CONFIG: LazyLock<Arc<Mutex<Option<GameConfig>>>> =
 
 static GAME_PROFILES: LazyLock<Arc<RwLock<HashMap<String, Profile>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
-    
-static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(SupportedGames::default().game("arena").unwrap().clone())));
+
+static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> = LazyLock::new(|| {
+    Arc::new(RwLock::new(
+        SupportedGames::default().game("arena").unwrap().clone(),
+    ))
+});
 
 const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());
@@ -103,12 +109,25 @@ fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
     let mut pack_list = String::new();
 
     let game = GAME_SELECTED.read().unwrap().clone();
-    let game_path = SETTINGS.read().unwrap().game_path(&game).map_err(|e| format!("Error getting the game's path: {}", e))?;
-    let data_path = game.data_path(&game_path).map_err(|e| format!("Error getting the game's data path: {}", e))?;
+    let game_path = SETTINGS
+        .read()
+        .unwrap()
+        .game_path(&game)
+        .map_err(|e| format!("Error getting the game's path: {}", e))?;
+    let data_path = game
+        .data_path(&game_path)
+        .map_err(|e| format!("Error getting the game's data path: {}", e))?;
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let load_order = GAME_LOAD_ORDER.read().unwrap().clone();
 
-    load_order.build_load_order_string(&app, &game_config, &game, &data_path, &mut pack_list, &mut folder_list);
+    load_order.build_load_order_string(
+        &app,
+        &game_config,
+        &game,
+        &data_path,
+        &mut pack_list,
+        &mut folder_list,
+    );
 
     // Check if we are loading a save. First option is no save load. Any index above that is a save.
     let mut extra_args: Vec<String> = vec![];
@@ -126,11 +145,15 @@ fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
     let file_path = if *game.raw_db_version() >= 1 {
         game_path.join(CUSTOM_MOD_LIST_FILE_NAME)
     } else {
-
         // Games may fail to launch if we don't have this path created, which is done the first time we start the game.
-        let config_path = game.config_path(&game_path).ok_or(format!("Error getting the game's config path."))?;
+        let config_path = game
+            .config_path(&game_path)
+            .ok_or(format!("Error getting the game's config path."))?;
         let scripts_path = config_path.join("scripts");
-        DirBuilder::new().recursive(true).create(&scripts_path).map_err(|e| format!("Error creating the scripts path: {}", e))?;
+        DirBuilder::new()
+            .recursive(true)
+            .create(&scripts_path)
+            .map_err(|e| format!("Error creating the scripts path: {}", e))?;
 
         // Empire has its own user script.
         if game.key() == KEY_EMPIRE {
@@ -142,11 +165,14 @@ fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
 
     // Setup the launch options stuff. This may add a line to the folder list, so we need to resave the load order file after this.
     let folder_list_pre = folder_list.to_owned();
-    save_load_order_file(&file_path, &game, &folder_list, &pack_list).map_err(|e| format!("Error saving the load order file: {}", e))?;
-    prepare_launch_options(&game, &data_path, &mut folder_list).map_err(|e| format!("Error preparing launch options: {}", e))?;
+    save_load_order_file(&file_path, &game, &folder_list, &pack_list)
+        .map_err(|e| format!("Error saving the load order file: {}", e))?;
+    prepare_launch_options(&game, &data_path, &mut folder_list)
+        .map_err(|e| format!("Error preparing launch options: {}", e))?;
 
     if folder_list != folder_list_pre {
-        save_load_order_file(&file_path, &game, &folder_list, &pack_list).map_err(|e| format!("Error saving the load order file: {}", e))?;
+        save_load_order_file(&file_path, &game, &folder_list, &pack_list)
+            .map_err(|e| format!("Error saving the load order file: {}", e))?;
     }
 
     // Launch is done through workshopper to getup the Steam Api.
@@ -155,13 +181,16 @@ fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
     match game.executable_path(&game_path) {
         Some(exec_game) => {
             if cfg!(target_os = "windows") {
-
-                let mut command = format!("cmd /C start /W /d \"{}\" \"{}\" \"{}\";",
+                let mut command = format!(
+                    "cmd /C start /W /d \"{}\" \"{}\" \"{}\";",
                     game_path.to_string_lossy().replace('\\', "/"),
                     exec_game.file_name().unwrap().to_string_lossy(),
-
                     // Custom load order file is only supported by Shogun 2 and later games.
-                    if *game.raw_db_version() >= 1 { CUSTOM_MOD_LIST_FILE_NAME.to_owned() } else { file_path.to_string_lossy().replace('\\', "/") }
+                    if *game.raw_db_version() >= 1 {
+                        CUSTOM_MOD_LIST_FILE_NAME.to_owned()
+                    } else {
+                        file_path.to_string_lossy().replace('\\', "/")
+                    }
                 );
 
                 // Only Shogun 2 and later games support extra arguments.
@@ -171,21 +200,29 @@ fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
                         command.push_str(arg);
                     }
                 }
-                
+
                 let command = BASE64_STANDARD.encode(command);
-                crate::mod_manager::integrations::launch_game(&app, &game, &command, false).map_err(|e| format!("Error launching the game: {}", e))?;
-                Ok(format!("Game {} launched successfully!", id))   
+                crate::mod_manager::integrations::launch_game(&app, &game, &command, false)
+                    .map_err(|e| format!("Error launching the game: {}", e))?;
+                Ok(format!("Game {} launched successfully!", id))
             } else if cfg!(target_os = "linux") {
                 Err(format!("Unsupported OS."))
             } else {
                 Err(format!("Unsupported OS."))
             }
         }
-        None => Err(format!("Executable path not found. Is the game folder configured correctly in the settings?"))
+        None => Err(format!(
+            "Executable path not found. Is the game folder configured correctly in the settings?"
+        )),
     }
 }
 
-fn save_load_order_file(file_path: &Path, game: &GameInfo, folder_list: &str, pack_list: &str) -> anyhow::Result<()> {
+fn save_load_order_file(
+    file_path: &Path,
+    game: &GameInfo,
+    folder_list: &str,
+    pack_list: &str,
+) -> anyhow::Result<()> {
     use std::fs::File;
     use std::io::BufWriter;
     use std::io::Write;
@@ -204,8 +241,11 @@ fn save_load_order_file(file_path: &Path, game: &GameInfo, folder_list: &str, pa
     file.flush().map_err(From::from)
 }
 
-
-fn prepare_launch_options(game: &GameInfo, data_path: &Path, folder_list: &mut String) -> anyhow::Result<()> {
+fn prepare_launch_options(
+    game: &GameInfo,
+    data_path: &Path,
+    folder_list: &mut String,
+) -> anyhow::Result<()> {
     /*
     let actions_ui = app_ui.actions_ui();
 
@@ -428,7 +468,11 @@ fn get_sidebar_icons() -> Vec<SidebarIcon> {
 }
 
 #[tauri::command]
-async fn handle_mod_toggled(app: tauri::AppHandle, mod_id: &str, is_checked: bool) -> Result<Vec<ListItem>, String> {
+async fn handle_mod_toggled(
+    app: tauri::AppHandle,
+    mod_id: &str,
+    is_checked: bool,
+) -> Result<Vec<ListItem>, String> {
     println!("Mod {} checkbox changed to: {}", mod_id, is_checked);
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
@@ -436,12 +480,22 @@ async fn handle_mod_toggled(app: tauri::AppHandle, mod_id: &str, is_checked: boo
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
 
-    game_config.mods_mut().get_mut(mod_id).unwrap().set_enabled(is_checked);
+    game_config
+        .mods_mut()
+        .get_mut(mod_id)
+        .unwrap()
+        .set_enabled(is_checked);
 
-    let _ = game_config.update_mod_list(&app, &game_info, &game_path, &mut load_order, false).map_err(|e| format!("Error loading data: {}", e))?;
-    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
-    
-    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
+    let _ = game_config
+        .update_mod_list(&app, &game_info, &game_path, &mut load_order, false)
+        .map_err(|e| format!("Error loading data: {}", e))?;
+    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order)
+        .await
+        .map_err(|e| format!("Error loading data: {}", e))?;
+
+    game_config
+        .save(&app, &game_info)
+        .map_err(|e| format!("Error saving data: {}", e))?;
 
     *GAME_LOAD_ORDER.write().unwrap() = load_order;
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
@@ -450,8 +504,13 @@ async fn handle_mod_toggled(app: tauri::AppHandle, mod_id: &str, is_checked: boo
 }
 
 #[tauri::command]
-fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, category_id: &str) -> Result<(), String> {
-    let mod_ids = mod_ids.iter_mut()
+fn handle_mod_category_change(
+    app: tauri::AppHandle,
+    mut mod_ids: Vec<String>,
+    category_id: &str,
+) -> Result<(), String> {
+    let mod_ids = mod_ids
+        .iter_mut()
         .map(|id| css_deescape(id))
         .collect::<Vec<String>>();
 
@@ -468,12 +527,14 @@ fn handle_mod_category_change(app: tauri::AppHandle, mut mod_ids: Vec<String>, c
     for mods in game_config.categories_mut().values_mut() {
         mods.retain(|x| !mod_ids.contains(x));
     }
-    
+
     if let Some(target_mods) = game_config.categories_mut().get_mut(&category_id) {
         target_mods.extend(mod_ids);
     }
 
-    game_config.save(&app, &game_info).map_err(|e| format!("Error saving data: {}", e))?;
+    game_config
+        .save(&app, &game_info)
+        .map_err(|e| format!("Error saving data: {}", e))?;
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
 
     Ok(())
@@ -533,27 +594,33 @@ fn get_available_date_formats() -> Vec<String> {
 }
 
 #[tauri::command]
-async fn browse_folder(app: tauri::AppHandle, title: String, current_path: String) -> Option<String> {
+async fn browse_folder(
+    app: tauri::AppHandle,
+    title: String,
+    current_path: String,
+) -> Option<String> {
     use std::path::PathBuf;
     use tauri_plugin_dialog::DialogExt;
 
     // Si se proporcionó una ruta válida, iniciar el diálogo en esa carpeta
     let start_dir = PathBuf::from(&current_path);
-    
+
     // Mostrar el diálogo y obtener la carpeta seleccionada
-    let dialog = app.dialog()
+    let dialog = app
+        .dialog()
         .file()
         .set_directory(start_dir)
         .set_title(title);
-    
-    dialog.blocking_pick_folder()
+
+    dialog
+        .blocking_pick_folder()
         .map(|path| path.as_path().unwrap().to_string_lossy().to_string())
 }
 
 #[tauri::command]
 async fn open_mod_folder(id: String) -> Result<(), String> {
     let mod_id = css_deescape(&id);
-    
+
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mod_info = game_config.mods().get(&mod_id).unwrap();
     match mod_info.paths().first().cloned() {
@@ -570,7 +637,7 @@ async fn open_mod_folder(id: String) -> Result<(), String> {
 async fn open_mod_url(id: String) -> Result<(), String> {
     let mod_id = css_deescape(&id);
     if mod_id.is_empty() {
-        return Err("No mod ID found".to_string())
+        return Err("No mod ID found".to_string());
     }
 
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -579,21 +646,33 @@ async fn open_mod_url(id: String) -> Result<(), String> {
 
     // TODO: Rewrite this so it's not steam-exclusive.
     if !remote_id.is_empty() {
-        let _ = open::that("https://steamcommunity.com/sharedfiles/filedetails/?id=".to_string() + &remote_id);
+        let _ = open::that(
+            "https://steamcommunity.com/sharedfiles/filedetails/?id=".to_string() + &remote_id,
+        );
     } else {
-        return Err("No remote ID found".to_string())
+        return Err("No remote ID found".to_string());
     }
     Ok(())
 }
 
 #[tauri::command]
-async fn handle_change_game_selected(app: tauri::AppHandle, game_id: String) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
+async fn handle_change_game_selected(
+    app: tauri::AppHandle,
+    game_id: String,
+) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
     let old_game = GAME_SELECTED.read().unwrap().clone();
     let old_game_id = old_game.key();
-    change_game_selected(app, &game_id, old_game_id == game_id, false).await.map_err(|e| format!("Error loading data: {}", e))
+    change_game_selected(app, &game_id, old_game_id == game_id, false)
+        .await
+        .map_err(|e| format!("Error loading data: {}", e))
 }
 
-async fn change_game_selected(app: tauri::AppHandle, game_id: &str, reload_same_game: bool, skip_network_update: bool) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
+async fn change_game_selected(
+    app: tauri::AppHandle,
+    game_id: &str,
+    reload_same_game: bool,
+    skip_network_update: bool,
+) -> Result<(Vec<TreeCategory>, Vec<ListItem>), String> {
     let old_game = GAME_SELECTED.read().unwrap().clone();
     let old_game_id = old_game.key();
     use futures_util::TryFutureExt;
@@ -602,36 +681,46 @@ async fn change_game_selected(app: tauri::AppHandle, game_id: &str, reload_same_
     // This works because by default, the initially stored game selected is arena, and that one can never set manually.
     if reload_same_game || game_id != old_game_id {
         let result = load_data(&app, &game_id, skip_network_update);
-        result.map_err(|e| format!("Error loading data: {}", e)).await
+        result
+            .map_err(|e| format!("Error loading data: {}", e))
+            .await
     } else {
         Ok((vec![], vec![]))
     }
 }
 
-async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: bool) -> anyhow::Result<(Vec<TreeCategory>, Vec<ListItem>)> {
-
+async fn load_data(
+    app: &tauri::AppHandle,
+    game_id: &str,
+    skip_network_update: bool,
+) -> anyhow::Result<(Vec<TreeCategory>, Vec<ListItem>)> {
     // We may receive invalid games here, so rule out the invalid ones.
     let supported_games = SupportedGames::default();
     match supported_games.game(game_id) {
         Some(game) => {
-
             // Schemas are optional, so don't interrupt loading due to they not being present.
             //let schema_path = schemas_path().unwrap().join(game.schema_file_name());
             //*SCHEMA.write().unwrap() = Schema::load(&schema_path, None).ok();
             *GAME_SELECTED.write().unwrap() = game.clone();
-            
+
             // Trigger an update of all game configs, just in case one needs update.
             let _ = GameConfig::update(game.key());
 
             // Load the game's config and last known load order.
-            let mut load_order = LoadOrder::load(app,game).unwrap_or_else(|_| Default::default());
-            let mut game_config = GameConfig::load(app,game, true)?;
+            let mut load_order = LoadOrder::load(app, game).unwrap_or_else(|_| Default::default());
+            let mut game_config = GameConfig::load(app, game, true)?;
 
             let settings = SETTINGS.read().unwrap().clone();
             let game_path = settings.game_path(game)?;
-            
-            game_config.update_mod_list(app, &game, &game_path, &mut load_order, skip_network_update)?;
-            
+
+            game_config.update_mod_list(
+                app,
+                &game,
+                &game_path,
+                &mut load_order,
+                skip_network_update,
+            )?;
+
             *GAME_LOAD_ORDER.write().unwrap() = load_order;
             *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
 
@@ -643,19 +732,19 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
                 Ok(profiles) => *GAME_PROFILES.write().unwrap() = profiles,
                 Err(error) => return Err(anyhow!("Error loading profiles: {}", error)),
             }
-/*
-            self.actions_ui().profile_model().clear();
-            for profile in self.game_profiles().read().unwrap().keys().sorted() {
-                self.actions_ui().profile_combobox().add_item_q_string(&QString::from_std_str(profile));
-            }
+            /*
+                        self.actions_ui().profile_model().clear();
+                        for profile in self.game_profiles().read().unwrap().keys().sorted() {
+                            self.actions_ui().profile_combobox().add_item_q_string(&QString::from_std_str(profile));
+                        }
 
-            // Load the saves list for the selected game.
-            let game_path_str = setting_string(game.key());
-            let game_path = PathBuf::from(&game_path_str);
-            if let Err(error) = self.load_saves_to_ui(game, &game_path) {
-                show_dialog(self.main_window(), error, false);
-            }
-*/
+                        // Load the saves list for the selected game.
+                        let game_path_str = setting_string(game.key());
+                        let game_path = PathBuf::from(&game_path_str);
+                        if let Err(error) = self.load_saves_to_ui(game, &game_path) {
+                            show_dialog(self.main_window(), error, false);
+                        }
+            */
 
             send_progress_event(&app, 10, 100);
 
@@ -672,56 +761,60 @@ async fn load_data(app: &tauri::AppHandle, game_id: &str, skip_network_update: b
             send_progress_event(&app, 90, 100);
 
             *GAME_LOAD_ORDER.write().unwrap() = load_order;
-/*
-            // Load the mods to the UI. This does an early return, just in case you add something after this.
-            match self.load_mods_to_ui(game, &game_path, skip_network_update) {
-                Ok(network_receiver) => {
+            /*
+                        // Load the mods to the UI. This does an early return, just in case you add something after this.
+                        match self.load_mods_to_ui(game, &game_path, skip_network_update) {
+                            Ok(network_receiver) => {
 
-                    // Load the launch options for the game selected, as some of them may depend on mods we just loaded.
-                    let _ = setup_actions(self, game, self.game_config().read().unwrap().as_ref().unwrap(), &game_path, &self.game_load_order().read().unwrap());
+                                // Load the launch options for the game selected, as some of them may depend on mods we just loaded.
+                                let _ = setup_actions(self, game, self.game_config().read().unwrap().as_ref().unwrap(), &game_path, &self.game_load_order().read().unwrap());
 
-                    return Ok(network_receiver)
-                },
-                Err(error) => show_dialog(self.main_window(), error, false),
-            }
-*/
+                                return Ok(network_receiver)
+                            },
+                            Err(error) => show_dialog(self.main_window(), error, false),
+                        }
+            */
 
             send_progress_event(&app, 100, 100);
 
             Ok((mods, items))
-        },
+        }
         None => Err(anyhow!("Game {} is not a valid game.", game_id)),
     }
 }
 
-
-async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameConfig) -> anyhow::Result<Vec<TreeCategory>> {
+async fn load_mods(
+    app: &tauri::AppHandle,
+    game: &GameInfo,
+    game_config: &GameConfig,
+) -> anyhow::Result<Vec<TreeCategory>> {
+    use crate::mod_manager::secondary_mods_path;
     use rpfm_lib::utils::path_to_absolute_string;
     use std::time::UNIX_EPOCH;
-    use crate::mod_manager::secondary_mods_path;
-    
+
     let settings = SETTINGS.read().unwrap().clone();
     let game_path = settings.game_path(game)?;
     let game_last_update_date = last_game_update_date(game, &game_path)?;
     let game_data_path = game.data_path(&game_path)?;
 
     let data_path = path_to_absolute_string(&game_data_path);
-    let secondary_path = path_to_absolute_string(&secondary_mods_path(app, game.key()).unwrap_or_default());
+    let secondary_path =
+        path_to_absolute_string(&secondary_mods_path(app, game.key()).unwrap_or_default());
     let content_path = path_to_absolute_string(&game.content_path(&game_path).unwrap_or_default());
-/*
-    // Initialize these here so they can be re-use.
-    let outdated_icon = icon_data("outdated.png").unwrap_or_else(|_| vec![]);
-    let outdated = tre("mod_outdated_description", &[&BASE64_STANDARD.encode(outdated_icon)]);
+    /*
+        // Initialize these here so they can be re-use.
+        let outdated_icon = icon_data("outdated.png").unwrap_or_else(|_| vec![]);
+        let outdated = tre("mod_outdated_description", &[&BASE64_STANDARD.encode(outdated_icon)]);
 
-    let data_older_than_secondary_icon = icon_data("data_older_than_secondary.png").unwrap_or_else(|_| vec![]);
-    let data_older_than_secondary = tre("mod_data_older_than_secondary", &[&BASE64_STANDARD.encode(data_older_than_secondary_icon)]);
+        let data_older_than_secondary_icon = icon_data("data_older_than_secondary.png").unwrap_or_else(|_| vec![]);
+        let data_older_than_secondary = tre("mod_data_older_than_secondary", &[&BASE64_STANDARD.encode(data_older_than_secondary_icon)]);
 
-    let data_older_than_content_icon = icon_data("data_older_than_content.png").unwrap_or_else(|_| vec![]);
-    let data_older_than_content = tre("mod_data_older_than_content", &[&BASE64_STANDARD.encode(data_older_than_content_icon)]);
+        let data_older_than_content_icon = icon_data("data_older_than_content.png").unwrap_or_else(|_| vec![]);
+        let data_older_than_content = tre("mod_data_older_than_content", &[&BASE64_STANDARD.encode(data_older_than_content_icon)]);
 
-    let secondary_older_than_content_icon = icon_data("secondary_older_than_content.png").unwrap_or_else(|_| vec![]);
-    let secondary_older_than_content = tre("mod_secondary_older_than_content", &[&BASE64_STANDARD.encode(secondary_older_than_content_icon)]);
-*/
+        let secondary_older_than_content_icon = icon_data("secondary_older_than_content.png").unwrap_or_else(|_| vec![]);
+        let secondary_older_than_content = tre("mod_secondary_older_than_content", &[&BASE64_STANDARD.encode(secondary_older_than_content_icon)]);
+    */
     // This loads mods per category, meaning all installed mod have to be in the categories list!!!!
     let mut categories: Vec<TreeCategory> = vec![];
     for category in game_config.categories_order() {
@@ -731,14 +824,12 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
         if let Some(mods) = game_config.categories().get(category) {
             for mod_id in mods {
                 if let Some(modd) = game_config.mods().get(mod_id) {
-
                     // Ignore registered mods with no path.
                     if !modd.paths().is_empty() {
                         let mut item = TreeItem::default();
                         item.id = mod_id.to_string();
                         item.name = if modd.name() != modd.id() {
                             if !modd.file_name().is_empty() {
-
                                 // Map filenames are folder names which we have to turn into packs.
                                 let pack_name = if let Some(alt_name) = modd.alt_name() {
                                     alt_name.to_string()
@@ -746,7 +837,12 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
                                     modd.file_name().split('/').last().unwrap().to_owned()
                                 };
 
-                                format!("<b>{}</b> <i>({} - {})</i>", modd.name(), pack_name, modd.id())
+                                format!(
+                                    "<b>{}</b> <i>({} - {})</i>",
+                                    modd.name(),
+                                    pack_name,
+                                    modd.id()
+                                )
                             } else {
                                 format!("<b>{}</b> <i>({})</i>", modd.name(), modd.id())
                             }
@@ -769,44 +865,48 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
                         item.created = if *modd.time_created() != 0 {
                             *modd.time_created() as u64
                         } else if cfg!(target_os = "windows") {
-                            let date = modd.paths()[0].metadata()?.created()?.duration_since(UNIX_EPOCH)?;
+                            let date = modd.paths()[0]
+                                .metadata()?
+                                .created()?
+                                .duration_since(UNIX_EPOCH)?;
                             date.as_secs() as u64
                         } else {
                             0
                         };
 
                         item.updated = *modd.time_updated() as u64;
-/*
-                        let mut flags_description = String::new();
-                        if modd.outdated(game_last_update_date) {
-                            item_flags.set_data_2a(&QVariant::from_bool(true), FLAG_MOD_IS_OUTDATED);
-                            flags_description.push_str(&outdated);
-                        }
+                        /*
+                                                let mut flags_description = String::new();
+                                                if modd.outdated(game_last_update_date) {
+                                                    item_flags.set_data_2a(&QVariant::from_bool(true), FLAG_MOD_IS_OUTDATED);
+                                                    flags_description.push_str(&outdated);
+                                                }
 
-                        if let Ok(flags) = modd.priority_dating_flags(&data_path, &secondary_path, &content_path) {
-                            item_flags.set_data_2a(&QVariant::from_bool(flags.0), FLAG_MOD_DATA_IS_OLDER_THAN_SECONDARY);
-                            item_flags.set_data_2a(&QVariant::from_bool(flags.1), FLAG_MOD_DATA_IS_OLDER_THAN_CONTENT);
-                            item_flags.set_data_2a(&QVariant::from_bool(flags.2), FLAG_MOD_SECONDARY_IS_OLDER_THAN_CONTENT);
+                                                if let Ok(flags) = modd.priority_dating_flags(&data_path, &secondary_path, &content_path) {
+                                                    item_flags.set_data_2a(&QVariant::from_bool(flags.0), FLAG_MOD_DATA_IS_OLDER_THAN_SECONDARY);
+                                                    item_flags.set_data_2a(&QVariant::from_bool(flags.1), FLAG_MOD_DATA_IS_OLDER_THAN_CONTENT);
+                                                    item_flags.set_data_2a(&QVariant::from_bool(flags.2), FLAG_MOD_SECONDARY_IS_OLDER_THAN_CONTENT);
 
-                            if flags.0 {
-                                flags_description.push_str(&data_older_than_secondary);
-                            }
+                                                    if flags.0 {
+                                                        flags_description.push_str(&data_older_than_secondary);
+                                                    }
 
-                            if flags.1 {
-                                flags_description.push_str(&data_older_than_content);
-                            }
+                                                    if flags.1 {
+                                                        flags_description.push_str(&data_older_than_content);
+                                                    }
 
-                            if flags.2 {
-                                flags_description.push_str(&secondary_older_than_content);
-                            }
-                        }
+                                                    if flags.2 {
+                                                        flags_description.push_str(&secondary_older_than_content);
+                                                    }
+                                                }
 
-                        if !flags_description.is_empty() {
-                            flags_description = tr("mod_flags_description") + "<ul>" + &flags_description + "<ul/>";
-                            item_flags.set_tool_tip(&QString::from_std_str(&flags_description));
-                        }
-*/
-                        let (l_data, l_secondary, l_content) = modd.location(&data_path, &secondary_path, &content_path);
+                                                if !flags_description.is_empty() {
+                                                    flags_description = tr("mod_flags_description") + "<ul>" + &flags_description + "<ul/>";
+                                                    item_flags.set_tool_tip(&QString::from_std_str(&flags_description));
+                                                }
+                        */
+                        let (l_data, l_secondary, l_content) =
+                            modd.location(&data_path, &secondary_path, &content_path);
                         let mut locations = vec![];
 
                         if l_data {
@@ -853,7 +953,13 @@ async fn load_mods(app: &tauri::AppHandle, game: &GameInfo, game_config: &GameCo
     Ok(categories)
 }
 
-async fn load_packs(app: &tauri::AppHandle, game_config: &GameConfig, game_info: &GameInfo, game_path: &Path, load_order: &LoadOrder) -> anyhow::Result<Vec<ListItem>> {
+async fn load_packs(
+    app: &tauri::AppHandle,
+    game_config: &GameConfig,
+    game_info: &GameInfo,
+    game_path: &Path,
+    load_order: &LoadOrder,
+) -> anyhow::Result<Vec<ListItem>> {
     use crate::mod_manager::secondary_mods_path;
     use rpfm_lib::files::pack::Pack;
 
@@ -862,20 +968,31 @@ async fn load_packs(app: &tauri::AppHandle, game_config: &GameConfig, game_info:
     let secondary_mods_path = secondary_mods_path(app, game_config.game_key()).unwrap_or_default();
     if !game_path.to_string_lossy().is_empty() {
         if let Ok(game_data_folder) = game_info.data_path(game_path) {
-            let game_data_folder = std::fs::canonicalize(game_data_folder.clone()).unwrap_or_else(|_| game_data_folder.clone());
+            let game_data_folder = std::fs::canonicalize(game_data_folder.clone())
+                .unwrap_or_else(|_| game_data_folder.clone());
 
             // Chain so movie packs are always last.
             let mods = load_order.mods().iter().chain(load_order.movies().iter());
             for (index, mod_id) in mods.enumerate() {
                 if let Some(modd) = game_config.mods().get(mod_id) {
-
-                    let pack_name = modd.paths()[0].file_name().unwrap().to_string_lossy().as_ref().to_owned();
+                    let pack_name = modd.paths()[0]
+                        .file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .as_ref()
+                        .to_owned();
 
                     // This is needed to avoid errors with map packs before we process them.
                     //
                     // In practice if a bin pack loads here, there's a bug elsewhere.
                     if pack_name.ends_with(".pack") {
-                        let pack = Pack::read_and_merge(&[modd.paths()[0].to_path_buf()], true, false, false)?;
+                        let pack = Pack::read_and_merge(
+                            &[modd.paths()[0].to_path_buf()],
+                            true,
+                            false,
+                            false,
+                            false,
+                        )?;
 
                         let mut item = ListItem::default();
                         item.id = mod_id.to_string();
@@ -884,7 +1001,9 @@ async fn load_packs(app: &tauri::AppHandle, game_config: &GameConfig, game_info:
                         item.order = index as i32;
                         item.location = if modd.paths()[0].starts_with(&game_data_folder) {
                             "Data".to_string()
-                        } else if secondary_mods_path.is_dir() && modd.paths()[0].starts_with(&secondary_mods_path) {
+                        } else if secondary_mods_path.is_dir()
+                            && modd.paths()[0].starts_with(&secondary_mods_path)
+                        {
                             if let Some(ref id) = modd.steam_id() {
                                 format!("Secondary ({})", id)
                             } else {
@@ -953,7 +1072,11 @@ struct ListItem {
 }
 
 #[tauri::command]
-async fn move_pack_in_load_order_in_direction(app: tauri::AppHandle, mod_id: &str, direction: LoadOrderDirectionMove) -> Result<Vec<ListItem>, String> {
+async fn move_pack_in_load_order_in_direction(
+    app: tauri::AppHandle,
+    mod_id: &str,
+    direction: LoadOrderDirectionMove,
+) -> Result<Vec<ListItem>, String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -961,7 +1084,9 @@ async fn move_pack_in_load_order_in_direction(app: tauri::AppHandle, mod_id: &st
     let mod_id = css_deescape(mod_id);
 
     load_order.move_mod_in_direction(&mod_id, direction);
-    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
+    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order)
+        .await
+        .map_err(|e| format!("Error loading data: {}", e))?;
 
     *GAME_LOAD_ORDER.write().unwrap() = load_order;
 
@@ -969,7 +1094,11 @@ async fn move_pack_in_load_order_in_direction(app: tauri::AppHandle, mod_id: &st
 }
 
 #[tauri::command]
-async fn move_pack_in_load_order(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<ListItem>, String> {
+async fn move_pack_in_load_order(
+    app: tauri::AppHandle,
+    source_id: &str,
+    target_id: &str,
+) -> Result<Vec<ListItem>, String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -978,7 +1107,9 @@ async fn move_pack_in_load_order(app: tauri::AppHandle, source_id: &str, target_
     let target_id = css_deescape(target_id);
 
     load_order.move_mod_above_another(&source_id, &target_id);
-    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order).await.map_err(|e| format!("Error loading data: {}", e))?;
+    let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order)
+        .await
+        .map_err(|e| format!("Error loading data: {}", e))?;
 
     *GAME_LOAD_ORDER.write().unwrap() = load_order;
 
@@ -986,39 +1117,48 @@ async fn move_pack_in_load_order(app: tauri::AppHandle, source_id: &str, target_
 }
 
 #[tauri::command]
-async fn reorder_categories(app: tauri::AppHandle, source_id: &str, target_id: &str) -> Result<Vec<String>, String> {
-    
+async fn reorder_categories(
+    app: tauri::AppHandle,
+    source_id: &str,
+    target_id: &str,
+) -> Result<Vec<String>, String> {
     // TODO: Move this to a sanitizer function.
     let source_id = css_deescape(source_id);
     let target_id = css_deescape(target_id);
-    
+
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
-    
+
     let mut categories_order = game_config.categories_order().to_vec();
-    let source_index = categories_order.iter().position(|id| id == &source_id)
+    let source_index = categories_order
+        .iter()
+        .position(|id| id == &source_id)
         .ok_or_else(|| format!("Source category '{}' not found", source_id))?;
-    let target_index = categories_order.iter().position(|id| id == &target_id)
+    let target_index = categories_order
+        .iter()
+        .position(|id| id == &target_id)
         .ok_or_else(|| format!("Target category '{}' not found", target_id))?;
-    
+
     // Do nothing if they are the same category or already in the desired order.
     if source_index == target_index {
         return Ok(categories_order);
     }
-    
+
     let source_category = categories_order.remove(source_index);
     let new_target_index = if source_index < target_index {
         target_index - 1
     } else {
         target_index
     };
-    
+
     categories_order.insert(new_target_index, source_category);
     game_config.set_categories_order(categories_order.to_vec());
-    game_config.save(&app, &game_info).map_err(|e| format!("Error al guardar la configuración: {}", e))?;
-    
+    game_config
+        .save(&app, &game_info)
+        .map_err(|e| format!("Error al guardar la configuración: {}", e))?;
+
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
-    
+
     Ok(categories_order)
 }
 
@@ -1026,23 +1166,29 @@ async fn reorder_categories(app: tauri::AppHandle, source_id: &str, target_id: &
 async fn create_category(app: tauri::AppHandle, category: &str) -> Result<(), String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
-    
+
     // Create the category
     game_config.create_category(category);
-    
+
     // Save the changes
-    game_config.save(&app, &game_info).map_err(|e| format!("Error saving configuration: {}", e))?;
-    
+    game_config
+        .save(&app, &game_info)
+        .map_err(|e| format!("Error saving configuration: {}", e))?;
+
     // Update the game config in memory
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
-    
+
     Ok(())
 }
 
 fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
     let _ = app.get_webview_window("main").unwrap().emit(
         "loading://progress",
-        ProgressPayload { id: 0, progress, total },
+        ProgressPayload {
+            id: 0,
+            progress,
+            total,
+        },
     );
 }
 
@@ -1056,6 +1202,7 @@ fn css_deescape(id: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {

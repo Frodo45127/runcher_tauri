@@ -135,7 +135,7 @@ impl LoadOrder {
                 let path = modd.paths().first()?;
                 Some((
                     mod_id.to_owned(),
-                    Pack::read_and_merge(&[path.to_path_buf()], true, false, false).ok()?,
+                    Pack::read_and_merge(&[path.to_path_buf()], true, false, false, false).ok()?,
                 ))
             })
             .collect();
@@ -348,11 +348,7 @@ impl LoadOrder {
         folder_paths.push_str(&folder_paths_mods);
     }
 
-    pub fn move_mod_in_direction(
-        &mut self,
-        mod_id: &str,
-        direction: LoadOrderDirectionMove,
-    ) {
+    pub fn move_mod_in_direction(&mut self, mod_id: &str, direction: LoadOrderDirectionMove) {
         self.automatic = false;
         if let Some(index) = self.mods.iter().position(|id| id == mod_id) {
             match direction {
@@ -370,11 +366,7 @@ impl LoadOrder {
         }
     }
 
-    pub fn move_mod_above_another(
-        &mut self,
-        source_id: &str,
-        target_id: &str,
-    ) {
+    pub fn move_mod_above_another(&mut self, source_id: &str, target_id: &str) {
         if source_id == target_id {
             return;
         }
@@ -382,7 +374,6 @@ impl LoadOrder {
         self.automatic = false;
         if let Some(index) = self.mods.iter().position(|id| id == source_id) {
             if let Some(mut index_target) = self.mods.iter().position(|id| id == target_id) {
-                
                 // Compensate for the index shift after removing the source mod.
                 if index_target > index {
                     index_target -= 1;
