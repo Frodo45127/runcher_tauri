@@ -1,7 +1,7 @@
 TODO:
 - For 1.0:
     - [ ] Categories Management:
-        - [ ] Add
+        - [x] Add
         - [ ] Remove
         - [ ] Rename
         - [x] Reorder (D&D)
