@@ -154,10 +154,9 @@
       <div class="modal-content">
         <div class="modal-header">
           <h2>Settings</h2>
-          <button class="close-btn"><i class="fa-solid fa-times"></i></button>
         </div>
         <div class="modal-container">
-          <div class="modal-tabs vertical-tabs">
+          <div class="modal-tabs">
             <button class="tab-btn active" data-tab="general">General</button>
             <button class="tab-btn" data-tab="paths">Paths</button>
             <button class="tab-btn" data-tab="advanced">Advanced</button>
@@ -259,6 +258,32 @@
             <button class="close-app-btn hidden" id="close-app">Close</button>
             <button class="secondary-btn" id="cancel-settings">Cancel</button>
             <button class="primary-btn" id="save-settings">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div id="add-category-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add Category</h2>
+        </div>
+        <div class="modal-container">
+          <div class="modal-body">
+            <div class="setting-group">
+              <div class="setting-item">
+                <label>Category Name</label>
+                <input type="text" id="add-category-modal-name-input" class="filter-input" placeholder="Enter category name...">
+                <div id="add-category-modal-error" class="error-message"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <div class="button-group">
+              <button class="secondary-btn" id="add-category-modal-cancel-btn">Cancel</button>
+              <button class="primary-btn" id="add-category-modal-accept-btn">OK</button>
+            </div>
           </div>
         </div>
       </div>

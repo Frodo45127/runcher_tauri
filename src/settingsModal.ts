@@ -9,7 +9,6 @@ import { SidebarIcon } from './sidebar';
 
 export class SettingsModal {
   private modal: HTMLElement;
-  private closeBtn: HTMLElement;
   private tabButtons: NodeListOf<HTMLElement>;
   private tabContents: NodeListOf<HTMLElement>;
   private restoreDefaultsBtn: HTMLButtonElement;
@@ -30,7 +29,6 @@ export class SettingsModal {
 
   constructor() {
     this.modal = document.getElementById('settings-modal') as HTMLElement;
-    this.closeBtn = document.querySelector('.close-btn') as HTMLElement;
     this.tabButtons = document.querySelectorAll('.tab-btn') as NodeListOf<HTMLElement>;
     this.tabContents = document.querySelectorAll('.tab-content') as NodeListOf<HTMLElement>;
     this.restoreDefaultsBtn = document.getElementById('restore-defaults') as HTMLButtonElement;
@@ -59,8 +57,6 @@ export class SettingsModal {
    * @param {Main} main - The main instance of the application.
    */ 
   public async openSettingsModal(main: Main) {
-    this.closeBtn.addEventListener('click', this.closeSettingsModal);
-
     this.tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         const tabId = btn.getAttribute('data-tab');

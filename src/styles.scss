@@ -769,269 +769,18 @@ body {
 		font-size: 16px;
 	}
 }
-.modal {
-	display: none;
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: $background-color_20;
-	z-index: 1000;
-	align-items: center;
-	justify-content: center;
-}
-.modal.active {
-	display: flex;
-}
-.modal-content {
-	background-color: $background-color_11;
-	border-radius: 8px;
-	width: 60%;
-	height: 90%;
-	max-height: 80vh;
-	display: flex;
-	flex-direction: column;
-	padding: 0px;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	overflow-y: auto;
-	min-height: 400px;
-}
-.modal-container {
-	display: flex;
-	background-color: $background-color_11;
-	border-radius: 8px;
-	overflow: hidden;
-	flex-grow: 1;
-	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-}
-.vertical-tabs {
-	display: flex;
-	flex-direction: column;
-	background-color: $background-color_2;
-	width: 200px;
-	padding: 20px 0;
-	border-right: 1px solid var(--border-color);
-	button {
-		background: none;
-		border: none;
-		color: $color_1;
-		padding: 12px 20px;
-		text-align: left;
-		cursor: pointer;
-		font-size: 14px;
-		transition: background-color 0.2s;
-		position: relative;
-		width: 100%;
-		&:hover {
-			background-color: $background-color_12;
-		}
-	}
-	button.active {
-		background-color: $background-color_13;
-		font-weight: bold;
-		&::before {
-			content: "";
-			position: absolute;
-			left: 0;
-			top: 0;
-			bottom: 0;
-			width: 3px;
-			background-color: $background-color_5;
-		}
-	}
-}
-.modal-body {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-}
-.modal-header {
-	padding: 20px 24px;
-	border-bottom: 1px solid var(--border-color);
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	h2 {
-		margin: 0;
-		font-size: 18px;
-		color: $color_2;
-	}
-}
-.close-btn {
-	background: none;
-	border: none;
-	font-size: 18px;
-	color: $color_1;
-	cursor: pointer;
-	display: none;
-}
-.tab-content {
-	display: none;
-	padding: 0 20px;
-}
-.tab-content.active {
-	display: block;
-}
-.modal-footer {
-	padding: 20px 24px;
-	border-top: 1px solid var(--border-color);
-	display: flex;
-	justify-content: flex-end;
-	gap: 12px;
-	background-color: $background-color_11;
-	button {
-		padding: 8px 16px;
-		border-radius: 4px;
-		font-size: 14px;
-		cursor: pointer;
-		transition: all 0.2s;
-		min-width: 100px;
-	}
-	.restore-btn {
-		margin-right: auto;
-		background-color: $background-color_3;
-		color: $color_1;
-		border: 1px solid var(--border-color);
-		&:hover {
-			background-color: $background-color_12;
-		}
-	}
-	.cancel-btn {
-		background-color: $background-color_3;
-		color: $color_1;
-		border: 1px solid var(--border-color);
-		&:hover {
-			background-color: $background-color_12;
-		}
-	}
-	.save-btn {
-		background-color: $background-color_5;
-		color: $color_7;
-		border: none;
-		&:hover {
-			background-color: $background-color_18;
-		}
-	}
-}
 .sidebar-icon {
 	width: 24px;
 	height: 24px;
 	object-fit: contain;
 }
-.switch-container {
-	position: relative;
-	display: inline-block;
-}
-.toggle-switch {
-	height: 0;
-	width: 0;
-	opacity: 0;
-	position: absolute;
-	&:checked {
-		+ {
-			.toggle-label {
-				background-color: $background-color_5;
-				&::after {
-					transform: translateX(24px);
-				}
-			}
-		}
-	}
-	&:focus {
-		+ {
-			.toggle-label {
-				box-shadow: 0 0 2px 2px rgba(0, 123, 255, 0.25);
-			}
-		}
-	}
-}
-.toggle-label {
-	display: inline-block;
-	width: 48px;
-	height: 24px;
-	background-color: $background-color_21;
-	border-radius: 12px;
-	position: relative;
-	cursor: pointer;
-	transition: background-color 0.3s;
-	&::after {
-		content: '';
-		position: absolute;
-		top: 2px;
-		left: 2px;
-		width: 20px;
-		height: 20px;
-		background-color: $background-color_22;
-		border-radius: 50%;
-		transition: transform 0.3s;
-	}
-}
-.setting-item {
-	select {
-		width: 100%;
-		padding: 8px;
-		border-radius: 4px;
-		background-color: $background-color_23;
-		color: $color_1;
-		border: 1px solid var(--border-color);
-		flex: 1;
-		min-width: 200px;
-		padding: 8px;
-		border-radius: 4px;
-		border: 1px solid var(--border-color);
-		background-color: $background-color_10;
-		color: $color_1;
-		&:focus {
-			outline: none;
-			border-color: $border-color_1;
-		}
-	}
-	input[type="number"] {
-		width: 100%;
-		padding: 8px;
-		border-radius: 4px;
-		background-color: $background-color_23;
-		color: $color_1;
-		border: 1px solid var(--border-color);
-	}
-	display: flex;
-	align-items: center;
-	margin-bottom: 20px;
-	flex-wrap: wrap;
-	gap: 12px;
-	label {
-		width: 200px;
-		color: $color_1;
-		flex-shrink: 0;
-	}
-	input {
-		flex: 1;
-		min-width: 200px;
-		padding: 8px;
-		border-radius: 4px;
-		border: 1px solid var(--border-color);
-		background-color: $background-color_10;
-		color: $color_1;
-	}
-}
+
 .detail-item {
 	margin-bottom: 10px;
 	padding-bottom: 10px;
 	border-bottom: 1px solid var(--border-color);
 }
-.setting-group {
-	margin-bottom: 32px;
-	max-width: 100%;
-	h3 {
-		color: $color_2;
-		margin-bottom: 20px;
-		font-size: 16px;
-		border-bottom: 1px solid var(--border-color);
-		padding-bottom: 8px;
-	}
-}
+
 .sliding-panel {
 	position: fixed;
 	right: calc(-1 * var(--right-panel-width, 300px));
@@ -1207,39 +956,6 @@ pre {
 }
 code {
 	font-family: $font-family_2;
-}
-@media (max-width: 768px) {
-	.modal-container {
-		flex-direction: column;
-	}
-	.vertical-tabs {
-		width: 100%;
-		flex-direction: row;
-		padding: 0;
-		border-right: none;
-		border-bottom: 1px solid var(--border-color);
-		button {
-			padding: 12px;
-			text-align: center;
-		}
-	}
-	.setting-item {
-		flex-direction: column;
-		align-items: flex-start;
-		label {
-			width: 100%;
-		}
-	}
-	.path-row {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-	.path-label {
-		width: 100%;
-	}
-	.path-input-container {
-		width: 100%;
-	}
 }
 
 /* Loading Overlay Styles */
@@ -1476,129 +1192,389 @@ code {
 	background-color: $background-color_5;
 }
 
-/* Paths message */
-.paths-message {
-	margin-bottom: 1rem;
-	padding: 0.5rem;
-	border-radius: 4px;
-	background-color: var(--bg-color-light);
-	border: 1px solid var(--border-color);
-}
+/* Switch Container Styles (like the ones in the settings modal) */
+.switch-container {
+	position: relative;
+	display: inline-block;
 
-/* Game paths scrollable container */
-.game-path-container {
-	overflow-y:scroll; 
-	overflow-x:hidden; 
-	height:50vh;
-
-	/* Game path item */
-	.game-path-item {
-		margin-bottom: 1rem;
-		padding: 0.5rem;
-		border-radius: 4px;
-		background-color: var(--bg-color-light);
-		border: 1px solid var(--border-color);
-		
-		.game-path-header {
-			display: flex;
-			margin-bottom: 0.5rem;
-			
-			.input-status {
-				gap: 8px;
-				width: 20px;
-				height: 20px;
-				border-radius: 50%;
-				display: block;
-
-				&.ok {
-					background-color: var(--success-color, #28a745);
-				}
-				
-				&.error {
-					background-color: var(--error-color, #dc3545);
-				}
-			}
-			
-			.game-name {
-				gap: 8px;
-				font-weight: bold;
-				color: var(--text-color);
-			}
-
-			.game-path-details-container {
-				display: flex;
-				align-items: center;
-				gap: 8px;
-				flex-shrink: 0;
-				align-content: flex-end;
-				flex-grow: 1;
-			}
-
-			.lock-container {
-				
-				.lock-checkbox {
-					accent-color: var(--primary-color);
-				}
-
-				.lock-label {
-					color: $color_1;
-					font-size: 12px;
-					white-space: nowrap;
+	.toggle-switch {
+		height: 0;
+		width: 0;
+		opacity: 0;
+		position: absolute;
+		&:checked {
+			+ {
+				.toggle-label {
+					background-color: $background-color_5;
+					&::after {
+						transform: translateX(24px);
+					}
 				}
 			}
 		}
-		
-		.game-path-input-container {
-			display: flex;
-			gap: 0.5rem;
-			align-items: center;
-			
-			.path-input {
-				flex: 1;
-				padding: 0.5rem;
-				border: 1px solid var(--border-color);
-				border-radius: 4px;
-				background-color: var(--input-bg);
-				color: var(--text-color);
-			}
-			
-			.browse-btn {
-				padding: 0.5rem;
-				background-color: var(--primary-color);
-				color: white;
-				border: none;
-				border-radius: 4px;
-				cursor: pointer;
-				
-				&:hover {
-					background-color: var(--secondary-color);
-				}
-			}
-			
-			.select-game-btn {
-				padding: 0.5rem 1rem;
-				background-color: var(--success-color, #28a745);
-				color: white;
-				border: none;
-				border-radius: 4px;
-				cursor: pointer;
-				
-				&:disabled {
-					background-color: var(--disabled-color, #6c757d);
-					cursor: not-allowed;
-				}
-				
-				&:not(:disabled):hover {
-					background-color: var(--success-hover-color, #218838);
+		&:focus {
+			+ {
+				.toggle-label {
+					box-shadow: 0 0 2px 2px rgba(0, 123, 255, 0.25);
 				}
 			}
 		}
-		
-		.path-error-message {
-			margin-top: 0.5rem;
-			color: var(--error-color, #dc3545);
-			font-size: 0.875rem;
+	}
+	.toggle-label {
+		display: inline-block;
+		width: 48px;
+		height: 24px;
+		background-color: $background-color_21;
+		border-radius: 12px;
+		position: relative;
+		cursor: pointer;
+		transition: background-color 0.3s;
+		&::after {
+			content: '';
+			position: absolute;
+			top: 2px;
+			left: 2px;
+			width: 20px;
+			height: 20px;
+			background-color: $background-color_22;
+			border-radius: 50%;
+			transition: transform 0.3s;
 		}
 	}
 }
-	
+
+/* Modal Styles. This includes the settings modal, and all the other modals. */
+.modal {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: $background-color_20;
+	z-index: 1000;
+	align-items: center;
+	justify-content: center;
+
+	&.active {
+		display: flex;
+	}
+
+	.modal-content {
+		background-color: $background-color_11;
+		border-radius: 8px;
+		width: 60%;
+		height: 90%;
+		max-height: 80vh;
+		display: flex;
+		flex-direction: column;
+		padding: 0px;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		overflow-y: auto;
+		min-height: 400px;
+
+		.modal-header {
+			padding: 20px 24px;
+			border-bottom: 1px solid var(--border-color);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			h2 {
+				margin: 0;
+				font-size: 18px;
+				color: $color_2;
+			}
+		}
+
+		.modal-container {
+			display: flex;
+			background-color: $background-color_11;
+			border-radius: 8px;
+			overflow: hidden;
+			flex-grow: 1;
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+		
+			.modal-tabs {
+				display: flex;
+				flex-direction: column;
+				background-color: $background-color_2;
+				width: 200px;
+				padding: 20px 0;
+				border-right: 1px solid var(--border-color);
+				button {
+					background: none;
+					border: none;
+					color: $color_1;
+					padding: 12px 20px;
+					text-align: left;
+					cursor: pointer;
+					font-size: 14px;
+					transition: background-color 0.2s;
+					position: relative;
+					width: 100%;
+					&:hover {
+						background-color: $background-color_12;
+					}
+				}
+				button.active {
+					background-color: $background-color_13;
+					font-weight: bold;
+					&::before {
+						content: "";
+						position: absolute;
+						left: 0;
+						top: 0;
+						bottom: 0;
+						width: 3px;
+						background-color: $background-color_5;
+					}
+				}
+			}
+
+			.modal-body {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				min-width: 0;
+
+				.tab-content {
+					display: none;
+					padding: 0 20px;
+
+					&.active {
+						display: block;
+					}
+
+					.setting-group {
+						margin-bottom: 32px;
+						max-width: 100%;
+						h3 {
+							color: $color_2;
+							margin-bottom: 20px;
+							font-size: 16px;
+							border-bottom: 1px solid var(--border-color);
+							padding-bottom: 8px;
+						}
+						.setting-item {
+							display: flex;
+							align-items: center;
+							margin-bottom: 20px;
+							flex-wrap: wrap;
+							gap: 12px;
+
+							input,
+							input[type="number"] {
+								padding: 8px;
+								color: $color_1;
+							}
+							input {
+								flex: 1;
+								min-width: 200px;
+								border-radius: 4px;
+								border: 1px solid var(--border-color);
+								background-color: $background-color_10;
+							}
+							input[type="number"] {
+								width: 100%;
+								border-radius: 4px;
+								background-color: $background-color_23;
+								border: 1px solid var(--border-color);
+							}
+							label {
+								width: 200px;
+								color: $color_1;
+								flex-shrink: 0;
+							}
+							select {
+								width: 100%;
+								padding: 8px;
+								border-radius: 4px;
+								background-color: $background-color_23;
+								color: $color_1;
+								border: 1px solid var(--border-color);
+								flex: 1;
+								min-width: 200px;
+								padding: 8px;
+								border-radius: 4px;
+								border: 1px solid var(--border-color);
+								background-color: $background-color_10;
+								color: $color_1;
+								&:focus {
+									outline: none;
+									border-color: $border-color_1;
+								}
+							}
+						}
+					
+						/* Paths message */
+						.paths-message {
+							margin-bottom: 1rem;
+							padding: 0.5rem;
+							border-radius: 4px;
+							background-color: var(--bg-color-light);
+							border: 1px solid var(--border-color);
+						}
+
+						/* Game paths scrollable container */
+						.game-path-container {
+							overflow-y: scroll; 
+							overflow-x: hidden; 
+							height: 60vh;
+
+							/* Game path item */
+							.game-path-item {
+								margin-bottom: 1rem;
+								padding: 0.5rem;
+								border-radius: 4px;
+								background-color: var(--bg-color-light);
+								border: 1px solid var(--border-color);
+								
+								.game-path-header {
+									display: flex;
+									margin-bottom: 0.5rem;
+									
+									.input-status {
+										gap: 8px;
+										width: 20px;
+										height: 20px;
+										border-radius: 50%;
+										display: block;
+
+										&.ok {
+											background-color: var(--success-color, #28a745);
+										}
+										
+										&.error {
+											background-color: var(--error-color, #dc3545);
+										}
+									}
+									
+									.game-name {
+										gap: 8px;
+										font-weight: bold;
+										color: var(--text-color);
+									}
+
+									.game-path-details-container {
+										display: flex;
+										align-items: center;
+										gap: 8px;
+										flex-shrink: 0;
+										align-content: flex-end;
+										flex-grow: 1;
+									}
+
+									.lock-container {
+										.lock-checkbox {
+											accent-color: var(--primary-color);
+										}
+
+										.lock-label {
+											color: $color_1;
+											font-size: 12px;
+											white-space: nowrap;
+										}
+									}
+								}
+								
+								.game-path-input-container {
+									display: flex;
+									gap: 0.5rem;
+									align-items: center;
+									
+									.path-input {
+										flex: 1;
+										padding: 0.5rem;
+										border: 1px solid var(--border-color);
+										border-radius: 4px;
+										background-color: var(--input-bg);
+										color: var(--text-color);
+									}
+									
+									.browse-btn {
+										padding: 0.5rem;
+										background-color: var(--primary-color);
+										color: white;
+										border: none;
+										border-radius: 4px;
+										cursor: pointer;
+										
+										&:hover {
+											background-color: var(--secondary-color);
+										}
+									}
+									
+									.select-game-btn {
+										padding: 0.5rem 1rem;
+										background-color: var(--success-color, #28a745);
+										color: white;
+										border: none;
+										border-radius: 4px;
+										cursor: pointer;
+										
+										&:disabled {
+											background-color: var(--disabled-color, #6c757d);
+											cursor: not-allowed;
+										}
+										
+										&:not(:disabled):hover {
+											background-color: var(--success-hover-color, #218838);
+										}
+									}
+								}
+								
+								.path-error-message {
+									margin-top: 0.5rem;
+									color: var(--error-color, #dc3545);
+									font-size: 0.875rem;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		.modal-footer {
+			padding: 20px 24px;
+			border-top: 1px solid var(--border-color);
+			display: flex;
+			justify-content: flex-end;
+			gap: 12px;
+			background-color: $background-color_11;
+			button {
+				padding: 8px 16px;
+				border-radius: 4px;
+				font-size: 14px;
+				cursor: pointer;
+				transition: all 0.2s;
+				min-width: 100px;
+			}
+			.restore-btn {
+				margin-right: auto;
+				background-color: $background-color_3;
+				color: $color_1;
+				border: 1px solid var(--border-color);
+				&:hover {
+					background-color: $background-color_12;
+				}
+			}
+			.cancel-btn {
+				background-color: $background-color_3;
+				color: $color_1;
+				border: 1px solid var(--border-color);
+				&:hover {
+					background-color: $background-color_12;
+				}
+			}
+			.save-btn {
+				background-color: $background-color_5;
+				color: $color_7;
+				border: none;
+				&:hover {
+					background-color: $background-color_18;
+				}
+			}
+		}
+	}	
+}

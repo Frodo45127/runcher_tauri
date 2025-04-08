@@ -53,6 +53,12 @@ export class ModTree {
   private unlockModBtn: HTMLButtonElement;
   private copyToSecondaryBtn: HTMLButtonElement;
   private copyToDataBtn: HTMLButtonElement;
+
+  private addCategoryModal: HTMLElement;
+  private addCategoryCancelBtn: HTMLButtonElement;
+  private addCategoryAcceptBtn: HTMLButtonElement;
+  private addCategoryInput: HTMLInputElement;
+  private addCategoryErrorElement: HTMLElement;
       
   constructor(main: Main) {
     this.categoryElements = new Map();
@@ -76,6 +82,12 @@ export class ModTree {
     this.unlockModBtn = document.getElementById('unlock-mod-btn') as HTMLButtonElement;
     this.copyToSecondaryBtn = document.getElementById('copy-to-secondary-btn') as HTMLButtonElement;
     this.copyToDataBtn = document.getElementById('copy-to-data-btn') as HTMLButtonElement;
+
+    this.addCategoryModal = document.getElementById('add-category-modal') as HTMLElement;
+    this.addCategoryCancelBtn = document.getElementById('add-category-modal-cancel-btn') as HTMLButtonElement;
+    this.addCategoryAcceptBtn = document.getElementById('add-category-modal-accept-btn') as HTMLButtonElement;
+    this.addCategoryInput = document.getElementById('add-category-modal-name-input') as HTMLInputElement;
+    this.addCategoryErrorElement = document.getElementById('add-category-modal-error') as HTMLElement;
 
     // Reorderable headers. Done here so we can recycle them when re-rendering the tree.
     this.treeHeader = document.createElement('div');
@@ -914,8 +926,62 @@ export class ModTree {
    * Actions
    ************************/
 
+  /**
+   * Add a new empty category to the tree.
+   * @param {Main} main - The main instance of the application.
+   */
   public async addCategory(main: Main) {
-    console.log('addCategory');
+    this.addCategoryInput.value = '';
+    this.addCategoryErrorElement.textContent = '';
+    this.addCategoryModal.classList.add('active');
+
+    this.addCategoryCancelBtn.addEventListener('click', () => {
+      this.addCategoryModal.classList.remove('active');
+    });
+
+    this.addCategoryAcceptBtn.addEventListener('click', async () => {
+      const categoryName = this.addCategoryInput.value.trim();
+      this.addCategoryErrorElement.textContent = '';
+      
+      // Validate the input. Cannot be empty, nor collide with an existing one.
+      if (!categoryName) {
+        this.addCategoryErrorElement.textContent = 'Please enter a category name';
+        return;
+      }
+
+      if (this.categories.some(cat => cat.id === categoryName)) {
+        this.addCategoryErrorElement.textContent = 'A category with this name already exists';
+        return;
+      }
+
+      // If all validations pass create it in the backend, in the frontend, and re-render the tree.
+      try {
+        invoke('create_category', { category: categoryName });
+
+        const newCategory: TreeCategory = {
+          id: categoryName,
+          name: categoryName,
+          size: '',
+          status: '',
+          last_played: '',
+          children: []
+        };
+
+        const unassignedIndex = this.categories.findIndex(cat => cat.id === 'Unassigned');
+        if (unassignedIndex === -1) {
+          this.categories.push(newCategory);
+        } else {
+          this.categories.splice(unassignedIndex, 0, newCategory);
+        }
+
+        this.renderTree(main);
+        this.addCategoryModal.classList.remove('active');
+        main.statusMessage.textContent = 'Category created successfully';
+      } catch (error) {
+        console.error('Failed to create category:', error);
+        this.addCategoryErrorElement.textContent = `Error creating category: ${error}`;
+      }
+    });
   }
   
   public async renameCategory(main: Main) {
