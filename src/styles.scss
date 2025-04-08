@@ -1260,6 +1260,22 @@ code {
 		display: flex;
 	}
 
+	/* Modal contents for small modals. This have !important to override the default modal content styles. */
+	.modal-content-categories-edit {
+		width: 300px !important;
+		height: 150px !important;
+		min-width: 300px !important;
+		min-height: 250px !important;
+
+		label {
+			padding-top: 10px;
+		}
+		
+		.tab-content {
+			display: block !important;
+		}
+	}
+
 	.modal-content {
 		background-color: $background-color_11;
 		border-radius: 8px;
