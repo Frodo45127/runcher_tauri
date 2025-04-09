@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { SettingsManager } from "./settings";
 import { Sidebar } from "./sidebar";
 import { ModTree, TreeCategory } from "./modTree";
@@ -14,6 +15,10 @@ declare global {
   var main: Main;
 }
 
+const GITHUB_URL = "https://github.com/Frodo45127/runcher";
+const DISCORD_URL = "https://discord.gg/moddingden";
+const PATREON_URL = "https://www.patreon.com/RPFM";
+
 export class Main {
   public settingsManager: SettingsManager;
   public sidebar: Sidebar;
@@ -26,6 +31,10 @@ export class Main {
 
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
+  private patreonBtn: HTMLButtonElement;
+  private discordBtn: HTMLButtonElement;
+  private githubBtn: HTMLButtonElement;
+  private updaterBtn: HTMLButtonElement;
 
   constructor() {
     this.loadingManager = new LoadingManager();
@@ -37,6 +46,18 @@ export class Main {
     this.settingsModal = new SettingsModal();
     this.modDetails = new ModDetailsPanel();
     this.statusMessage = document.querySelector('.status-message') as HTMLElement;
+
+    this.patreonBtn = document.getElementById('patreon-btn') as HTMLButtonElement;
+    this.patreonBtn.addEventListener('click', () => this.openPatreon());
+    
+    this.discordBtn = document.getElementById('discord-btn') as HTMLButtonElement;
+    this.discordBtn.addEventListener('click', () => this.openDiscord());
+    
+    this.githubBtn = document.getElementById('github-btn') as HTMLButtonElement;
+    this.githubBtn.addEventListener('click', () => this.openGithub());
+
+    this.updaterBtn = document.getElementById('updater-btn') as HTMLButtonElement;
+    this.updaterBtn.addEventListener('click', () => this.openUpdater());
 
     // Add event listener for launch button
     this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
@@ -183,6 +204,26 @@ export class Main {
       this.loadingManager.hideListLoading(this);
       this.loadingManager.hideProgress();
     }
+  }
+
+  /************************
+   * Status Bar buttons
+   ************************/
+
+  public openPatreon() {
+    openUrl(PATREON_URL);
+  }
+  
+  public openDiscord() {
+    openUrl(DISCORD_URL);
+  }
+
+  public openGithub() {
+    openUrl(GITHUB_URL);
+  }
+
+  private openUpdater() {
+    console.log('Updater');
   }
 }
 

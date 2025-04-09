@@ -765,6 +765,12 @@ body {
 		background-color: $background-color_4;
 	}
 }
+.status-icon {
+	width: 24px;
+	height: 24px;
+	object-fit: contain;
+}
+
 .button-group {
 	display: flex;
 	gap: 8px;

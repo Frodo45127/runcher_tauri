@@ -93,7 +93,12 @@ TODO:
         - [ ] MacOS (nice to have, but I don't have a mac for testing)
     - [ ] Status bar:
         - [x] Loading bar for background processes.
-        - [ ] Links to Github, Discord, Patreon, About, Updater.
+        - [ ] Updater to update the app, schemas and sql scripts.
+        - [ ] Links to:
+            - [x] Github
+            - [x] Discord
+            - [x] Patreon
+            - [ ] About
     - [ ] Open folder menu:
         - [ ] Quick access to game folder.
         - [ ] Quick access to data.
