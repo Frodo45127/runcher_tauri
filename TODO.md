@@ -1,9 +1,9 @@
 TODO:
 - For 1.0:
-    - [ ] Categories Management:
+    - [x] Categories Management:
         - [x] Add
-        - [ ] Remove
-        - [ ] Rename
+        - [x] Remove
+        - [x] Rename
         - [x] Reorder (D&D)
     - [ ] Mods Management:
         - [x] Toggle
