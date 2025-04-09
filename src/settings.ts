@@ -10,6 +10,7 @@ export interface AppSettings {
   tree_filter_value: string;
   list_filter_value: string;
   selected_tree_item: string | null;
+  selected_tree_category: string | null;
   selected_list_item: string | null;
   panel_heights: { [key: string]: number };
   right_panel_width: number;
@@ -34,6 +35,7 @@ export class SettingsManager {
       tree_filter_value: '',
       list_filter_value: '',
       selected_tree_item: null,
+      selected_tree_category: null,
       selected_list_item: null,
       panel_heights: {},
       right_panel_width: 300,
@@ -107,6 +109,7 @@ export class SettingsManager {
           tree_filter_value: this.appSettings.tree_filter_value,
           list_filter_value: this.appSettings.list_filter_value,
           selected_tree_item: this.appSettings.selected_tree_item,
+          selected_tree_category: this.appSettings.selected_tree_category,
           selected_list_item: this.appSettings.selected_list_item,
           panel_heights: this.appSettings.panel_heights,
           right_panel_width: this.appSettings.right_panel_width,

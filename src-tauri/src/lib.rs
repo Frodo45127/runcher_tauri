@@ -1163,12 +1163,35 @@ async fn reorder_categories(
 }
 
 #[tauri::command]
-async fn create_category(app: tauri::AppHandle, category: &str) -> Result<(), String> {
+async fn create_category(app: tauri::AppHandle, category: &str) -> Result<Vec<String>, String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
 
     // Create the category
-    game_config.create_category(category);
+    game_config.create_category(category)
+        .map_err(|e| format!("Error creating category: {}", e))?;
+
+    // Save the changes
+    game_config
+        .save(&app, &game_info)
+        .map_err(|e| format!("Error saving configuration: {}", e))?;
+
+    let new_order = game_config.categories_order().to_vec();
+
+    // Update the game config in memory
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+
+    Ok(new_order)
+}
+
+#[tauri::command]
+async fn rename_category(app: tauri::AppHandle, category: &str, new_name: &str) -> Result<(), String> {
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+
+    // Create the category
+    game_config.rename_category(category, new_name)
+        .map_err(|e| format!("Error renaming category: {}", e))?;
 
     // Save the changes
     game_config
@@ -1181,6 +1204,27 @@ async fn create_category(app: tauri::AppHandle, category: &str) -> Result<(), St
     Ok(())
 }
 
+#[tauri::command]
+async fn remove_category(app: tauri::AppHandle, category: &str) -> Result<(), String> {
+    let game_info = GAME_SELECTED.read().unwrap().clone();
+    let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
+
+    // Create the category
+    game_config.delete_category(category)
+        .map_err(|e| format!("Error deleting category: {}", e))?;
+
+    // Save the changes
+    game_config
+        .save(&app, &game_info)
+        .map_err(|e| format!("Error saving configuration: {}", e))?;
+
+    // Update the game config in memory
+    *GAME_CONFIG.lock().unwrap() = Some(game_config);
+
+    Ok(())
+}
+
+/// Util to send progress events to the webview.
 fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
     let _ = app.get_webview_window("main").unwrap().emit(
         "loading://progress",
@@ -1235,7 +1279,9 @@ pub fn run() {
             reorder_categories,
             open_mod_folder,
             open_mod_url,
-            create_category
+            create_category,
+            rename_category,
+            remove_category
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

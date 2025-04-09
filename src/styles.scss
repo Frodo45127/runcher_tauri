@@ -115,6 +115,13 @@ body {
 	width: 100vw;
 	overflow: hidden;
 }
+
+/* Prevent text selection. Needs the additional tags because at least on linux, only the webkit one works. */
+.prevent-select {
+	-webkit-user-select: none; /* Safari */
+	-ms-user-select: none; /* IE 10 and IE 11 */
+	user-select: none; /* Standard syntax */
+}
 .app-container {
 	display: grid;
 	grid-template-columns: 60px 80px 1fr 5px var(--right-panel-width, 300px);
@@ -405,6 +412,19 @@ body {
 .tree-category.expanded {
 	&::before {
 		transform: translateY(-50%) rotate(90deg);
+	}
+}
+.tree-category.selected {
+	background-color: $background-color_13;
+	border-left: 3px solid var(--primary-color);
+	
+	.category-header {
+		background-color: $background-color_13;
+		
+		.category-name {
+			color: var(--primary-color);
+			font-weight: bold;
+		}
 	}
 }
 .category-items {
@@ -1262,13 +1282,17 @@ code {
 
 	/* Modal contents for small modals. This have !important to override the default modal content styles. */
 	.modal-content-categories-edit {
-		width: 300px !important;
-		height: 150px !important;
+		width: 500px !important;
+		height: 250px !important;
 		min-width: 300px !important;
 		min-height: 250px !important;
 
+		input[type="text"] {
+			margin-top: 10px !important;
+		}
 		label {
-			padding-top: 10px;
+			padding-top: 10px !important;
+			width: 100px !important;
 		}
 		
 		.tab-content {

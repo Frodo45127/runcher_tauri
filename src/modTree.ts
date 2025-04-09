@@ -22,20 +22,18 @@ export interface TreeItem {
 export interface TreeCategory {
   id: string;
   name: string;
-  size: string;
-  status: string;
-  last_played: string;
   children: TreeItem[];
 }
 
 export class ModTree {
+  public categories: TreeCategory[];
   private categoryElements: Map<string, HTMLElement>;
   private itemElements: Map<string, HTMLElement>;
-  private treeFilterInput: HTMLInputElement;
+  private selectedCategories: Set<string>;
   private selectedItems: Set<string>;
+  private treeFilterInput: HTMLInputElement;
   private currentSortField: string = 'name';
   private sortDirection: 'asc' | 'desc' = 'asc';
-  public categories: TreeCategory[];
   private dragCounter: number;
   private dragOverElement: HTMLElement | null;
   private draggingCategory: boolean;
@@ -56,15 +54,21 @@ export class ModTree {
 
   private addCategoryModal: HTMLElement;
   private addCategoryCancelBtn: HTMLButtonElement;
-  private addCategoryAcceptBtn: HTMLButtonElement;
+  private addCategoryAcceptAddBtn: HTMLButtonElement;
+  private addCategoryAcceptRenameBtn: HTMLButtonElement;
   private addCategoryInput: HTMLInputElement;
+  private addCategoryPrevNameInput: HTMLInputElement;
   private addCategoryErrorElement: HTMLElement;
-      
+  private addCategoryModalTitle: HTMLElement;
+
+  private defaultCategory = 'Unassigned';
+
   constructor(main: Main) {
     this.categoryElements = new Map();
     this.itemElements = new Map();
     this.treeFilterInput = document.getElementById('tree-filter') as HTMLInputElement;
     this.selectedItems = new Set<string>();
+    this.selectedCategories = new Set<string>();
     this.categories = [];
     this.dragCounter = 0;
     this.dragOverElement = null;
@@ -85,10 +89,13 @@ export class ModTree {
 
     this.addCategoryModal = document.getElementById('add-category-modal') as HTMLElement;
     this.addCategoryCancelBtn = document.getElementById('add-category-modal-cancel-btn') as HTMLButtonElement;
-    this.addCategoryAcceptBtn = document.getElementById('add-category-modal-accept-btn') as HTMLButtonElement;
+    this.addCategoryAcceptAddBtn = document.getElementById('add-category-modal-accept-add-btn') as HTMLButtonElement;
+    this.addCategoryAcceptRenameBtn = document.getElementById('add-category-modal-accept-rename-btn') as HTMLButtonElement;
     this.addCategoryInput = document.getElementById('add-category-modal-name-input') as HTMLInputElement;
+    this.addCategoryPrevNameInput = document.getElementById('add-category-modal-prev-name-input') as HTMLInputElement;
     this.addCategoryErrorElement = document.getElementById('add-category-modal-error') as HTMLElement;
-
+    this.addCategoryModalTitle = document.getElementById('add-category-modal-title') as HTMLElement;
+    
     // Reorderable headers. Done here so we can recycle them when re-rendering the tree.
     this.treeHeader = document.createElement('div');
     this.treeHeader.className = 'tree-header';
@@ -125,6 +132,21 @@ export class ModTree {
     this.unlockModBtn.addEventListener('click', () => this.unlockMod(main));
     this.copyToSecondaryBtn.addEventListener('click', () => this.copyToSecondary(main));
     this.copyToDataBtn.addEventListener('click', () => this.copyToData(main));
+
+    // Add listeners for the add category modal.
+    this.addCategoryCancelBtn.addEventListener('click', () => this.closeAddCategoryNameModal());
+    this.addCategoryModal.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!this.addCategoryAcceptAddBtn.classList.contains('hidden')) {
+          this.addCategoryAcceptAddBtn.click();
+        } else if (!this.addCategoryAcceptRenameBtn.classList.contains('hidden')) {
+          this.addCategoryAcceptRenameBtn.click();
+        }
+      }
+    }); 
+    this.addCategoryAcceptAddBtn.addEventListener('click', () => this.addCategorySuccess(main));
+    this.addCategoryAcceptRenameBtn.addEventListener('click', () => this.renameCategorySuccess(main));
   }
  
   /**
@@ -146,8 +168,9 @@ export class ModTree {
       const categoryElement = document.createElement('div');
       categoryElement.className = 'tree-category';
       categoryElement.dataset.id = CSS.escape(category.id);
+      categoryElement.dataset.name = category.id;
       this.setupDragCategory(categoryElement);
-
+      
       // Empty drop element for categories inbetweeners.
       const emptyDropElement = document.createElement('div');
       emptyDropElement.className = 'empty-drop-element';
@@ -161,8 +184,17 @@ export class ModTree {
         <span class="expander"><i class="fa-solid fa-chevron-right"></i></span>
         <span class="category-name">${category.id}</span>
       `;
+      
+      // Find the category name element within the category header
+      const categoryNameElement = categoryHeader.querySelector('.category-name') as HTMLElement;
+      categoryNameElement.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        const mouseEvent = e as MouseEvent;
+        this.selectCategory(main, categoryElement.getAttribute('data-id') || '', mouseEvent.ctrlKey, mouseEvent.shiftKey);
+      });
+      
       categoryHeader.addEventListener('click', () => {
-        this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '')
+        this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '');
       });
 
       // Items container, where the mod items are listed.
@@ -376,6 +408,69 @@ export class ModTree {
    ************************/
 
   /**
+   * Select a category.
+   * @param {Main} main - The main instance of the application.
+   * @param {string} categoryId - The id of the category to select.
+   * @param {boolean} isCtrlPressed - Whether Ctrl key is pressed (for multi-select).
+   * @param {boolean} isShiftPressed - Whether Shift key is pressed (for range selection).
+   */
+  public selectCategory(main: Main, categoryId: string, isCtrlPressed: boolean = false, isShiftPressed: boolean = false) {
+    if (!isCtrlPressed && !isShiftPressed) {
+
+      // Clear any previously selected categories and items
+      const currentlySelectedCategories = document.querySelectorAll('.tree-category.selected');
+      currentlySelectedCategories.forEach(item => {
+        item.classList.remove('selected');
+      });
+      
+      const currentlySelectedItems = document.querySelectorAll('.tree-item.selected');
+      currentlySelectedItems.forEach(item => {
+        item.classList.remove('selected');
+      });
+      
+      this.selectedCategories.clear();
+      this.selectedItems.clear();
+    }
+    
+    const categoryElement = this.categoryElements.get(categoryId);
+    if (!categoryElement) return;
+    
+    if (isShiftPressed && this.selectedCategories.size > 0) {
+      const categories = Array.from(document.querySelectorAll('.tree-category'));
+      const lastSelectedId = Array.from(this.selectedCategories)[this.selectedCategories.size - 1];
+      const lastSelectedIndex = categories.findIndex(item => item.getAttribute('data-id') === lastSelectedId);
+      const currentIndex = categories.findIndex(item => item.getAttribute('data-id') === categoryId);
+      
+      const start = Math.min(lastSelectedIndex, currentIndex);
+      const end = Math.max(lastSelectedIndex, currentIndex);
+      
+      for (let i = start; i <= end; i++) {
+        const id = categories[i].getAttribute('data-id');
+        if (id) {
+          this.selectedCategories.add(id);
+          categories[i].classList.add('selected');
+        }
+      }
+    } else if (isCtrlPressed) {
+      if (this.selectedCategories.has(categoryId)) {
+        this.selectedCategories.delete(categoryId);
+        categoryElement.classList.remove('selected');
+      } else {
+        this.selectedCategories.add(categoryId);
+        categoryElement.classList.add('selected');
+      }
+    } else {
+      this.selectedCategories.add(categoryId);
+      categoryElement.classList.add('selected');
+    }
+    
+    if (this.selectedCategories.size === 1) {
+      main.settingsManager.appSettings.selected_tree_category = categoryId;
+      main.settingsManager.saveSettings();
+    }
+  }
+
+  /**
    * Select a tree item.
    * @param {Main} main - The main instance of the application.
    * @param {string} itemId - The id of the item to select.
@@ -384,11 +479,17 @@ export class ModTree {
    */
   public selectTreeItem(main: Main, itemId: string, isCtrlPressed: boolean = false, isShiftPressed: boolean = false) {
     if (!isCtrlPressed && !isShiftPressed) {
-      const currentlySelected = document.querySelectorAll('.tree-item.selected');
-      currentlySelected.forEach(item => {
+      const currentlySelectedItems = document.querySelectorAll('.tree-item.selected');
+      currentlySelectedItems.forEach(item => {
         item.classList.remove('selected');
       });
       this.selectedItems.clear();
+
+      const currentlySelectedCategories = document.querySelectorAll('.tree-category.selected');
+      currentlySelectedCategories.forEach(category => {
+        category.classList.remove('selected');
+      });
+      this.selectedCategories.clear();
     }
     
     const itemElement = this.itemElements.get(itemId);
@@ -931,65 +1032,70 @@ export class ModTree {
    * @param {Main} main - The main instance of the application.
    */
   public async addCategory(main: Main) {
-    this.addCategoryInput.value = '';
-    this.addCategoryErrorElement.textContent = '';
-    this.addCategoryModal.classList.add('active');
-
-    this.addCategoryCancelBtn.addEventListener('click', () => {
-      this.addCategoryModal.classList.remove('active');
-    });
-
-    this.addCategoryAcceptBtn.addEventListener('click', async () => {
-      const categoryName = this.addCategoryInput.value.trim();
-      this.addCategoryErrorElement.textContent = '';
-      
-      // Validate the input. Cannot be empty, nor collide with an existing one.
-      if (!categoryName) {
-        this.addCategoryErrorElement.textContent = 'Please enter a category name';
-        return;
-      }
-
-      if (this.categories.some(cat => cat.id === categoryName)) {
-        this.addCategoryErrorElement.textContent = 'A category with this name already exists';
-        return;
-      }
-
-      // If all validations pass create it in the backend, in the frontend, and re-render the tree.
-      try {
-        invoke('create_category', { category: categoryName });
-
-        const newCategory: TreeCategory = {
-          id: categoryName,
-          name: categoryName,
-          size: '',
-          status: '',
-          last_played: '',
-          children: []
-        };
-
-        const unassignedIndex = this.categories.findIndex(cat => cat.id === 'Unassigned');
-        if (unassignedIndex === -1) {
-          this.categories.push(newCategory);
-        } else {
-          this.categories.splice(unassignedIndex, 0, newCategory);
-        }
-
-        this.renderTree(main);
-        this.addCategoryModal.classList.remove('active');
-        main.statusMessage.textContent = 'Category created successfully';
-      } catch (error) {
-        console.error('Failed to create category:', error);
-        this.addCategoryErrorElement.textContent = `Error creating category: ${error}`;
-      }
-    });
+    this.openAddCategoryNameModal('Add Category', '');
   }
   
   public async renameCategory(main: Main) {
-    console.log('renameCategory');
+    const categorySelected = this.selectedCategories.values().next().value;
+    if (categorySelected) {
+      this.openAddCategoryNameModal('Rename Category', categorySelected);
+    } else {
+      main.statusMessage.textContent = 'No category selected.';
+    }
   }
 
   public async removeCategory(main: Main) {
-    console.log('removeCategory');
+    if (this.selectedCategories.size === 0) {
+      main.statusMessage.textContent = 'No category selected.';
+      return;
+    }
+
+    try {
+      const defaultCategory = this.categories.find(c => c.id === this.defaultCategory) as TreeCategory;
+      for (const categorySelected of this.selectedCategories) {
+        await invoke('remove_category', { category: categorySelected }) as string[];
+
+        // Update the cached categories, reparenting orphaned mods to the default category.
+        const modsToReparent = this.categories.find(c => c.id === categorySelected)?.children || [];
+        defaultCategory.children.push(...modsToReparent);
+        this.categories.splice(this.categories.findIndex(c => c.id === categorySelected), 1);
+        this.reparentMods(categorySelected, this.defaultCategory);
+
+        // Remove the category from the settingsManager.appSettings.tree_open_state.
+        delete main.settingsManager.appSettings.tree_open_state[categorySelected];  
+      }
+
+      main.settingsManager.appSettings.tree_open_state[this.defaultCategory] = true;
+      main.settingsManager.saveSettings();
+       
+      // Sort the mod items (not the categories) by the current sort column.
+      const sortedItems = [...defaultCategory.children];
+      this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
+
+      // Reparent the mods in the UI.
+      const defaultCategoryElement = this.categoryElements.get(this.defaultCategory) as HTMLElement;
+      const defaultCategoryItems = defaultCategoryElement.querySelector('.category-items') as HTMLElement;
+
+      for (const item of sortedItems) {
+        const escapedId = CSS.escape(item.id);
+        const itemElement = this.itemElements.get(escapedId) as HTMLElement;
+        itemElement.remove();
+        defaultCategoryItems.appendChild(itemElement);
+
+        this.selectedCategories.delete(escapedId);
+      }
+
+      // Second loop is to delete the categories themselfs, after all the mods have been properly reparented.
+      for (const categorySelected of this.selectedCategories) {
+        const categoryElement = this.categoryElements.get(categorySelected) as HTMLElement;
+        categoryElement.remove();
+        this.categoryElements.delete(categorySelected);
+      }
+
+      main.statusMessage.textContent = 'Categories removed successfully';
+    } catch (error) {
+      main.statusMessage.textContent = `Error removing categories: ${error}`;
+    }
   }
 
   public async addMod(main: Main) {
@@ -1027,6 +1133,142 @@ export class ModTree {
   /************************
    * Utils
    ************************/
+
+  /**
+   * Open the add category name modal.
+   * @param {string} title - The title of the modal.
+   * @param {string} currentName - The current name of the category.
+   */
+  private openAddCategoryNameModal(title: string, currentName: string) {
+    this.addCategoryModal.classList.add('active');
+    this.addCategoryInput.value = currentName;
+    this.addCategoryErrorElement.textContent = '';
+    this.addCategoryModalTitle.textContent = title;
+
+    // Rename always has a previous name.
+    this.addCategoryPrevNameInput.value = currentName;
+    if (currentName === '') {
+      this.addCategoryAcceptAddBtn.classList.remove('hidden');
+    } else {
+      this.addCategoryAcceptRenameBtn.classList.remove('hidden');
+    }
+
+    this.addCategoryInput.focus();
+  }
+
+  private closeAddCategoryNameModal() {
+    this.addCategoryModal.classList.remove('active');
+    this.addCategoryAcceptAddBtn.classList.add('hidden');
+    this.addCategoryAcceptRenameBtn.classList.add('hidden');
+  }
+
+  private async addCategorySuccess(main: Main) {
+    const categoryName = this.addCategoryInput.value.trim();
+    this.addCategoryErrorElement.textContent = '';
+
+    try {
+      const newOrder = await invoke('create_category', { category: categoryName }) as string[];
+
+      const newCategory: TreeCategory = {
+        id: categoryName,
+        name: categoryName,
+        children: []
+      };
+
+      this.categories.push(newCategory);
+      this.categories = newOrder.map(id => {
+        const category = this.categories.find(cat => cat.id === id);
+        return category ? category : null;
+      }).filter(Boolean) as TreeCategory[];
+
+      this.renderTree(main);
+      this.closeAddCategoryNameModal();
+      main.statusMessage.textContent = 'Category created successfully';
+    } catch (error) {
+      this.addCategoryErrorElement.textContent = `Error creating category: ${error}`;
+    }
+  }
+
+  private renameCategorySuccess(main: Main) {
+    const newName = this.addCategoryInput.value.trim();
+    const originalName = this.addCategoryPrevNameInput.value.trim();
+    this.addCategoryErrorElement.textContent = '';
+
+    try {
+      invoke('rename_category', { category: originalName, newName }).then(() => {
+
+        // We need to update the category name in the following places to avoid a full re-render:
+        // - this.categories.
+        // - this.categoryElements.
+        // - The text in the category header.
+        // - The categoryElement.dataset.name and id.
+        // - The categoryItems id.
+        // - The data-category-id attribute of all the items in the category.
+        // - The settingsManager.appSettings.tree_open_state.
+        const categoryToRename = this.categories.find(cat => cat.id === originalName);
+        if (categoryToRename) {
+          categoryToRename.id = newName;
+          categoryToRename.name = newName;
+        }
+
+        // Update the categoryElement.dataset.name and id.
+        const newEscapedId = CSS.escape(newName);
+        const categoryElement = this.categoryElements.get(originalName);
+
+        if (categoryElement) {
+          categoryElement.dataset.name = newName;
+          categoryElement.dataset.id = newEscapedId;
+
+          const categoryNameElement = categoryElement.querySelector('.category-name') as HTMLElement;
+          if (categoryNameElement) {
+            categoryNameElement.textContent = newName;
+          }
+
+          const categoryItems = categoryElement.querySelector('.category-items');
+          if (categoryItems) {
+            categoryItems.id = `children-${categoryElement.dataset.id}`;
+          }
+
+          this.categoryElements.set(newName, categoryElement);
+          this.categoryElements.delete(originalName);
+        }
+
+        // Update the data-category-id attribute of all the items in the category.
+        this.reparentMods(originalName, newName);
+
+        // Update the cached selected categories.
+        const originalEscapedId = CSS.escape(originalName);
+        this.selectedCategories.delete(originalEscapedId);
+        this.selectedCategories.add(newEscapedId);
+
+        // Update the settingsManager.appSettings.tree_open_state.
+        delete main.settingsManager.appSettings.tree_open_state[originalName];
+        main.settingsManager.appSettings.tree_open_state[newName] = true;
+        main.settingsManager.saveSettings();
+
+        this.closeAddCategoryNameModal();
+        main.statusMessage.textContent = 'Category renamed successfully';
+      });
+    } catch (error) {
+      this.addCategoryErrorElement.textContent = `Error renaming category: ${error}`;
+    }
+  }
+
+  /**
+   * Reparent the mods to a new category. 
+   * Note that this only updates the category id in each mod element. 
+   * It does not move the mod elements to the new category.
+   * @param {string} originalName - The original name of the category.
+   * @param {string} newName - The new name of the category.
+   */
+  private reparentMods(originalName: string, newName: string) {
+      const items = this.itemElements.values();
+      for (const item of items) {
+        if (item.dataset.categoryId === originalName) {
+          item.dataset.categoryId = newName;
+        }
+      }
+  }
 
   /**
    * Remove HTML tags from a string.

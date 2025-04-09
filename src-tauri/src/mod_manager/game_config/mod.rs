@@ -10,7 +10,7 @@
 
 //! Module containing the centralized code for mod and load order management.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use getset::*;
 use rayon::{iter::Either, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -128,6 +128,7 @@ impl GameConfig {
 
         let mut file = BufWriter::new(File::create(path)?);
         file.write_all(to_string_pretty(&self)?.as_bytes())?;
+        file.flush()?;
         Ok(())
     }
 
@@ -164,7 +165,15 @@ impl GameConfig {
         category
     }
 
-    pub fn create_category(&mut self, category: &str) {
+    pub fn create_category(&mut self, category: &str) -> Result<()> {
+        if category == DEFAULT_CATEGORY {
+            return Err(anyhow!("Cannot create default category."));
+        }
+
+        if self.categories().get(category).is_some() {
+            return Err(anyhow!("Category already exists."));
+        }
+
         self.categories_mut().insert(category.to_owned(), vec![]);
 
         let pos = if !self.categories_order().is_empty() {
@@ -173,22 +182,57 @@ impl GameConfig {
             0
         };
         self.categories_order_mut().insert(pos, category.to_owned());
+
+        Ok(())
     }
 
-    pub fn delete_category(&mut self, category: &str) {
-        // Just in case we don't have a default category yet.
-        if self.categories().get(DEFAULT_CATEGORY).is_none() {
-            self.categories_mut()
-                .insert(DEFAULT_CATEGORY.to_owned(), vec![]);
+    pub fn rename_category(&mut self, category: &str, new_name: &str) -> Result<()> {
+        if category == new_name {
+            return Ok(());
         }
 
-        // Do not delete default category.
         if category == DEFAULT_CATEGORY {
-            return;
+            return Err(anyhow!("Cannot rename default category."));
         }
 
-        self.categories_mut().remove(category);
-        self.categories_order_mut().retain(|x| x != category);
+        if new_name == DEFAULT_CATEGORY {
+            return Err(anyhow!("Cannot rename category to default category."));
+        }
+
+        if new_name.is_empty() {
+            return Err(anyhow!("New name cannot be empty."));
+        }
+
+        if self.categories().get(new_name).is_some() {
+            return Err(anyhow!("Category with new name already exists."));
+        }
+
+        if let Some(packs) = self.categories_mut().remove(category) {
+            self.categories_mut().insert(new_name.to_owned(), packs);
+        
+            if let Some(pos) = self.categories_order().iter().position(|x| x == &category) {
+                self.categories_order_mut()[pos] = new_name.to_owned();
+            }
+        } 
+
+        Ok(())       
+    }
+
+    pub fn delete_category(&mut self, category: &str) -> Result<()> {
+        if category == DEFAULT_CATEGORY {
+            return Err(anyhow!("Cannot delete default category."));
+        }
+
+        if let Some(mods) = self.categories_mut().remove(category) {
+            self.categories_order_mut().retain(|x| x != category);
+
+            // Reparent all mods to the default category.
+            if let Some(default_cat) = self.categories_mut().get_mut(DEFAULT_CATEGORY) {
+                default_cat.extend(mods);
+            }
+        }
+
+        Ok(())
     }
 
     /// NOTE: This returns a channel receiver for the workshop/equivalent service data request.
