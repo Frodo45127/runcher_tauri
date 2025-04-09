@@ -121,9 +121,9 @@ export class ModTree {
     });
 
     // Add listeners for all the action buttons in the actions panel.
-    this.addCategoryBtn.addEventListener('click', () => this.addCategory(main));
-    this.renameCategoryBtn.addEventListener('click', () => this.renameCategory(main));
-    this.removeCategoryBtn.addEventListener('click', () => this.removeCategory(main));
+    this.addCategoryBtn.addEventListener('click', () => this.addCategory());
+    this.renameCategoryBtn.addEventListener('click', () => this.renameCategory());
+    this.removeCategoryBtn.addEventListener('click', () => this.removeCategory());
     this.addModBtn.addEventListener('click', () => this.addMod(main));
     this.removeModBtn.addEventListener('click', () => this.removeMod(main));
     this.downloadModBtn.addEventListener('click', () => this.downloadMod(main));
@@ -983,7 +983,7 @@ export class ModTree {
         const escapedId = CSS.escape(item.id);
         const itemElement = this.itemElements.get(escapedId) as HTMLElement;
         itemElement.remove();
-          targetContainer.appendChild(itemElement);
+        targetContainer.appendChild(itemElement);
       }
 
       main.statusMessage.textContent = `${sourceIds.length} mods moved successfully`;
@@ -1039,13 +1039,12 @@ export class ModTree {
 
   /**
    * Add a new empty category to the tree.
-   * @param {Main} main - The main instance of the application.
    */
-  public async addCategory(main: Main) {
+  public async addCategory() {
     this.openAddCategoryNameModal('Add Category', '');
   }
   
-  public async renameCategory(main: Main) {
+  public async renameCategory() {
     const categorySelected = this.selectedCategories.values().next().value;
     if (categorySelected) {
       this.openAddCategoryNameModal('Rename Category', categorySelected);
@@ -1054,7 +1053,7 @@ export class ModTree {
     }
   }
 
-  public async removeCategory(main: Main) {
+  public async removeCategory() {
     if (this.selectedCategories.size === 0) {
       main.statusMessage.textContent = 'No category selected.';
       return;
