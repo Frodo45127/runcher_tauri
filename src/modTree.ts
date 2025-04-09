@@ -972,8 +972,18 @@ export class ModTree {
           targetCategory.children.push(movedMod);
 
           itemElement.dataset.categoryId = targetId;
-          targetContainer.appendChild(itemElement);
         }
+      }
+
+      // Sort the mod items (not the categories) by the current sort column.
+      const sortedItems = [...targetCategory.children];
+      this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
+
+      for (const item of sortedItems) {
+        const escapedId = CSS.escape(item.id);
+        const itemElement = this.itemElements.get(escapedId) as HTMLElement;
+        itemElement.remove();
+          targetContainer.appendChild(itemElement);
       }
 
       main.statusMessage.textContent = `${sourceIds.length} mods moved successfully`;
