@@ -10,7 +10,7 @@
 
 //! Module containing the centralized code for mod and load order management.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use getset::*;
 use rayon::{iter::Either, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,7 @@ use std::path::Path;
 use std::time::UNIX_EPOCH;
 
 use rpfm_lib::files::pack::Pack;
-use rpfm_lib::games::{pfh_file_type::PFHFileType, GameInfo};
+use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
 use rpfm_lib::integrations::log::error;
 
 //use crate::games::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
@@ -159,7 +159,10 @@ impl GameConfig {
 
         // If the mod wasn't found, it's a bug.
         if !found {
-            error!("Mod {} not found in a category. This is a bug in the code that parses the mods, or you passed a mod which is not installed.", id);
+            error!(
+                "Mod {} not found in a category. This is a bug in the code that parses the mods, or you passed a mod which is not installed.",
+                id
+            );
         }
 
         category
@@ -209,13 +212,13 @@ impl GameConfig {
 
         if let Some(packs) = self.categories_mut().remove(category) {
             self.categories_mut().insert(new_name.to_owned(), packs);
-        
+
             if let Some(pos) = self.categories_order().iter().position(|x| x == &category) {
                 self.categories_order_mut()[pos] = new_name.to_owned();
             }
-        } 
+        }
 
-        Ok(())       
+        Ok(())
     }
 
     pub fn delete_category(&mut self, category: &str) -> Result<()> {

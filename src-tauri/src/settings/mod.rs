@@ -8,7 +8,7 @@
 // https://github.com/Frodo45127/runcher/blob/master/LICENSE.
 //---------------------------------------------------------------------------//
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
@@ -19,8 +19,8 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use rpfm_lib::games::{
-    supported_games::{SupportedGames, KEY_ARENA},
     GameInfo,
+    supported_games::{KEY_ARENA, SupportedGames},
 };
 
 const SETTINGS_INITIALIZED: OnceCell<bool> = OnceCell::new();
@@ -101,7 +101,6 @@ impl AppSettings {
         let games = games.games_sorted();
         for game in games {
             if game.key() != KEY_ARENA {
-
                 // Try to find the game path automatically.
                 let game_path = game
                     .find_game_install_location()

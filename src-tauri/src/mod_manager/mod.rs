@@ -12,7 +12,7 @@
 //!
 //! Here are also generic functions for mod managing.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use rpfm_lib::games::supported_games::SupportedGames;
 
 use std::fs::{DirBuilder, File};

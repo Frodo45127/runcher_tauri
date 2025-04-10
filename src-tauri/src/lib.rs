@@ -5,8 +5,8 @@ use rpfm_lib::schema::Schema;
 use rpfm_lib::{
     binary::WriteBytes,
     games::{
-        supported_games::{SupportedGames, KEY_ARENA, KEY_EMPIRE},
         GameInfo,
+        supported_games::{KEY_ARENA, KEY_EMPIRE, SupportedGames},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -1164,7 +1164,8 @@ async fn create_category(app: tauri::AppHandle, category: &str) -> Result<Vec<St
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
 
     // Create the category
-    game_config.create_category(category)
+    game_config
+        .create_category(category)
         .map_err(|e| format!("Error creating category: {}", e))?;
 
     // Save the changes
@@ -1181,12 +1182,17 @@ async fn create_category(app: tauri::AppHandle, category: &str) -> Result<Vec<St
 }
 
 #[tauri::command]
-async fn rename_category(app: tauri::AppHandle, category: &str, new_name: &str) -> Result<(), String> {
+async fn rename_category(
+    app: tauri::AppHandle,
+    category: &str,
+    new_name: &str,
+) -> Result<(), String> {
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
 
     // Create the category
-    game_config.rename_category(category, new_name)
+    game_config
+        .rename_category(category, new_name)
         .map_err(|e| format!("Error renaming category: {}", e))?;
 
     // Save the changes
@@ -1206,7 +1212,8 @@ async fn remove_category(app: tauri::AppHandle, category: &str) -> Result<(), St
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
 
     // Create the category
-    game_config.delete_category(category)
+    game_config
+        .delete_category(category)
         .map_err(|e| format!("Error deleting category: {}", e))?;
 
     // Save the changes

@@ -19,8 +19,8 @@ use std::fs::{DirBuilder, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-use rpfm_lib::files::{pack::Pack, Container, ContainerPath};
-use rpfm_lib::games::{pfh_file_type::PFHFileType, GameInfo};
+use rpfm_lib::files::{Container, ContainerPath, pack::Pack};
+use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
 use rpfm_lib::utils::{path_to_absolute_path, path_to_absolute_string};
 
 use crate::settings::{game_config_path, sql_scripts_extracted_path};

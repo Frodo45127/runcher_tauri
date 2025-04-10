@@ -8,9 +8,9 @@
 // https://github.com/Frodo45127/runcher/blob/master/LICENSE.
 //---------------------------------------------------------------------------//
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use base64::prelude::*;
-use interprocess::local_socket::{prelude::*, GenericNamespaced, ListenerOptions};
+use interprocess::local_socket::{GenericNamespaced, ListenerOptions, prelude::*};
 use regex::Regex;
 use serde::Deserialize;
 use steam_workshop_api::{client::Workshop, interfaces::i_steam_user::*};
@@ -24,16 +24,16 @@ use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rpfm_lib::files::{pack::Pack, EncodeableExtraData};
+use rpfm_lib::files::{EncodeableExtraData, pack::Pack};
 use rpfm_lib::games::GameInfo;
 use rpfm_lib::utils::path_to_absolute_string;
 
 use crate::mod_manager::mods::Mod;
 use crate::settings::AppSettings;
 
-use super::{PreUploadInfo, PublishedFileVisibilityDerive};
 #[cfg(target_os = "windows")]
 use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
+use super::{PreUploadInfo, PublishedFileVisibilityDerive};
 
 const REGEX_URL: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"(\[url=)(.*)(\])(.*)(\[/url\])").unwrap());
@@ -176,7 +176,10 @@ pub fn request_mods_data_raw(
     let published_file_ids = mod_ids.join(",");
     let ipc_channel = rand::random::<u64>().to_string();
 
-    let command_string = format!("{} get-published-file-details -s {steam_id} -p {published_file_ids} -i {ipc_channel} & exit", &*WORKSHOPPER_PATH);
+    let command_string = format!(
+        "{} get-published-file-details -s {steam_id} -p {published_file_ids} -i {ipc_channel} & exit",
+        &*WORKSHOPPER_PATH
+    );
     let mut file = BufWriter::new(File::create(BAT_GET_PUBLISHED_FILE_DETAILS)?);
     file.write_all(command_string.as_bytes())?;
     file.flush()?;

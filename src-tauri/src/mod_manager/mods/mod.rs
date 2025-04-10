@@ -15,7 +15,7 @@ use sha256::try_digest;
 
 use std::path::{Path, PathBuf};
 
-use rpfm_lib::games::{pfh_file_type::PFHFileType, GameInfo};
+use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
 use rpfm_lib::utils::path_to_absolute_string;
 
 //pub mod versions;
