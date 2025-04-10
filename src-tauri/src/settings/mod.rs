@@ -101,6 +101,7 @@ impl AppSettings {
         let games = games.games_sorted();
         for game in games {
             if game.key() != KEY_ARENA {
+
                 // Try to find the game path automatically.
                 let game_path = game
                     .find_game_install_location()
@@ -109,12 +110,19 @@ impl AppSettings {
                     .map(|x| x.to_string_lossy().to_string())
                     .unwrap_or_default();
 
-                // If we got a path and we don't have it saved yet, save it automatically.
                 let current_path = settings
                     .game_path(&game)
                     .ok()
                     .map(|x| x.to_string_lossy().to_string())
                     .unwrap_or_default();
+
+                // If our current path is invalid, delete it.
+                let current_path_path = Path::new(&current_path);
+                if !current_path_path.exists() || !current_path_path.is_dir() {
+                    settings.set_game_path(game, "");
+                }
+
+                // If we got a path that's valid and we don't have it saved yet, save it automatically.
                 if !game_path.is_empty() && current_path != game_path {
                     settings.set_game_path(game, &game_path);
                 }

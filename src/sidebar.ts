@@ -42,29 +42,29 @@ export class Sidebar {
         const button = document.createElement("button");
         button.className = "sidebar-btn";
         button.dataset.id = icon.id;
-        
+
         // Create an image element instead of using FontAwesome
         const img = document.createElement("img");
         img.src = `icons/${icon.icon}`;
         img.alt = icon.name;
         img.className = "sidebar-icon";
-        
+
         button.appendChild(img);
         button.title = icon.name;
-        
+
         button.addEventListener("click", (e) => {
           // Remove active class from all buttons
-          document.querySelectorAll(".sidebar-btn").forEach(btn => 
+          document.querySelectorAll(".sidebar-btn").forEach(btn =>
             btn.classList.remove("active")
           );
-          
+
           // Add active class to clicked button
           button.classList.add("active");
           const buttonId = button.dataset.id ? button.dataset.id : '';
           main.handleGameSelectedChange(buttonId);
           e.stopPropagation(); // Prevent the row selection from triggering
         });
-        
+
         this.container.appendChild(button);
         this.buttons.set(button.dataset.id, button);
       });
@@ -76,8 +76,9 @@ export class Sidebar {
   public async updateSidebarIcons(settingsManager: SettingsManager) {
     this.icons.forEach(icon => {
       const button = this.buttons.get(icon.id) as HTMLButtonElement;
-      
-      if (settingsManager.appSettings.paths[icon.id] === undefined || settingsManager.appSettings.paths[icon.id] === "") {
+      const path = settingsManager.appSettings.paths[icon.id];
+
+      if (path === undefined || path === "") {
         button.classList.add("hidden");
       } else {
         button.classList.remove("hidden");

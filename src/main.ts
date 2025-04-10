@@ -39,7 +39,7 @@ export class Main {
   constructor() {
     this.loadingManager = new LoadingManager();
     this.loadingManager.showAppLoading();
-    
+
     this.sidebar = new Sidebar(this);
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
@@ -49,10 +49,10 @@ export class Main {
 
     this.patreonBtn = document.getElementById('patreon-btn') as HTMLButtonElement;
     this.patreonBtn.addEventListener('click', () => this.openPatreon());
-    
+
     this.discordBtn = document.getElementById('discord-btn') as HTMLButtonElement;
     this.discordBtn.addEventListener('click', () => this.openDiscord());
-    
+
     this.githubBtn = document.getElementById('github-btn') as HTMLButtonElement;
     this.githubBtn.addEventListener('click', () => this.openGithub());
 
@@ -62,28 +62,26 @@ export class Main {
     // Add event listener for launch button
     this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
     this.launchBtn.addEventListener("click", () => this.launchGame());
-    
+
     // Setup settings modal
     this.settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
     this.settingsBtn.addEventListener('click', () => this.settingsModal.openSettingsModal(this));
-    
+
     // Once everything is loaded, load the settings.
     this.settingsManager = new SettingsManager();
     this.settingsManager.loadSettings().then(() => {
-
-      // Initialize resizable panels
       this.initializeResizablePanels();
+      this.sidebar.updateSidebarIcons(this.settingsManager);
       this.loadingManager.hideAppLoading();
 
       // Once here, there are two paths:
       // - The user has already configured at least one game path (last selected game).
       // - The user has not configured any game paths, or the last selected game is not configured.
-      // 
+      //
       // In the first case, we can just select the last selected game in the sidebar and that will take care of initializing everything.
-      // In the second case, we need to show the settings modal with an error message, and only allow to either close the app, or 
+      // In the second case, we need to show the settings modal with an error message, and only allow to either close the app, or
       // provide a valid game path.
       if (this.sidebar.isDefaultGameConfigured(this.settingsManager.appSettings.last_selected_game)) {
-        this.sidebar.updateSidebarIcons(this.settingsManager);
         this.sidebar.clickSidebarButton(this.settingsManager.appSettings.last_selected_game);
       } else {
         this.settingsModal.openWithNoGameDetected(this);
@@ -131,7 +129,7 @@ export class Main {
     document.addEventListener('mousemove', resize);
     document.addEventListener('mouseup', stopResize);
   }
- 
+
   // Launch game function
   public async launchGame() {
     try {
@@ -139,8 +137,8 @@ export class Main {
       const button = document.querySelector('.sidebar-btn.active') as HTMLElement;
       if (button) {
         const id = button.dataset.id || '';
-        const result = await invoke("launch_game", { 
-          id: id 
+        const result = await invoke("launch_game", {
+          id: id
         });
 
         main.statusMessage.textContent = result as string;
@@ -168,32 +166,32 @@ export class Main {
 
     // Show the loading indicators.
     this.loadingManager.showTreeLoading(this);
-    this.loadingManager.showListLoading(this);    
+    this.loadingManager.showListLoading(this);
     this.loadingManager.showProgress();
 
     try {
       const [treeData, listData] = await invoke("handle_change_game_selected", { gameId }) as [TreeCategory[], ListItem[]];
-      
+
       this.modTree.categories = treeData;
-      this.modTree.renderTree(this);      
+      this.modTree.renderTree(this);
       this.loadingManager.hideTreeLoading(this);
-    
+
       await this.packList.renderPackList(this, listData);
       this.loadingManager.hideListLoading(this);
       this.modDetails.clearContent();
-        
+
       // Expand the categories saved in the settings.
       Object.keys(this.settingsManager.appSettings.tree_open_state).forEach(categoryId => {
         if (this.settingsManager.appSettings.tree_open_state[categoryId]) {
           this.modTree.toggleCategoryExpansion(this.settingsManager, categoryId, true);
         }
       });
-      
+
       // Restore the selected item if it exists.
       if (this.settingsManager.appSettings.selected_tree_item) {
         this.modTree.selectTreeItem(this, this.settingsManager.appSettings.selected_tree_item);
       }
-      
+
       // Save settings after change
       await this.settingsManager.saveSettings();
     } catch (error) {
@@ -213,7 +211,7 @@ export class Main {
   public openPatreon() {
     openUrl(PATREON_URL);
   }
-  
+
   public openDiscord() {
     openUrl(DISCORD_URL);
   }
@@ -236,7 +234,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.log('Window ready notification sent to Rust:', response);
   } catch (error) {
     console.error('Error during window ready notification:', error);
-  } 
+  }
 
   globalThis.main = new Main();
 });
