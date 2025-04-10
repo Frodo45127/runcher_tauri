@@ -95,7 +95,7 @@ export class ModTree {
     this.addCategoryPrevNameInput = document.getElementById('add-category-modal-prev-name-input') as HTMLInputElement;
     this.addCategoryErrorElement = document.getElementById('add-category-modal-error') as HTMLElement;
     this.addCategoryModalTitle = document.getElementById('add-category-modal-title') as HTMLElement;
-    
+
     // Reorderable headers. Done here so we can recycle them when re-rendering the tree.
     this.treeHeader = document.createElement('div');
     this.treeHeader.className = 'tree-header';
@@ -105,7 +105,7 @@ export class ModTree {
       <div class="header-column sortable" data-sort="creator">Creator <i class="fa-solid fa-sort"></i></div>
       <div class="header-column sortable" data-sort="size">Size <i class="fa-solid fa-sort"></i></div>
     `;
-    
+
     // Add click events to the sortable columns
     const sortableColumns = this.treeHeader.querySelectorAll('.sortable');
     sortableColumns.forEach(column => {
@@ -144,11 +144,11 @@ export class ModTree {
           this.addCategoryAcceptRenameBtn.click();
         }
       }
-    }); 
+    });
     this.addCategoryAcceptAddBtn.addEventListener('click', () => this.addCategorySuccess(main));
     this.addCategoryAcceptRenameBtn.addEventListener('click', () => this.renameCategorySuccess(main));
   }
- 
+
   /**
    * Clear and render the mod tree.
    * @param {Main} main - The main instance of the application.
@@ -158,11 +158,11 @@ export class ModTree {
     // Clear maps for filtering
     this.categoryElements.clear();
     this.itemElements.clear();
-    
+
     this.treeContainer.removeChild(this.treeHeader);
     this.treeContainer.innerHTML = '';
     this.treeContainer.appendChild(this.treeHeader);
-    
+
     // Then render the categories and their items
     this.categories.forEach(category => {
       const categoryElement = document.createElement('div');
@@ -170,13 +170,13 @@ export class ModTree {
       categoryElement.dataset.id = CSS.escape(category.id);
       categoryElement.dataset.name = category.id;
       this.setupDragCategory(categoryElement);
-      
+
       // Empty drop element for categories inbetweeners.
       const emptyDropElement = document.createElement('div');
       emptyDropElement.className = 'empty-drop-element';
       categoryElement.appendChild(emptyDropElement);
       this.setupDrop(main, categoryElement);
-      
+
       // Category header, with the expander and the name.
       const categoryHeader = document.createElement('div');
       categoryHeader.className = 'category-header';
@@ -184,7 +184,7 @@ export class ModTree {
         <span class="expander"><i class="fa-solid fa-chevron-right"></i></span>
         <span class="category-name">${category.id}</span>
       `;
-      
+
       // Find the category name element within the category header
       const categoryNameElement = categoryHeader.querySelector('.category-name') as HTMLElement;
       categoryNameElement.addEventListener('click', (e: Event) => {
@@ -192,7 +192,7 @@ export class ModTree {
         const mouseEvent = e as MouseEvent;
         this.selectCategory(main, categoryElement.getAttribute('data-id') || '', mouseEvent.ctrlKey, mouseEvent.shiftKey);
       });
-      
+
       categoryHeader.addEventListener('click', () => {
         this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '');
       });
@@ -205,7 +205,7 @@ export class ModTree {
       // Sort the mod items (not the categories) by the current sort column.
       const sortedItems = [...category.children];
       this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
-      
+
       sortedItems.forEach(item => {
         const itemElement = document.createElement('div');
         itemElement.className = 'tree-item tree-child';
@@ -216,7 +216,7 @@ export class ModTree {
         itemContent.className = 'item-content';
         itemContent.innerHTML = `
           <div class="item-checkbox">
-            <input type="checkbox" ${item.is_checked ? 'checked' : ''} id="check-${itemElement.getAttribute('data-id')}">
+            <input type="checkbox" class="tree-checkbox" ${item.is_checked ? 'checked' : ''} id="check-${itemElement.getAttribute('data-id')}">
           </div>
           <div class="item-details">
             <div class="item-row">
@@ -230,7 +230,7 @@ export class ModTree {
             </div>
           </div>
         `;
-        
+
         // Append them before adding listeners, or the selectors won't work.
         itemElement.appendChild(itemContent);
         itemsContainer.appendChild(itemElement);
@@ -242,7 +242,7 @@ export class ModTree {
             this.handleModToggled(main, itemElement.getAttribute('data-id') || '', checkbox.checked);
           });
         }
-        
+
         // Add drag and drop event listeners
         this.setupDragMod(main, itemElement);
 
@@ -250,7 +250,7 @@ export class ModTree {
         itemContent.addEventListener('click', (e) => {
           if (e.target !== checkbox) {
             this.selectTreeItem(
-              main, 
+              main,
               itemElement.getAttribute('data-id') || '',
               e.ctrlKey,
               e.shiftKey
@@ -264,7 +264,7 @@ export class ModTree {
 
         this.itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);
       });
-      
+
       categoryElement.appendChild(categoryHeader);
       categoryElement.appendChild(itemsContainer);
 
@@ -306,14 +306,14 @@ export class ModTree {
       );
       return;
     }
-    
+
     // First, hide all items
     this.categoryElements.forEach(element => element.classList.add('hidden'));
     this.itemElements.forEach(element => element.classList.add('hidden'));
     document.querySelectorAll('.category-items').forEach(
       element => element.classList.add('hidden')
     );
-    
+
     // Keep track of categories that need to be shown
     const categoriesToShow = new Set<string>();
 
@@ -334,7 +334,7 @@ export class ModTree {
         }
       }
     });
-    
+
     // Show the categories that contain matching games
     categoriesToShow.forEach(categoryId => {
       const categoryElement = this.categoryElements.get(categoryId);
@@ -344,15 +344,15 @@ export class ModTree {
         this.toggleCategoryExpansion(settingsManager, categoryId, true);
       }
     });
-    
+
     // Also check category names for matches
     this.categoryElements.forEach((element, categoryId) => {
       const categoryName = element.dataset.name || '';
-      
+
       if (categoryName.includes(normalizedSearchText)) {
         // Show this category
         element.classList.remove('hidden');
-        
+
         // Show its container and children
         const childrenContainer = document.getElementById(`children-${categoryId}`);
         if (childrenContainer) {
@@ -360,7 +360,7 @@ export class ModTree {
           // Make sure the category is expanded
           this.toggleCategoryExpansion(settingsManager, categoryId, true);
         }
-        
+
         // Show all its children
         this.itemElements.forEach((itemElement) => {
           if (itemElement.dataset.categoryId === categoryId) {
@@ -383,13 +383,13 @@ export class ModTree {
 
     const categoryElement = this.categoryElements.get(categoryId);
     if (!categoryElement) return;
-    
+
     const childrenContainer = document.getElementById(`children-${categoryId}`);
     if (!childrenContainer) return;
-    
+
     const isExpanded = categoryElement.classList.contains('expanded');
     const newState = forceState !== undefined ? forceState : !isExpanded;
-    
+
     if (newState) {
       categoryElement.classList.add('expanded');
       childrenContainer.classList.add('expanded');
@@ -397,7 +397,7 @@ export class ModTree {
       categoryElement.classList.remove('expanded');
       childrenContainer.classList.remove('expanded');
     }
-    
+
     // Save settings when expansion state changes
     settingsManager.appSettings.tree_open_state[categoryId] = newState;
     settingsManager.saveSettings();
@@ -422,28 +422,28 @@ export class ModTree {
       currentlySelectedCategories.forEach(item => {
         item.classList.remove('selected');
       });
-      
+
       const currentlySelectedItems = document.querySelectorAll('.tree-item.selected');
       currentlySelectedItems.forEach(item => {
         item.classList.remove('selected');
       });
-      
+
       this.selectedCategories.clear();
       this.selectedItems.clear();
     }
-    
+
     const categoryElement = this.categoryElements.get(categoryId);
     if (!categoryElement) return;
-    
+
     if (isShiftPressed && this.selectedCategories.size > 0) {
       const categories = Array.from(document.querySelectorAll('.tree-category'));
       const lastSelectedId = Array.from(this.selectedCategories)[this.selectedCategories.size - 1];
       const lastSelectedIndex = categories.findIndex(item => item.getAttribute('data-id') === lastSelectedId);
       const currentIndex = categories.findIndex(item => item.getAttribute('data-id') === categoryId);
-      
+
       const start = Math.min(lastSelectedIndex, currentIndex);
       const end = Math.max(lastSelectedIndex, currentIndex);
-      
+
       for (let i = start; i <= end; i++) {
         const id = categories[i].getAttribute('data-id');
         if (id) {
@@ -463,7 +463,7 @@ export class ModTree {
       this.selectedCategories.add(categoryId);
       categoryElement.classList.add('selected');
     }
-    
+
     if (this.selectedCategories.size === 1) {
       main.settingsManager.appSettings.selected_tree_category = categoryId;
       main.settingsManager.saveSettings();
@@ -491,19 +491,19 @@ export class ModTree {
       });
       this.selectedCategories.clear();
     }
-    
+
     const itemElement = this.itemElements.get(itemId);
     if (!itemElement) return;
-    
+
     if (isShiftPressed && this.selectedItems.size > 0) {
       const items = Array.from(document.querySelectorAll('.tree-item'));
       const lastSelectedId = Array.from(this.selectedItems)[this.selectedItems.size - 1];
       const lastSelectedIndex = items.findIndex(item => item.getAttribute('data-id') === lastSelectedId);
       const currentIndex = items.findIndex(item => item.getAttribute('data-id') === itemId);
-      
+
       const start = Math.min(lastSelectedIndex, currentIndex);
       const end = Math.max(lastSelectedIndex, currentIndex);
-      
+
       for (let i = start; i <= end; i++) {
         const id = items[i].getAttribute('data-id');
         if (id) {
@@ -523,7 +523,7 @@ export class ModTree {
       this.selectedItems.add(itemId);
       itemElement.classList.add('selected');
     }
-    
+
     const categoryContainer = itemElement.closest('.tree-category');
     if (categoryContainer) {
       const categoryId = categoryContainer.getAttribute('data-id');
@@ -534,11 +534,11 @@ export class ModTree {
         }
       }
     }
-    
+
     if (this.selectedItems.size === 1) {
       main.settingsManager.appSettings.selected_tree_item = itemId;
       main.settingsManager.saveSettings();
-      
+
       this.syncListWithTreeSelection(main, itemId);
     }
   }
@@ -551,11 +551,11 @@ export class ModTree {
   private syncListWithTreeSelection(main: Main, itemId: string) {
     const itemElement = this.itemElements.get(itemId);
     if (!itemElement) return;
-    
+
     const nameElement = itemElement.querySelector('.item-name');
     if (nameElement) {
       const modName = this.stripHtml(nameElement.innerHTML);
-      
+
       const listItems = document.querySelectorAll('.list-item');
       for (const item of listItems) {
         const packName = item.children[0].textContent;
@@ -573,22 +573,22 @@ export class ModTree {
    * @param {string} packName - The name of the pack to highlight.
    */
   public highlightTreeItemByPack(main: Main, packName: string) {
-    const normalizedPackName = packName.toLowerCase();  
+    const normalizedPackName = packName.toLowerCase();
     let foundItem: string | null = null;
-  
+
     this.itemElements.forEach((element, itemId) => {
       const itemNameElement = element.querySelector('.item-name');
       if (itemNameElement) {
-        const itemText = this.stripHtml(itemNameElement.innerHTML).toLowerCase();   
+        const itemText = this.stripHtml(itemNameElement.innerHTML).toLowerCase();
         if (itemText.includes(normalizedPackName)) {
           foundItem = itemId;
         }
       }
     });
-    
+
     if (foundItem) {
       this.selectTreeItem(
-        main, 
+        main,
         foundItem,
         false,
         false
@@ -599,7 +599,7 @@ export class ModTree {
   /************************
    * Drag and Drop
    ************************/
- 
+
   /**
    * Setup drag event for categories
    * @param {HTMLElement} element - The category element to setup drag for
@@ -610,8 +610,8 @@ export class ModTree {
     element.addEventListener("dragstart", (e) => {
       this.draggingCategory = true;
       e.stopPropagation();
-      
-      e.dataTransfer?.setData("text/plain", "category:" + (element.dataset.id || ''));     
+
+      e.dataTransfer?.setData("text/plain", "category:" + (element.dataset.id || ''));
       element.classList.add("dragging");
     });
 
@@ -634,10 +634,10 @@ export class ModTree {
 
       // Do not propagate the event to the parent, if it has a parent. Otherwise this triggers a double event.
       e.stopPropagation();
-      
+
       if (!this.selectedItems.has(element.dataset.id || '')) {
         this.selectTreeItem(
-          main, 
+          main,
           element.dataset.id || '',
           e.ctrlKey,
           e.shiftKey
@@ -652,7 +652,7 @@ export class ModTree {
     element.addEventListener("dragend", () => {
       this.removeDragging(element);
 
-      // Cleanup any remaining drag-over elements, as this can happen outside the dragover element 
+      // Cleanup any remaining drag-over elements, as this can happen outside the dragover element
       // and we don't have another way to clean them up.
       if (this.dragOverElement !== null) {
         this.removeDragOver(this.dragOverElement);
@@ -667,7 +667,7 @@ export class ModTree {
    */
   private setupDragging(element: HTMLElement) {
     element.classList.add("dragging");
-      
+
     if (!element.classList.contains('tree-category')) {
       this.selectedItems.forEach(id => {
         const el = this.itemElements.get(id);
@@ -682,7 +682,7 @@ export class ModTree {
    */
   private removeDragging(element: HTMLElement) {
     element.classList.remove("dragging");
-    
+
     if (!element.classList.contains('tree-category')) {
       this.selectedItems.forEach(id => {
         const el = this.itemElements.get(id);
@@ -758,8 +758,8 @@ export class ModTree {
       this.setupDragOver(element);
       e.preventDefault();
     });
-    
-    // NOTE: dragEnter already controls when the element should have a drag-over state. 
+
+    // NOTE: dragEnter already controls when the element should have a drag-over state.
     // This is just for the situation where we leave the element and the new one is not a dropzone.
     element.addEventListener("dragleave", () => {
       this.dragCounter--;
@@ -769,7 +769,7 @@ export class ModTree {
         this.dragOverElement = null;
       }
     });
-    
+
     element.addEventListener("drop", (e) => {
       this.removeDragOver(element);
       e.preventDefault();
@@ -783,8 +783,8 @@ export class ModTree {
         if (targetId && sourceId !== targetId) {
           this.handleCategoryReorder(main, sourceId, targetId);
         }
-      } 
-      
+      }
+
       // Otherwise, it's a mod being dragged.
       else {
         const sourceIds = sourceData ? sourceData.split(',') : [];
@@ -811,11 +811,11 @@ export class ModTree {
       this.currentSortField = field;
       this.sortDirection = 'asc';
     }
-    
+
     // Re-render the tree with the sorted items
     this.renderTree(main);
   }
-  
+
   /**
    * Update the sort indicators in the headers.
    */
@@ -824,7 +824,7 @@ export class ModTree {
     headers.forEach(header => {
       const field = header.getAttribute('data-sort') || '';
       const icon = header.querySelector('i');
-      
+
       if (field === this.currentSortField) {
         icon?.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
         icon?.classList.add(this.sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
@@ -834,7 +834,7 @@ export class ModTree {
       }
     });
   }
-  
+
   /**
    * Sort an array of items by a specific field.
    * @param {TreeItem[]} items - The items to sort.
@@ -845,7 +845,7 @@ export class ModTree {
     items.sort((a, b) => {
       let valueA: string | number = '';
       let valueB: string | number = '';
-      
+
       switch (field) {
         case 'name':
           valueA = this.stripHtml(a.name).toLowerCase();
@@ -867,7 +867,7 @@ export class ModTree {
           valueA = (a.name || '').toLowerCase();
           valueB = (b.name || '').toLowerCase();
       }
-      
+
       if (valueA < valueB) {
         return direction === 'asc' ? -1 : 1;
       }
@@ -877,7 +877,7 @@ export class ModTree {
       return 0;
     });
   }
-  
+
   /************************
    * Handles
    ************************/
@@ -892,7 +892,7 @@ export class ModTree {
     try {
       main.statusMessage.textContent = `Reordering categories...`;
       await invoke("reorder_categories", { sourceId, targetId });
-      
+
       // Reorder the categories in the cached categories array.
       const sourceIndex = this.categories.findIndex(c => c.id === sourceId);
       let targetIndex = this.categories.findIndex(c => c.id === targetId);
@@ -904,14 +904,14 @@ export class ModTree {
 
       const sourceCat = this.categoryElements.get(sourceId);
       const targetCat = this.categoryElements.get(targetId);
-      
+
       if (sourceCat && targetCat) {
         const container = sourceCat.parentNode;
         if (container) {
           container.insertBefore(sourceCat, targetCat);
         }
       }
-      
+
       main.statusMessage.textContent = `Categories reordered successfully`;
     } catch (error) {
       console.error("Failed to reorder categories:", error);
@@ -927,9 +927,9 @@ export class ModTree {
    */
   public async handleModToggled(main: Main, itemId: string, isChecked: boolean) {
     try {
-      const listData = await invoke('handle_mod_toggled', { 
-        modId: itemId.replace(/\\/g, ''), 
-        isChecked: isChecked 
+      const listData = await invoke('handle_mod_toggled', {
+        modId: itemId.replace(/\\/g, ''),
+        isChecked: isChecked
       }) as ListItem[];
 
       main.packList.renderPackList(main, listData);
@@ -947,11 +947,11 @@ export class ModTree {
   public async handleModDrop(main: Main, sourceIds: string[], targetId: string) {
     try {
       main.statusMessage.textContent = `Moving ${sourceIds.length} mods...`;
-      
+
       const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
       await invoke("handle_mod_category_change", { modIds: movedIds, categoryId: targetId });
 
-      // By default, we don't move anything in the UI. Instead we move it in the backend, and if it works, 
+      // By default, we don't move anything in the UI. Instead we move it in the backend, and if it works,
       // we manually search the entries in the tree and move them.
       const target = this.categoryElements.get(targetId);
       if (!target) return;
@@ -959,7 +959,7 @@ export class ModTree {
       const targetContainer = target.querySelector('.category-items');
       if (!targetContainer) return;
 
-      // Mods are added at the end of the target category. We also need to update the cached categories, 
+      // Mods are added at the end of the target category. We also need to update the cached categories,
       // so we can re-render the tree with the correct order after sorting it.
       const targetCategory = this.categories.find(c => c.id === targetId) as TreeCategory;
       for (const sourceId of sourceIds) {
@@ -1043,7 +1043,7 @@ export class ModTree {
   public async addCategory() {
     this.openAddCategoryNameModal('Add Category', '');
   }
-  
+
   public async renameCategory() {
     const categorySelected = this.selectedCategories.values().next().value;
     if (categorySelected) {
@@ -1071,12 +1071,12 @@ export class ModTree {
         this.reparentMods(categorySelected, this.defaultCategory);
 
         // Remove the category from the settingsManager.appSettings.tree_open_state.
-        delete main.settingsManager.appSettings.tree_open_state[categorySelected];  
+        delete main.settingsManager.appSettings.tree_open_state[categorySelected];
       }
 
       main.settingsManager.appSettings.tree_open_state[this.defaultCategory] = true;
       main.settingsManager.saveSettings();
-       
+
       // Sort the mod items (not the categories) by the current sort column.
       const sortedItems = [...defaultCategory.children];
       this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
@@ -1110,7 +1110,7 @@ export class ModTree {
   public async addMod(main: Main) {
     console.log('addMod');
   }
-  
+
   public async removeMod(main: Main) {
     console.log('removeMod');
   }
@@ -1264,8 +1264,8 @@ export class ModTree {
   }
 
   /**
-   * Reparent the mods to a new category. 
-   * Note that this only updates the category id in each mod element. 
+   * Reparent the mods to a new category.
+   * Note that this only updates the category id in each mod element.
    * It does not move the mod elements to the new category.
    * @param {string} originalName - The original name of the category.
    * @param {string} newName - The new name of the category.
@@ -1289,7 +1289,7 @@ export class ModTree {
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || '';
   }
-  
+
   /**
    * Convert a size string (e.g. "10.5 MB") to a comparable number.
    * @param {string} sizeStr - The size string.
@@ -1297,13 +1297,13 @@ export class ModTree {
    */
   private parseSize(sizeStr: string): number {
     if (!sizeStr) return 0;
-    
+
     const match = sizeStr.match(/(\d+(\.\d+)?) (KB|MB|GB)/i);
     if (!match) return 0;
-    
+
     const size = parseFloat(match[1]);
     const unit = match[3].toUpperCase();
-    
+
     switch (unit) {
       case 'KB':
         return size * 1024;
