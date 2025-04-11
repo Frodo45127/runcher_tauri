@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { SettingsManager } from "./settings";
 import { Sidebar } from "./sidebar";
 import { ModTree, TreeCategory } from "./modTree";
@@ -7,6 +6,7 @@ import { PackList, ListItem } from "./packList";
 import { SettingsModal } from "./settingsModal";
 import { ModDetailsPanel } from "./modDetails";
 import { LoadingManager } from "./loadingManager";
+import { StatusBar } from "./statusBar";
 
 // Store the main instance, which should contain everything in the app.
 declare global {
@@ -15,10 +15,6 @@ declare global {
   var main: Main;
 }
 
-const GITHUB_URL = "https://github.com/Frodo45127/runcher";
-const DISCORD_URL = "https://discord.gg/moddingden";
-const PATREON_URL = "https://www.patreon.com/RPFM";
-
 export class Main {
   public settingsManager: SettingsManager;
   public sidebar: Sidebar;
@@ -26,20 +22,11 @@ export class Main {
   public packList: PackList;
   public settingsModal: SettingsModal;
   public modDetails: ModDetailsPanel;
-  public statusMessage: HTMLElement;
   public loadingManager: LoadingManager;
-
-  private statusBar: HTMLElement;
+  private statusBar: StatusBar;
 
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
-  private patreonBtn: HTMLButtonElement;
-  private discordBtn: HTMLButtonElement;
-  private githubBtn: HTMLButtonElement;
-
-  private updaterPanel: HTMLElement;
-  private updaterArrow: HTMLElement;
-  private updaterBtn: HTMLButtonElement;
 
   constructor() {
     this.loadingManager = new LoadingManager();
@@ -50,23 +37,7 @@ export class Main {
     this.packList = new PackList(this);
     this.settingsModal = new SettingsModal();
     this.modDetails = new ModDetailsPanel();
-
-    this.statusBar = document.querySelector('.status-bar') as HTMLElement;
-    this.statusMessage = this.statusBar.querySelector('.status-message') as HTMLElement;
-
-    this.patreonBtn = document.getElementById('patreon-btn') as HTMLButtonElement;
-    this.patreonBtn.addEventListener('click', () => this.openPatreon());
-
-    this.discordBtn = document.getElementById('discord-btn') as HTMLButtonElement;
-    this.discordBtn.addEventListener('click', () => this.openDiscord());
-
-    this.githubBtn = document.getElementById('github-btn') as HTMLButtonElement;
-    this.githubBtn.addEventListener('click', () => this.openGithub());
-
-    this.updaterPanel = document.getElementById('updater-panel') as HTMLElement;
-    this.updaterArrow = this.updaterPanel.querySelector('.arrow-pointer') as HTMLElement;
-    this.updaterBtn = document.getElementById('updater-btn') as HTMLButtonElement;
-    this.updaterBtn.addEventListener('click', () => this.openUpdater());
+    this.statusBar = new StatusBar();
 
     // Add event listener for launch button
     this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
@@ -151,14 +122,14 @@ export class Main {
           id: id
         });
 
-        main.statusMessage.textContent = result as string;
+        this.showStatusMessage(result as string);
       }
       else {
-        main.statusMessage.textContent = "No game selected";
+        this.showStatusMessage("No game selected");
       }
     } catch (error) {
       console.error("Failed to launch game:", error);
-      main.statusMessage.textContent = `Error: ${error}`;
+      this.showStatusMessage(`Error: ${error}`);
     }
   }
 
@@ -215,40 +186,15 @@ export class Main {
   }
 
   /************************
-   * Status Bar buttons
+   * Utils
    ************************/
 
-  public openPatreon() {
-    openUrl(PATREON_URL);
-  }
-
-  public openDiscord() {
-    openUrl(DISCORD_URL);
-  }
-
-  public openGithub() {
-    openUrl(GITHUB_URL);
-  }
-
-  private openUpdater() {
-    this.updaterPanel.classList.toggle('open');
-    this.updaterPanel.classList.toggle('hidden');
-
-    // Check if the panel is already open, and in that case, close it.
-    if (this.updaterPanel.classList.contains('hidden')) {
-      return;
-    }
-
-    // Update the arrow position based on the button position
-    const btnRect = this.updaterBtn.getBoundingClientRect();
-    const panelRect = this.updaterPanel.getBoundingClientRect();
-
-    // Remember that the status bar has padding, so we need to also "pad" the arrow position.
-    const statusBarPaddingRight = window.getComputedStyle(this.statusBar) as CSSStyleDeclaration;
-    const paddingRight = parseInt(statusBarPaddingRight?.getPropertyValue('padding-right') || '0');
-
-    this.updaterArrow.style.left = `${btnRect.left - panelRect.left - paddingRight}px`;
-    this.updaterArrow.style.top = `${panelRect.height}px`;
+  /**
+   * Shows a status message in the status bar.
+   * @param {string} message - The message to show in the status bar.
+   */
+  public showStatusMessage(message: string) {
+    this.statusBar.showStatusMessage(message);
   }
 }
 

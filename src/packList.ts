@@ -41,9 +41,9 @@ export class PackList {
     this.listFilterInput.addEventListener('input', () => {
       this.filterListItems(main.settingsManager, this.listFilterInput.value);
     });
-    
+
     this.setupSortEvents(main);
-  } 
+  }
 
   /**
    * Configure sort events for the list headers.
@@ -56,7 +56,7 @@ export class PackList {
       <div class="header-column sortable" data-sort="order">Order <i class="fa-solid fa-sort"></i></div>
       <div class="header-column sortable" data-sort="location">Location <i class="fa-solid fa-sort"></i></div>
     `;
-    
+
     const sortableColumns = this.listHeader.querySelectorAll('.sortable');
     sortableColumns.forEach(column => {
       column.addEventListener('click', (e) => {
@@ -70,14 +70,14 @@ export class PackList {
    *  Render list items.
    * @param {Main} main - The main instance of the application.
    * @param {ListItem[]} listData - The list data to render.
-   */ 
-  public renderPackList(main: Main, listData: ListItem[]) {   
+   */
+  public renderPackList(main: Main, listData: ListItem[]) {
     this.listContainer.innerHTML = "";
     this.listElements.clear();
-    
+
     const sortedItems = [...listData];
     this.sortItems(sortedItems, this.currentSortField, this.sortDirection);
-    
+
     sortedItems.forEach(item => {
       const listItem = document.createElement("div");
       listItem.className = "list-item";
@@ -86,7 +86,7 @@ export class PackList {
       listItem.dataset.type = item.type;
       listItem.dataset.order = item.order.toString();
       listItem.dataset.location = item.location;
-      
+
       listItem.innerHTML = `
         <div>${item.pack}</div>
         <div>${item.type}</div>
@@ -99,51 +99,51 @@ export class PackList {
         </div>
         <div>${item.location}</div>
       `;
-      
+
       listItem.addEventListener("click", (e) => {
         if (
-          (e.target as HTMLElement).classList.contains('move-up-btn') || 
+          (e.target as HTMLElement).classList.contains('move-up-btn') ||
           (e.target as HTMLElement).classList.contains('move-down-btn') ||
-          (e.target as HTMLElement).closest('.move-up-btn') || 
+          (e.target as HTMLElement).closest('.move-up-btn') ||
           (e.target as HTMLElement).closest('.move-down-btn')
         ) {
           return;
         }
-        
-        document.querySelectorAll(".list-item").forEach(item => 
+
+        document.querySelectorAll(".list-item").forEach(item =>
           item.classList.remove("selected")
         );
         listItem.classList.add("selected");
-        
+
         // Sync with the mod tree
         this.syncWithTreeSelection(main, item.pack);
       });
-      
+
       const moveUpBtn = listItem.querySelector('.move-up-btn');
       const moveDownBtn = listItem.querySelector('.move-down-btn');
-      
+
       if (moveUpBtn) {
         moveUpBtn.addEventListener('click', () => {
           this.movePackInLoadOrderInDirection(main, item.id, LoadOrderDirectionMove.Up);
         });
       }
-      
+
       if (moveDownBtn) {
         moveDownBtn.addEventListener('click', () => {
           this.movePackInLoadOrderInDirection(main, item.id, LoadOrderDirectionMove.Down);
         });
       }
-      
+
       this.setupDragDrop(main, listItem);
-      
+
       this.listContainer.appendChild(listItem);
       this.listElements.set(item.id, listItem);
     });
 
-    this.updateSortIndicators();    
+    this.updateSortIndicators();
     this.filterListItems(main.settingsManager, main.settingsManager.appSettings.list_filter_value);
   }
-  
+
   /************************
    * Drag and drop
    ************************/
@@ -160,15 +160,15 @@ export class PackList {
       this.dragCounter = 0;
       this.setupDragging(element);
       e.dataTransfer?.setData('text/plain', element.dataset.id || '');
-      
+
       // Add a lift effect to the element that is being dragged
       element.style.zIndex = '1000';
     });
-    
+
     element.addEventListener('dragend', () => {
       this.removeDragging(element);
 
-      // Cleanup any remaining drag-over elements, as this can happen outside the dragover element 
+      // Cleanup any remaining drag-over elements, as this can happen outside the dragover element
       // and we don't have another way to clean them up.
       if (this.dragOverElement !== null) {
         this.removeDragOver(this.dragOverElement);
@@ -176,7 +176,7 @@ export class PackList {
       }
 
       element.style.zIndex = '';
-      
+
       // Remove the dragover state from all elements of the list.
       //main.packList.listElements.forEach(item => {
       //  this.removeDragOver(item);
@@ -195,12 +195,12 @@ export class PackList {
 
       this.setupDragOver(element);
     });
-    
+
     element.addEventListener('dragover', (e) => {
       this.setupDragOver(element);
       e.preventDefault();
     });
-    
+
     element.addEventListener('dragleave', () => {
       this.dragCounter--;
 
@@ -209,20 +209,20 @@ export class PackList {
         this.dragOverElement = null;
       }
     });
-    
+
     element.addEventListener('drop', (e) => {
       this.removeDragOver(element);
       e.preventDefault();
-      
+
       const sourceId = e.dataTransfer?.getData('text/plain');
       const targetId = element.dataset.id;
-      
+
       if (sourceId && targetId && sourceId !== targetId) {
         this.movePackInLoadOrder(main, sourceId, targetId);
       }
     });
   }
-  
+
   /**
    * Setup the dragging state for an element.
    * @param {HTMLElement} element - The element to setup dragging for
@@ -275,17 +275,17 @@ export class PackList {
    * @param {string} itemId - The ID of the item to select.
    */
   public selectListItem(itemId: string) {
-    document.querySelectorAll(".list-item").forEach(item => 
+    document.querySelectorAll(".list-item").forEach(item =>
       item.classList.remove("selected")
     );
-    
+
     const element = this.listElements.get(itemId);
     if (element) {
-      element.classList.add("selected");  
+      element.classList.add("selected");
       element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
-  
+
   /************************
    * Sorting
    ************************/
@@ -298,8 +298,8 @@ export class PackList {
    */
   private async movePackInLoadOrderInDirection(main: Main, modId: string, direction: LoadOrderDirectionMove) {
     try {
-      const result = await invoke('move_pack_in_load_order_in_direction', { 
-        modId, 
+      const result = await invoke('move_pack_in_load_order_in_direction', {
+        modId,
         direction,
       }) as ListItem[];
 
@@ -307,12 +307,12 @@ export class PackList {
       this.renderPackList(main, result);
       this.selectListItem(modId);
 
-      main.statusMessage.textContent = 'Mod ' + modId + 	' moved ' + direction;
+      main.showStatusMessage('Mod ' + modId + 	' moved ' + direction);
     } catch (error) {
       console.error('Error moving mod ' + direction + ':', error);
     }
   }
-  
+
   /**
    * Change the position of a mod in the load order by drag and drop.
    * @param {Main} main - The main instance of the application.
@@ -322,16 +322,16 @@ export class PackList {
   private async movePackInLoadOrder(main: Main, sourceId: string, targetId: string) {
     console.log('movePackInLoadOrder', sourceId, targetId);
     try {
-      const result = await invoke('move_pack_in_load_order', { 
-        sourceId, 
+      const result = await invoke('move_pack_in_load_order', {
+        sourceId,
         targetId
       }) as ListItem[];
-      
+
       // Due to being able to sort by other fields, we need to re-render the whole list.
       this.renderPackList(main, result);
       this.selectListItem(sourceId);
-      
-      main.statusMessage.textContent = 'Mods reordered';
+
+      main.showStatusMessage('Mods reordered');
     } catch (error) {
       console.error('Error reordering mods:', error);
     }
@@ -349,11 +349,11 @@ export class PackList {
       this.currentSortField = field;
       this.sortDirection = 'asc';
     }
-    
+
     const listContainer = document.getElementById("list-items-container");
     if (listContainer && listContainer.children.length > 0) {
       const items: ListItem[] = [];
-      
+
       this.listElements.forEach((element, id) => {
         const item: ListItem = {
           id,
@@ -365,11 +365,11 @@ export class PackList {
         };
         items.push(item);
       });
-      
+
       this.renderPackList(main, items);
     }
   }
-  
+
   /**
    * Update the sort indicators in the headers.
    */
@@ -378,7 +378,7 @@ export class PackList {
     headers.forEach(header => {
       const field = header.getAttribute('data-sort') || '';
       const icon = header.querySelector('i');
-      
+
       if (field === this.currentSortField) {
         icon?.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
         icon?.classList.add(this.sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
@@ -388,7 +388,7 @@ export class PackList {
       }
     });
   }
-  
+
   /**
    * Sort an array of elements by a specific field.
    * @param {ListItem[]} items - The elements to sort.
@@ -399,7 +399,7 @@ export class PackList {
     items.sort((a, b) => {
       let valueA: string | number = '';
       let valueB: string | number = '';
-      
+
       switch (field) {
         case 'pack':
           valueA = a.pack.toLowerCase();
@@ -421,7 +421,7 @@ export class PackList {
           valueA = a.order;
           valueB = b.order;
       }
-      
+
       if (valueA < valueB) {
         return direction === 'asc' ? -1 : 1;
       }
@@ -440,25 +440,25 @@ export class PackList {
    * Filters the pack list using the value provided.
    * @param {SettingsManager} settingsManager - The settings manager instance.
    * @param {string} searchText - The value to filter the pack list.
-   */ 
+   */
   public filterListItems(settingsManager: SettingsManager, searchText: string) {
     const normalizedSearchText = searchText.toLowerCase().trim();
     settingsManager.appSettings.list_filter_value = normalizedSearchText;
     settingsManager.saveSettings();
-    
+
     if (normalizedSearchText === '') {
       this.listElements.forEach(element => element.classList.remove('hidden'));
       return;
     }
-    
+
     this.listElements.forEach(element => {
       const pack = element.dataset.pack || '';
       const type = element.dataset.type || '';
       const location = element.dataset.location || '';
-      
+
       if (
-        pack.includes(normalizedSearchText) || 
-        type.includes(normalizedSearchText) || 
+        pack.includes(normalizedSearchText) ||
+        type.includes(normalizedSearchText) ||
         location.includes(normalizedSearchText)
       ) {
         element.classList.remove('hidden');

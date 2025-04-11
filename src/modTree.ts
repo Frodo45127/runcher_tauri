@@ -124,14 +124,14 @@ export class ModTree {
     this.addCategoryBtn.addEventListener('click', () => this.addCategory());
     this.renameCategoryBtn.addEventListener('click', () => this.renameCategory());
     this.removeCategoryBtn.addEventListener('click', () => this.removeCategory());
-    this.addModBtn.addEventListener('click', () => this.addMod(main));
-    this.removeModBtn.addEventListener('click', () => this.removeMod(main));
-    this.downloadModBtn.addEventListener('click', () => this.downloadMod(main));
-    this.uploadModBtn.addEventListener('click', () => this.uploadMod(main));
-    this.lockModBtn.addEventListener('click', () => this.lockMod(main));
-    this.unlockModBtn.addEventListener('click', () => this.unlockMod(main));
-    this.copyToSecondaryBtn.addEventListener('click', () => this.copyToSecondary(main));
-    this.copyToDataBtn.addEventListener('click', () => this.copyToData(main));
+    this.addModBtn.addEventListener('click', () => this.addMod());
+    this.removeModBtn.addEventListener('click', () => this.removeMod());
+    this.downloadModBtn.addEventListener('click', () => this.downloadMod());
+    this.uploadModBtn.addEventListener('click', () => this.uploadMod());
+    this.lockModBtn.addEventListener('click', () => this.lockMod());
+    this.unlockModBtn.addEventListener('click', () => this.unlockMod());
+    this.copyToSecondaryBtn.addEventListener('click', () => this.copyToSecondary());
+    this.copyToDataBtn.addEventListener('click', () => this.copyToData());
 
     // Add listeners for the add category modal.
     this.addCategoryCancelBtn.addEventListener('click', () => this.closeAddCategoryNameModal());
@@ -890,7 +890,7 @@ export class ModTree {
    */
   public async handleCategoryReorder(main: Main, sourceId: string, targetId: string) {
     try {
-      main.statusMessage.textContent = `Reordering categories...`;
+      main.showStatusMessage(`Reordering categories...`);
       await invoke("reorder_categories", { sourceId, targetId });
 
       // Reorder the categories in the cached categories array.
@@ -912,10 +912,10 @@ export class ModTree {
         }
       }
 
-      main.statusMessage.textContent = `Categories reordered successfully`;
+      main.showStatusMessage(`Categories reordered successfully`);
     } catch (error) {
       console.error("Failed to reorder categories:", error);
-      main.statusMessage.textContent = `Error reordering categories: ${error}`;
+      main.showStatusMessage(`Error reordering categories: ${error}`);
     }
   }
 
@@ -946,7 +946,7 @@ export class ModTree {
    */
   public async handleModDrop(main: Main, sourceIds: string[], targetId: string) {
     try {
-      main.statusMessage.textContent = `Moving ${sourceIds.length} mods...`;
+      main.showStatusMessage(`Moving ${sourceIds.length} mods...`);
 
       const movedIds = sourceIds.filter(sourceId => sourceId !== targetId);
       await invoke("handle_mod_category_change", { modIds: movedIds, categoryId: targetId });
@@ -986,7 +986,7 @@ export class ModTree {
         targetContainer.appendChild(itemElement);
       }
 
-      main.statusMessage.textContent = `${sourceIds.length} mods moved successfully`;
+      main.showStatusMessage(`${sourceIds.length} mods moved successfully`);
     } catch (error) {
       console.error("Failed to handle items drop:", error);
     }
@@ -1049,13 +1049,13 @@ export class ModTree {
     if (categorySelected) {
       this.openAddCategoryNameModal('Rename Category', categorySelected);
     } else {
-      main.statusMessage.textContent = 'No category selected.';
+      main.showStatusMessage('No category selected.');
     }
   }
 
   public async removeCategory() {
     if (this.selectedCategories.size === 0) {
-      main.statusMessage.textContent = 'No category selected.';
+      main.showStatusMessage('No category selected.');
       return;
     }
 
@@ -1101,41 +1101,41 @@ export class ModTree {
         this.categoryElements.delete(categorySelected);
       }
 
-      main.statusMessage.textContent = 'Categories removed successfully';
+      main.showStatusMessage('Categories removed successfully');
     } catch (error) {
-      main.statusMessage.textContent = `Error removing categories: ${error}`;
+      main.showStatusMessage(`Error removing categories: ${error}`);
     }
   }
 
-  public async addMod(main: Main) {
+  public async addMod() {
     console.log('addMod');
   }
 
-  public async removeMod(main: Main) {
+  public async removeMod() {
     console.log('removeMod');
   }
 
-  public async downloadMod(main: Main) {
+  public async downloadMod() {
     console.log('downloadMod');
   }
 
-  public async uploadMod(main: Main) {
+  public async uploadMod() {
     console.log('uploadMod');
   }
 
-  public async lockMod(main: Main) {
+  public async lockMod() {
     console.log('lockMod');
   }
 
-  public async unlockMod(main: Main) {
+  public async unlockMod() {
     console.log('unlockMod');
   }
 
-  public async copyToSecondary(main: Main) {
+  public async copyToSecondary() {
     console.log('copyToSecondary');
   }
 
-  public async copyToData(main: Main) {
+  public async copyToData() {
     console.log('copyToData');
   }
 
@@ -1192,7 +1192,7 @@ export class ModTree {
 
       this.renderTree(main);
       this.closeAddCategoryNameModal();
-      main.statusMessage.textContent = 'Category created successfully';
+      main.showStatusMessage('Category created successfully');
     } catch (error) {
       this.addCategoryErrorElement.textContent = `Error creating category: ${error}`;
     }
@@ -1256,7 +1256,7 @@ export class ModTree {
         main.settingsManager.saveSettings();
 
         this.closeAddCategoryNameModal();
-        main.statusMessage.textContent = 'Category renamed successfully';
+        main.showStatusMessage('Category renamed successfully');
       });
     } catch (error) {
       this.addCategoryErrorElement.textContent = `Error renaming category: ${error}`;
