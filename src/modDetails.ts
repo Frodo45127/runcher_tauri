@@ -23,6 +23,7 @@ export class ModDetailsPanel {
 
   constructor(main: Main) {
     this.currentItemId = '';
+    this.currentItemElement = null;
 
     this.slidingPanel = document.getElementById('sliding-panel-content') as HTMLElement;
     this.arrow = document.getElementById('sliding-panel-arrow') as HTMLElement;
@@ -50,7 +51,6 @@ export class ModDetailsPanel {
 
   /**
    * Toggle the mod details panel, and populate it with the mod details, if we have any.
-   * @param {Main} main - The main instance.
    * @param {string} itemId - The id of the mod to show details for.
    */
   public toggleModDetails(itemId: string) {
@@ -155,7 +155,6 @@ export class ModDetailsPanel {
 
   /**
    * Update the arrow position to keep pointing to the correct mod item.
-   * @param {HTMLElement} itemElement - The item element.
    */
   private updateArrowPosition() {
     if (this.currentItemElement) {

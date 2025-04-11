@@ -168,7 +168,7 @@ export class ModTree {
       const categoryElement = document.createElement('div');
       categoryElement.className = 'tree-category';
       categoryElement.dataset.id = CSS.escape(category.id);
-      categoryElement.dataset.name = category.id;
+      categoryElement.dataset.name = category.name;
       this.setupDragCategory(categoryElement);
 
       // Empty drop element for categories inbetweeners.
@@ -182,7 +182,7 @@ export class ModTree {
       categoryHeader.className = 'category-header';
       categoryHeader.innerHTML = `
         <span class="expander"><i class="fa-solid fa-chevron-right"></i></span>
-        <span class="category-name">${category.id}</span>
+        <span class="category-name">${category.name}</span>
       `;
 
       // Find the category name element within the category header
@@ -220,7 +220,7 @@ export class ModTree {
           </div>
           <div class="item-details">
             <div class="item-row">
-              <div class="item-name">${item.name}</div>
+              <div class="item-name"><i>${item.name}</i></div>
             </div>
             <div class="item-row item-info">
               <div class="item-type">${item.type || ''}</div>
@@ -279,7 +279,7 @@ export class ModTree {
       this.categoryElements.set(categoryElement.getAttribute('data-id') || '', categoryElement);
 
       if (main.settingsManager.appSettings.tree_open_state[category.id] === true) {
-        this.toggleCategoryExpansion(main.settingsManager, category.id, true);
+        this.toggleCategoryExpansion(main.settingsManager, categoryElement.getAttribute('data-id') || '', true);
       }
     });
 
@@ -379,8 +379,6 @@ export class ModTree {
    * @param {boolean} forceState - If true, force the category to be expanded. If false, toggle the state of the category.
    */
   public async toggleCategoryExpansion(settingsManager: SettingsManager, categoryId: string, forceState?: boolean) {
-    categoryId = CSS.escape(categoryId);
-
     const categoryElement = this.categoryElements.get(categoryId);
     if (!categoryElement) return;
 
@@ -926,6 +924,7 @@ export class ModTree {
    * @param {boolean} isChecked - The new state of the checkbox.
    */
   public async handleModToggled(main: Main, itemId: string, isChecked: boolean) {
+    main.loadingManager.showListLoading(main);
     try {
       const listData = await invoke('handle_mod_toggled', {
         modId: itemId.replace(/\\/g, ''),
@@ -935,6 +934,8 @@ export class ModTree {
       main.packList.renderPackList(main, listData);
     } catch (error) {
       console.error('Failed to handle mod toggled:', error);
+    } finally {
+      main.loadingManager.hideListLoading(main);
     }
   }
 

@@ -469,6 +469,8 @@ async fn handle_mod_toggled(
     mod_id: &str,
     is_checked: bool,
 ) -> Result<Vec<ListItem>, String> {
+    let mod_id = unescape(mod_id);
+    
     println!("Mod {} checkbox changed to: {}", mod_id, is_checked);
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
@@ -478,7 +480,7 @@ async fn handle_mod_toggled(
 
     game_config
         .mods_mut()
-        .get_mut(mod_id)
+        .get_mut(&mod_id)
         .unwrap()
         .set_enabled(is_checked);
 
@@ -507,10 +509,10 @@ fn handle_mod_category_change(
 ) -> Result<(), String> {
     let mod_ids = mod_ids
         .iter_mut()
-        .map(|id| css_deescape(id))
+        .map(|id| unescape(id))
         .collect::<Vec<String>>();
 
-    let category_id = css_deescape(category_id);
+    let category_id = unescape(category_id);
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -615,7 +617,7 @@ async fn browse_folder(
 
 #[tauri::command]
 async fn open_mod_folder(id: String) -> Result<(), String> {
-    let mod_id = css_deescape(&id);
+    let mod_id = unescape(&id);
 
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mod_info = game_config.mods().get(&mod_id).unwrap();
@@ -631,7 +633,7 @@ async fn open_mod_folder(id: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn open_mod_url(id: String) -> Result<(), String> {
-    let mod_id = css_deescape(&id);
+    let mod_id = unescape(&id);
     if mod_id.is_empty() {
         return Err("No mod ID found".to_string());
     }
@@ -815,7 +817,8 @@ async fn load_mods(
     let mut categories: Vec<TreeCategory> = vec![];
     for category in game_config.categories_order() {
         let mut cat_item = TreeCategory::default();
-        cat_item.id = category.to_string();
+        cat_item.id = "cat:".to_owned() + category;
+        cat_item.name = category.to_string();
 
         if let Some(mods) = game_config.categories().get(category) {
             for mod_id in mods {
@@ -823,7 +826,7 @@ async fn load_mods(
                     // Ignore registered mods with no path.
                     if !modd.paths().is_empty() {
                         let mut item = TreeItem::default();
-                        item.id = mod_id.to_string();
+                        item.id = "mod:".to_owned() + mod_id;
                         item.name = if modd.name() != modd.id() {
                             if !modd.file_name().is_empty() {
                                 // Map filenames are folder names which we have to turn into packs.
@@ -1077,7 +1080,7 @@ async fn move_pack_in_load_order_in_direction(
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
-    let mod_id = css_deescape(mod_id);
+    let mod_id = unescape(mod_id);
 
     load_order.move_mod_in_direction(&mod_id, direction);
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order)
@@ -1099,8 +1102,8 @@ async fn move_pack_in_load_order(
     let game_path = SETTINGS.read().unwrap().game_path(&game_info).unwrap();
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
-    let source_id = css_deescape(source_id);
-    let target_id = css_deescape(target_id);
+    let source_id = unescape(source_id);
+    let target_id = unescape(target_id);
 
     load_order.move_mod_above_another(&source_id, &target_id);
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order)
@@ -1119,8 +1122,8 @@ async fn reorder_categories(
     target_id: &str,
 ) -> Result<Vec<String>, String> {
     // TODO: Move this to a sanitizer function.
-    let source_id = css_deescape(source_id);
-    let target_id = css_deescape(target_id);
+    let source_id = unescape(source_id);
+    let target_id = unescape(target_id);
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
     let mut game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
@@ -1239,11 +1242,15 @@ fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
     );
 }
 
-/// CSS de-escape the id to avoid any special characters.
+/// Util function to de-escape ui-coming ids so they can be used in the backend.
 ///
-/// This has to be used in any UI-coming ID, because all UI ids are CSS-escaped to avoid issues with special chars in id fields.
-fn css_deescape(id: &str) -> String {
+/// This is needed because UI-coming IDs have some rules that the backend doesn't, like:
+/// - Can't start with numbers.
+/// - Can't contain a lot of common characters.
+fn unescape(id: &str) -> String {
     id.replace("\\", "")
+        .replace("mod:", "")
+        .replace("cat:", "")
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
