@@ -1033,407 +1033,315 @@ body {
 			}
 		}
 	}
+}
 
-	/* Modal Styles. This includes the settings modal, and all the other modals.
-	 * These are always attached to the end of the main container, at least for now.
-	 */
-	.modal {
-		display: none;
-		position: fixed;
-		top: 0;
-		left: 0;
+/* Mod details panel */
+.sliding-panel {
+	position: fixed;
+	right: calc(-1 * var(--right-panel-width, 300px));
+	top: 0;
+	bottom: 30px;
+	width: var(--right-panel-width, 300px);
+	background-color: $background-color_11;
+	box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+	transition: right 0.3s ease-in-out;
+	z-index: 100;
+	display: flex;
+	flex-direction: column;
+	border-left: 1px solid var(--border-color);
+
+	&.open {
 		right: 0;
-		bottom: 0;
-		background-color: $background-color_20;
-		z-index: 1000;
+	}
+
+	.arrow-pointer {
+		position: absolute;
+		left: -20px;
+		width: 0;
+		height: 0;
+		border-top: 20px solid transparent;
+		border-bottom: 20px solid transparent;
+		border-right: 20px solid var(--panel-bg);
+		transition: top ease-in-out;
+		&::before {
+			content: '';
+			position: absolute;
+			left: 1px;
+			top: -10px;
+			border-top: 10px solid transparent;
+			border-bottom: 10px solid transparent;
+			border-right: 10px solid var(--border-color);
+			z-index: -1;
+		}
+	}
+
+	.sliding-panel-header {
+		padding: 16px;
+		border-bottom: 1px solid var(--border-color);
+		display: flex;
+		justify-content: space-between;
 		align-items: center;
-		justify-content: center;
-
-		&.active {
-			display: flex;
+		h2 {
+			margin: 0;
+			font-size: 18px;
+			color: $color_2;
 		}
 
-		/* Modal contents for small modals. This have !important to override the default modal content styles. */
-		.modal-content-categories-edit {
-			width: 500px !important;
-			height: 250px !important;
-			min-width: 300px !important;
-			min-height: 250px !important;
-
-			input[type="text"] {
-				margin-top: 10px !important;
-			}
-			label {
-				padding-top: 10px !important;
-				width: 100px !important;
-			}
-
-			.tab-content {
-				display: block !important;
-			}
-		}
-
-		.modal-content {
-			background-color: $background-color_11;
-			border-radius: 8px;
-			width: 60%;
-			height: 90%;
-			max-height: 80vh;
+		.panel-actions {
 			display: flex;
-			flex-direction: column;
-			padding: 0px;
-			box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-			overflow-y: auto;
-			min-height: 400px;
+			gap: 8px;
+			align-items: center;
 
-			.modal-header {
-				padding: 20px 24px;
-				border-bottom: 1px solid var(--border-color);
+			.panel-btn {
+				background: none;
+				border: none;
+				color: $color_1;
+				cursor: pointer;
+				padding: 8px;
+				border-radius: 4px;
+				transition: all 0.2s ease;
 				display: flex;
-				justify-content: space-between;
 				align-items: center;
-				h2 {
-					margin: 0;
-					font-size: 18px;
+				justify-content: center;
+
+				&:hover {
+					background-color: $background-color_4;
 					color: $color_2;
 				}
-			}
 
-			.modal-container {
-				display: flex;
-				background-color: $background-color_11;
-				border-radius: 8px;
-				overflow: hidden;
-				flex-grow: 1;
-				box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-
-				.modal-tabs {
-					display: flex;
-					flex-direction: column;
-					background-color: $background-color_2;
-					width: 200px;
-					padding: 20px 0;
-					border-right: 1px solid var(--border-color);
-					button {
-						background: none;
-						border: none;
-						color: $color_1;
-						padding: 12px 20px;
-						text-align: left;
-						cursor: pointer;
-						font-size: 14px;
-						transition: background-color 0.2s;
-						position: relative;
-						width: 100%;
-						&:hover {
-							background-color: $background-color_12;
-						}
-					}
-					button.active {
-						background-color: $background-color_13;
-						font-weight: bold;
-						&::before {
-							content: "";
-							position: absolute;
-							left: 0;
-							top: 0;
-							bottom: 0;
-							width: 3px;
-							background-color: $background-color_5;
-						}
-					}
+				i {
+					font-size: 16px;
 				}
 
-				.modal-body {
-					flex: 1;
-					display: flex;
-					flex-direction: column;
-					min-width: 0;
-
-					.tab-content {
-						display: none;
-						padding: 0 20px;
-
-						&.active {
-							display: block;
-						}
-
-						.setting-group {
-							margin-bottom: 32px;
-							max-width: 100%;
-							h3 {
-								color: $color_2;
-								margin-bottom: 20px;
-								font-size: 16px;
-								border-bottom: 1px solid var(--border-color);
-								padding-bottom: 8px;
-							}
-							.setting-item {
-								display: flex;
-								align-items: center;
-								margin-bottom: 20px;
-								flex-wrap: wrap;
-								gap: 12px;
-
-								input,
-								input[type="number"] {
-									padding: 8px;
-									color: $color_1;
-								}
-								input {
-									flex: 1;
-									min-width: 200px;
-									border-radius: 4px;
-									border: 1px solid var(--border-color);
-									background-color: $background-color_10;
-								}
-								input[type="number"] {
-									width: 100%;
-									border-radius: 4px;
-									background-color: $background-color_23;
-									border: 1px solid var(--border-color);
-								}
-								label {
-									width: 200px;
-									color: $color_1;
-									flex-shrink: 0;
-								}
-								select {
-									width: 100%;
-									padding: 8px;
-									border-radius: 4px;
-									background-color: $background-color_23;
-									color: $color_1;
-									border: 1px solid var(--border-color);
-									flex: 1;
-									min-width: 200px;
-									padding: 8px;
-									border-radius: 4px;
-									border: 1px solid var(--border-color);
-									background-color: $background-color_10;
-									color: $color_1;
-									&:focus {
-										outline: none;
-										border-color: $border-color_1;
-									}
-								}
-							}
-
-							/* Paths message */
-							.paths-message {
-								margin-bottom: 1rem;
-								padding: 0.5rem;
-								border-radius: 4px;
-								background-color: var(--bg-color-light);
-								border: 1px solid var(--border-color);
-							}
-
-							/* Game paths scrollable container */
-							.game-path-container {
-								overflow-y: scroll;
-								overflow-x: hidden;
-								height: 60vh;
-
-								/* Game path item */
-								.game-path-item {
-									margin-bottom: 1rem;
-									padding: 0.5rem;
-									border-radius: 4px;
-									background-color: var(--bg-color-light);
-									border: 1px solid var(--border-color);
-
-									.game-path-header {
-										display: flex;
-										margin-bottom: 0.5rem;
-
-										.input-status {
-											gap: 8px;
-											width: 20px;
-											height: 20px;
-											border-radius: 50%;
-											display: block;
-
-											&.ok {
-												background-color: var(--success-color, #28a745);
-											}
-
-											&.error {
-												background-color: var(--error-color, #dc3545);
-											}
-										}
-
-										.game-name {
-											gap: 8px;
-											font-weight: bold;
-											color: var(--text-color);
-										}
-
-										.game-path-details-container {
-											display: flex;
-											align-items: center;
-											gap: 8px;
-											flex-shrink: 0;
-											align-content: flex-end;
-											flex-grow: 1;
-										}
-
-										.lock-container {
-											.lock-checkbox {
-												accent-color: var(--primary-color);
-											}
-
-											.lock-label {
-												color: $color_1;
-												font-size: 12px;
-												white-space: nowrap;
-											}
-										}
-									}
-
-									.game-path-input-container {
-										display: flex;
-										gap: 0.5rem;
-										align-items: center;
-
-										.path-input {
-											flex: 1;
-											padding: 0.5rem;
-											border: 1px solid var(--border-color);
-											border-radius: 4px;
-											background-color: var(--input-bg);
-											color: var(--text-color);
-										}
-
-										.browse-btn {
-											padding: 0.5rem;
-											background-color: var(--primary-color);
-											color: white;
-											border: none;
-											border-radius: 4px;
-											cursor: pointer;
-
-											&:hover {
-												background-color: var(--secondary-color);
-											}
-										}
-
-										.select-game-btn {
-											padding: 0.5rem 1rem;
-											background-color: var(--success-color, #28a745);
-											color: white;
-											border: none;
-											border-radius: 4px;
-											cursor: pointer;
-
-											&:disabled {
-												background-color: var(--disabled-color, #6c757d);
-												cursor: not-allowed;
-											}
-
-											&:not(:disabled):hover {
-												background-color: var(--success-hover-color, #218838);
-											}
-										}
-									}
-
-									.path-error-message {
-										margin-top: 0.5rem;
-										color: var(--error-color, #dc3545);
-										font-size: 0.875rem;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			.modal-footer {
-				padding: 20px 24px;
-				border-top: 1px solid var(--border-color);
-				display: flex;
-				justify-content: flex-end;
-				gap: 12px;
-				background-color: $background-color_11;
-				button {
-					padding: 8px 16px;
+				&::after {
+					content: attr(title);
+					position: absolute;
+					right: 100%;
+					top: 50%;
+					transform: translateY(-50%);
+					background-color: $background-color_11;
+					color: $color_1;
+					padding: 6px 12px;
 					border-radius: 4px;
-					font-size: 14px;
-					cursor: pointer;
-					transition: all 0.2s;
-					min-width: 100px;
+					font-size: 12px;
+					white-space: nowrap;
+					opacity: 0;
+					visibility: hidden;
+					transition: all 0.2s ease;
+					box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+					margin-right: 10px;
+					z-index: 1000;
 				}
-				.restore-btn {
-					margin-right: auto;
-					background-color: $background-color_3;
-					color: $color_1;
-					border: 1px solid var(--border-color);
-					&:hover {
-						background-color: $background-color_12;
-					}
+
+				&:hover::after {
+					opacity: 1;
+					visibility: visible;
 				}
-				.cancel-btn {
-					background-color: $background-color_3;
-					color: $color_1;
-					border: 1px solid var(--border-color);
-					&:hover {
-						background-color: $background-color_12;
-					}
-				}
-				.save-btn {
-					background-color: $background-color_5;
-					color: $color_7;
-					border: none;
-					&:hover {
-						background-color: $background-color_18;
-					}
-				}
+			}
+		}
+
+		.sliding-panel-close {
+			background: none;
+			border: none;
+			color: $color_1;
+			cursor: pointer;
+			padding: 8px;
+			font-size: 16px;
+			&:hover {
+				color: $color_2;
 			}
 		}
 	}
 
-	/* Mod details panel */
-	.sliding-panel {
-		position: fixed;
-		right: calc(-1 * var(--right-panel-width, 300px));
-		top: 0;
-		bottom: 30px;
-		width: var(--right-panel-width, 300px);
-		background-color: $background-color_11;
-		box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
-		transition: right 0.3s ease-in-out;
-		z-index: 100;
-		display: flex;
-		flex-direction: column;
-		border-left: 1px solid var(--border-color);
+	.sliding-panel-content {
+		flex: 1;
+		padding: 16px;
+		overflow-y: auto;
 
-		&.open {
-			right: 0;
-		}
+		.mod-detail-section {
+			margin-bottom: 24px;
+			h3 {
+				color: $color_2;
+				margin-bottom: 12px;
+				font-size: 16px;
+				border-bottom: 1px solid var(--border-color);
+				padding-bottom: 8px;
+			}
 
-		.arrow-pointer {
-			position: absolute;
-			left: -20px;
-			width: 0;
-			height: 0;
-			border-top: 20px solid transparent;
-			border-bottom: 20px solid transparent;
-			border-right: 20px solid var(--panel-bg);
-			transition: top ease-in-out;
-			&::before {
-				content: '';
-				position: absolute;
-				left: 1px;
-				top: -10px;
-				border-top: 10px solid transparent;
-				border-bottom: 10px solid transparent;
-				border-right: 10px solid var(--border-color);
-				z-index: -1;
+			.mod-detail-item {
+				margin-bottom: 10px;
+				padding-bottom: 10px;
+				border-bottom: 1px solid var(--border-color);
+				strong {
+					color: $color_2;
+					display: inline-block;
+					width: 100px;
+					margin-right: 8px;
+				}
+				span {
+					color: $color_1;
+				}
+			}
+
+			/* Store description, based on the steam format */
+			.mod-description {
+				color: $color_1;
+				line-height: 1.6;
+				margin-top: 8px;
+
+				ul {
+					padding-left: 40px;
+					list-style-type: disc;
+				}
+				ol {
+					padding-left: 40px;
+					list-style-type: decimal;
+				}
+
+				.spoiler {
+					background-color: $background-color_24;
+					color: $color_8;
+					cursor: pointer;
+					user-select: none;
+					padding: 2px 4px;
+					border-radius: 3px;
+
+					&.revealed {
+						background-color: $background-color_3;
+						color: $color_9;
+						user-select: text;
+					}
+				}
+
+				table {
+					border-collapse: collapse;
+					width: 100%;
+					margin: 10px 0;
+					&:not(.no-border) {
+						th {
+							border: 1px solid var(--border-color);
+							padding: 8px;
+						}
+						td {
+							border: 1px solid var(--border-color);
+							padding: 8px;
+						}
+					}
+
+					&.equal-cells {
+						th {
+							width: calc(100% / var(--column-count));
+						}
+						td {
+							width: calc(100% / var(--column-count));
+						}
+					}
+				}
+
+				.video-container {
+					position: relative;
+					padding-bottom: 56.25%;
+					height: 0;
+					overflow: hidden;
+					max-width: 100%;
+					margin: 10px 0;
+					iframe {
+						position: absolute;
+						top: 0;
+						left: 0;
+						width: 100%;
+						height: 100%;
+					}
+				}
+
+				.steam-widget {
+					width: 100%;
+					margin: 10px 0;
+					min-height: 190px;
+					background-color: $background-color_11;
+					border: 1px solid var(--border-color);
+					border-radius: 4px;
+				}
+
+				blockquote {
+					border-left: 3px solid var(--primary-color);
+					margin: 10px 0;
+					padding: 10px 20px;
+					background-color: $background-color_11;
+					border-radius: 4px;
+				}
+
+				pre {
+					background-color: $background-color_11;
+					padding: 10px;
+					border-radius: 4px;
+					overflow-x: auto;
+					margin: 10px 0;
+				}
+
+				code {
+					font-family: $font-family_2;
+				}
 			}
 		}
+	}
+}
 
-		.sliding-panel-header {
-			padding: 16px;
+
+/* Modal Styles. This includes the settings modal, and all the other modals.
+	* These are always attached to the end of the main container, at least for now.
+	*/
+.modal {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: $background-color_20;
+	z-index: 1000;
+	align-items: center;
+	justify-content: center;
+
+	&.active {
+		display: flex;
+	}
+
+	/* Modal contents for small modals. This have !important to override the default modal content styles. */
+	.modal-content-categories-edit {
+		width: 500px !important;
+		height: 250px !important;
+		min-width: 300px !important;
+		min-height: 250px !important;
+
+		input[type="text"] {
+			margin-top: 10px !important;
+		}
+		label {
+			padding-top: 10px !important;
+			width: 100px !important;
+		}
+
+		.tab-content {
+			display: block !important;
+		}
+	}
+
+	.modal-content {
+		background-color: $background-color_11;
+		border-radius: 8px;
+		width: 60%;
+		height: 90%;
+		max-height: 80vh;
+		display: flex;
+		flex-direction: column;
+		padding: 0px;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		overflow-y: auto;
+		min-height: 400px;
+
+		.modal-header {
+			padding: 20px 24px;
 			border-bottom: 1px solid var(--border-color);
 			display: flex;
 			justify-content: space-between;
@@ -1443,202 +1351,295 @@ body {
 				font-size: 18px;
 				color: $color_2;
 			}
+		}
 
-			.panel-actions {
+		.modal-container {
+			display: flex;
+			background-color: $background-color_11;
+			border-radius: 8px;
+			overflow: hidden;
+			flex-grow: 1;
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+
+			.modal-tabs {
 				display: flex;
-				gap: 8px;
-				align-items: center;
-
-				.panel-btn {
+				flex-direction: column;
+				background-color: $background-color_2;
+				width: 200px;
+				padding: 20px 0;
+				border-right: 1px solid var(--border-color);
+				button {
 					background: none;
 					border: none;
 					color: $color_1;
+					padding: 12px 20px;
+					text-align: left;
 					cursor: pointer;
-					padding: 8px;
-					border-radius: 4px;
-					transition: all 0.2s ease;
-					display: flex;
-					align-items: center;
-					justify-content: center;
-
+					font-size: 14px;
+					transition: background-color 0.2s;
+					position: relative;
+					width: 100%;
 					&:hover {
-						background-color: $background-color_4;
-						color: $color_2;
+						background-color: $background-color_12;
 					}
-
-					i {
-						font-size: 16px;
-					}
-
-					&::after {
-						content: attr(title);
+				}
+				button.active {
+					background-color: $background-color_13;
+					font-weight: bold;
+					&::before {
+						content: "";
 						position: absolute;
-						right: 100%;
-						top: 50%;
-						transform: translateY(-50%);
-						background-color: $background-color_11;
-						color: $color_1;
-						padding: 6px 12px;
-						border-radius: 4px;
-						font-size: 12px;
-						white-space: nowrap;
-						opacity: 0;
-						visibility: hidden;
-						transition: all 0.2s ease;
-						box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-						margin-right: 10px;
-						z-index: 1000;
-					}
-
-					&:hover::after {
-						opacity: 1;
-						visibility: visible;
+						left: 0;
+						top: 0;
+						bottom: 0;
+						width: 3px;
+						background-color: $background-color_5;
 					}
 				}
 			}
 
-			.sliding-panel-close {
-				background: none;
-				border: none;
-				color: $color_1;
-				cursor: pointer;
-				padding: 8px;
-				font-size: 16px;
-				&:hover {
-					color: $color_2;
+			.modal-body {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				min-width: 0;
+
+				.tab-content {
+					display: none;
+					padding: 0 20px;
+
+					&.active {
+						display: block;
+					}
+
+					.setting-group {
+						margin-bottom: 32px;
+						max-width: 100%;
+						h3 {
+							color: $color_2;
+							margin-bottom: 20px;
+							font-size: 16px;
+							border-bottom: 1px solid var(--border-color);
+							padding-bottom: 8px;
+						}
+						.setting-item {
+							display: flex;
+							align-items: center;
+							margin-bottom: 20px;
+							flex-wrap: wrap;
+							gap: 12px;
+
+							input,
+							input[type="number"] {
+								padding: 8px;
+								color: $color_1;
+							}
+							input {
+								flex: 1;
+								min-width: 200px;
+								border-radius: 4px;
+								border: 1px solid var(--border-color);
+								background-color: $background-color_10;
+							}
+							input[type="number"] {
+								width: 100%;
+								border-radius: 4px;
+								background-color: $background-color_23;
+								border: 1px solid var(--border-color);
+							}
+							label {
+								width: 200px;
+								color: $color_1;
+								flex-shrink: 0;
+							}
+							select {
+								width: 100%;
+								padding: 8px;
+								border-radius: 4px;
+								background-color: $background-color_23;
+								color: $color_1;
+								border: 1px solid var(--border-color);
+								flex: 1;
+								min-width: 200px;
+								padding: 8px;
+								border-radius: 4px;
+								border: 1px solid var(--border-color);
+								background-color: $background-color_10;
+								color: $color_1;
+								&:focus {
+									outline: none;
+									border-color: $border-color_1;
+								}
+							}
+						}
+
+						/* Paths message */
+						.paths-message {
+							margin-bottom: 1rem;
+							padding: 0.5rem;
+							border-radius: 4px;
+							background-color: var(--bg-color-light);
+							border: 1px solid var(--border-color);
+						}
+
+						/* Game paths scrollable container */
+						.game-path-container {
+							overflow-y: scroll;
+							overflow-x: hidden;
+							height: 60vh;
+
+							/* Game path item */
+							.game-path-item {
+								margin-bottom: 1rem;
+								padding: 0.5rem;
+								border-radius: 4px;
+								background-color: var(--bg-color-light);
+								border: 1px solid var(--border-color);
+
+								.game-path-header {
+									display: flex;
+									margin-bottom: 0.5rem;
+
+									.input-status {
+										gap: 8px;
+										width: 20px;
+										height: 20px;
+										border-radius: 50%;
+										display: block;
+
+										&.ok {
+											background-color: var(--success-color, #28a745);
+										}
+
+										&.error {
+											background-color: var(--error-color, #dc3545);
+										}
+									}
+
+									.game-name {
+										gap: 8px;
+										font-weight: bold;
+										color: var(--text-color);
+									}
+
+									.game-path-details-container {
+										display: flex;
+										align-items: center;
+										gap: 8px;
+										flex-shrink: 0;
+										align-content: flex-end;
+										flex-grow: 1;
+									}
+
+									.lock-container {
+										.lock-checkbox {
+											accent-color: var(--primary-color);
+										}
+
+										.lock-label {
+											color: $color_1;
+											font-size: 12px;
+											white-space: nowrap;
+										}
+									}
+								}
+
+								.game-path-input-container {
+									display: flex;
+									gap: 0.5rem;
+									align-items: center;
+
+									.path-input {
+										flex: 1;
+										padding: 0.5rem;
+										border: 1px solid var(--border-color);
+										border-radius: 4px;
+										background-color: var(--input-bg);
+										color: var(--text-color);
+									}
+
+									.browse-btn {
+										padding: 0.5rem;
+										background-color: var(--primary-color);
+										color: white;
+										border: none;
+										border-radius: 4px;
+										cursor: pointer;
+
+										&:hover {
+											background-color: var(--secondary-color);
+										}
+									}
+
+									.select-game-btn {
+										padding: 0.5rem 1rem;
+										background-color: var(--success-color, #28a745);
+										color: white;
+										border: none;
+										border-radius: 4px;
+										cursor: pointer;
+
+										&:disabled {
+											background-color: var(--disabled-color, #6c757d);
+											cursor: not-allowed;
+										}
+
+										&:not(:disabled):hover {
+											background-color: var(--success-hover-color, #218838);
+										}
+									}
+								}
+
+								.path-error-message {
+									margin-top: 0.5rem;
+									color: var(--error-color, #dc3545);
+									font-size: 0.875rem;
+								}
+							}
+						}
+					}
 				}
 			}
 		}
 
-		.sliding-panel-content {
-			flex: 1;
-			padding: 16px;
-			overflow-y: auto;
-
-			.mod-detail-section {
-				margin-bottom: 24px;
-				h3 {
-					color: $color_2;
-					margin-bottom: 12px;
-					font-size: 16px;
-					border-bottom: 1px solid var(--border-color);
-					padding-bottom: 8px;
+		.modal-footer {
+			padding: 20px 24px;
+			border-top: 1px solid var(--border-color);
+			display: flex;
+			justify-content: flex-end;
+			gap: 12px;
+			background-color: $background-color_11;
+			button {
+				padding: 8px 16px;
+				border-radius: 4px;
+				font-size: 14px;
+				cursor: pointer;
+				transition: all 0.2s;
+				min-width: 100px;
+			}
+			.restore-btn {
+				margin-right: auto;
+				background-color: $background-color_3;
+				color: $color_1;
+				border: 1px solid var(--border-color);
+				&:hover {
+					background-color: $background-color_12;
 				}
-
-				.mod-detail-item {
-					margin-bottom: 10px;
-					padding-bottom: 10px;
-					border-bottom: 1px solid var(--border-color);
-					strong {
-						color: $color_2;
-						display: inline-block;
-						width: 100px;
-						margin-right: 8px;
-					}
-					span {
-						color: $color_1;
-					}
+			}
+			.cancel-btn {
+				background-color: $background-color_3;
+				color: $color_1;
+				border: 1px solid var(--border-color);
+				&:hover {
+					background-color: $background-color_12;
 				}
-
-				/* Store description, based on the steam format */
-				.mod-description {
-					color: $color_1;
-					line-height: 1.6;
-					margin-top: 8px;
-
-					ul {
-						padding-left: 40px;
-						list-style-type: disc;
-					}
-					ol {
-						padding-left: 40px;
-						list-style-type: decimal;
-					}
-
-					.spoiler {
-						background-color: $background-color_24;
-						color: $color_8;
-						cursor: pointer;
-						user-select: none;
-						padding: 2px 4px;
-						border-radius: 3px;
-
-						&.revealed {
-							background-color: $background-color_3;
-							color: $color_9;
-							user-select: text;
-						}
-					}
-
-					table {
-						border-collapse: collapse;
-						width: 100%;
-						margin: 10px 0;
-						&:not(.no-border) {
-							th {
-								border: 1px solid var(--border-color);
-								padding: 8px;
-							}
-							td {
-								border: 1px solid var(--border-color);
-								padding: 8px;
-							}
-						}
-
-						&.equal-cells {
-							th {
-								width: calc(100% / var(--column-count));
-							}
-							td {
-								width: calc(100% / var(--column-count));
-							}
-						}
-					}
-
-					.video-container {
-						position: relative;
-						padding-bottom: 56.25%;
-						height: 0;
-						overflow: hidden;
-						max-width: 100%;
-						margin: 10px 0;
-						iframe {
-							position: absolute;
-							top: 0;
-							left: 0;
-							width: 100%;
-							height: 100%;
-						}
-					}
-
-					.steam-widget {
-						width: 100%;
-						margin: 10px 0;
-						min-height: 190px;
-						background-color: $background-color_11;
-						border: 1px solid var(--border-color);
-						border-radius: 4px;
-					}
-
-					blockquote {
-						border-left: 3px solid var(--primary-color);
-						margin: 10px 0;
-						padding: 10px 20px;
-						background-color: $background-color_11;
-						border-radius: 4px;
-					}
-
-					pre {
-						background-color: $background-color_11;
-						padding: 10px;
-						border-radius: 4px;
-						overflow-x: auto;
-						margin: 10px 0;
-					}
-
-					code {
-						font-family: $font-family_2;
-					}
+			}
+			.save-btn {
+				background-color: $background-color_5;
+				color: $color_7;
+				border: none;
+				&:hover {
+					background-color: $background-color_18;
 				}
 			}
 		}
