@@ -40,7 +40,7 @@ export function steamFormatToHtml(text: string): string {
   // Lists
   html = html.replace(/\[list\]([\s\S]*?)\[\/list\]/g, (_match, content) => {
     const items = content.split('[*]').filter((item: string) => item.trim());
-    return '<ul class="mod-details-description-ulist">' + items
+    return '<ul>' + items
       .filter((item: string) => item !== '<br/>')
       .map((item: string) => {
         if (item.startsWith('<br/>')) {
@@ -54,7 +54,7 @@ export function steamFormatToHtml(text: string): string {
   // Unfinished Lists (damn tabletop caps compat mod)
   html = html.replace(/\[list\]([\s\S]*?)$/g, (_match, content) => {
     const items = content.split('[*]').filter((item: string) => item.trim());
-    return '<ul class="mod-details-description-ulist">' + items
+    return '<ul">' + items
       .filter((item: string) => item !== '<br/>')
       .map((item: string) => {
         if (item.startsWith('<br/>')) {
@@ -67,7 +67,7 @@ export function steamFormatToHtml(text: string): string {
 
   html = html.replace(/\[olist\]([\s\S]*?)\[\/olist\]/g, (_match, content) => {
     const items = content.trim().split('[*]').filter((item: string) => item.trim());
-    return '<ol class="mod-details-description-olist">' + items
+    return '<ol>' + items
       .filter((item: string) => item !== '<br/>')
       .map((item: string) => {
         if (item.startsWith('<br/>')) {
