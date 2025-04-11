@@ -71,21 +71,22 @@ export class Main {
     this.settingsManager = new SettingsManager();
     this.settingsManager.loadSettings().then(() => {
       this.initializeResizablePanels();
-      this.sidebar.updateSidebarIcons(this.settingsManager);
-      this.loadingManager.hideAppLoading();
+      this.sidebar.updateSidebarIcons(this.settingsManager).then(() => {
+        this.loadingManager.hideAppLoading();
 
-      // Once here, there are two paths:
-      // - The user has already configured at least one game path (last selected game).
-      // - The user has not configured any game paths, or the last selected game is not configured.
-      //
-      // In the first case, we can just select the last selected game in the sidebar and that will take care of initializing everything.
-      // In the second case, we need to show the settings modal with an error message, and only allow to either close the app, or
-      // provide a valid game path.
-      if (this.sidebar.isDefaultGameConfigured(this.settingsManager.appSettings.last_selected_game)) {
-        this.sidebar.clickSidebarButton(this.settingsManager.appSettings.last_selected_game);
-      } else {
-        this.settingsModal.openWithNoGameDetected(this);
-      }
+        // Once here, there are two paths:
+        // - The user has already configured at least one game path (last selected game).
+        // - The user has not configured any game paths, or the last selected game is not configured.
+        //
+        // In the first case, we can just select the last selected game in the sidebar and that will take care of initializing everything.
+        // In the second case, we need to show the settings modal with an error message, and only allow to either close the app, or
+        // provide a valid game path.
+        if (this.sidebar.isDefaultGameConfigured(this.settingsManager.appSettings.last_selected_game)) {
+          this.sidebar.clickSidebarButton(this.settingsManager.appSettings.last_selected_game);
+        } else {
+          this.settingsModal.openWithNoGameDetected(this);
+        }
+      });
     });
   }
 
