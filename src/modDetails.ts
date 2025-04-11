@@ -9,7 +9,7 @@ export class ModDetailsPanel {
   private openModFolderBtn: HTMLButtonElement;
   private openModPageBtn: HTMLButtonElement;
   private currentItemId: string;
-  
+
   constructor() {
     this.currentItemId = '';
 
@@ -17,7 +17,7 @@ export class ModDetailsPanel {
     this.slidingPanel.className = 'sliding-panel hidden';
 
     this.arrow = document.createElement('div');
-    this.arrow.className = 'arrow-pointer';
+    this.arrow.className = 'arrow-pointer arrow-pointer-left';
     this.slidingPanel.appendChild(this.arrow);
 
     const header = document.createElement('div');
@@ -62,13 +62,13 @@ export class ModDetailsPanel {
 
     document.body.appendChild(this.slidingPanel);
   }
- 
+
   /**
    * Toggle the mod details panel, and populate it with the mod details, if we have any.
    * @param {Main} main - The main instance.
    * @param {string} itemId - The id of the mod to show details for.
    */
-  public toggleModDetails(main: Main, itemId: string) {  
+  public toggleModDetails(main: Main, itemId: string) {
     const itemElement = main.modTree.getItemElementById(itemId);
     if (!itemElement) {
       this.closeSlidingPanel();
@@ -81,7 +81,6 @@ export class ModDetailsPanel {
       return;
     }
 
-    console.log(this.currentItemId, itemId);
     const isSameItem = this.currentItemId === itemId;
     if (this.slidingPanel.classList.contains('open') && isSameItem) {
       this.currentItemId = ''
@@ -142,8 +141,8 @@ export class ModDetailsPanel {
    */
   private async openModFolder() {
     try {
-      await invoke("open_mod_folder", { 
-        id: this.currentItemId 
+      await invoke("open_mod_folder", {
+        id: this.currentItemId
       });
     } catch (error) {
       console.error("Failed to open mod folder:", error);
@@ -155,8 +154,8 @@ export class ModDetailsPanel {
    */
   private async openModUrl() {
     try {
-      await invoke("open_mod_url", { 
-        id: this.currentItemId 
+      await invoke("open_mod_url", {
+        id: this.currentItemId
       });
     } catch (error) {
       console.error("Failed to open mod url:", error);
@@ -165,7 +164,7 @@ export class ModDetailsPanel {
 
   /**
    * Open the sliding panel.
-   */ 
+   */
   public openSlidingPanel() {
     this.slidingPanel.classList.remove('hidden');
     setTimeout(() => {

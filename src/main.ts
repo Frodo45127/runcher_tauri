@@ -29,11 +29,16 @@ export class Main {
   public statusMessage: HTMLElement;
   public loadingManager: LoadingManager;
 
+  private statusBar: HTMLElement;
+
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
   private patreonBtn: HTMLButtonElement;
   private discordBtn: HTMLButtonElement;
   private githubBtn: HTMLButtonElement;
+
+  private updaterPanel: HTMLElement;
+  private updaterArrow: HTMLElement;
   private updaterBtn: HTMLButtonElement;
 
   constructor() {
@@ -45,7 +50,9 @@ export class Main {
     this.packList = new PackList(this);
     this.settingsModal = new SettingsModal();
     this.modDetails = new ModDetailsPanel();
-    this.statusMessage = document.querySelector('.status-message') as HTMLElement;
+
+    this.statusBar = document.querySelector('.status-bar') as HTMLElement;
+    this.statusMessage = this.statusBar.querySelector('.status-message') as HTMLElement;
 
     this.patreonBtn = document.getElementById('patreon-btn') as HTMLButtonElement;
     this.patreonBtn.addEventListener('click', () => this.openPatreon());
@@ -56,6 +63,8 @@ export class Main {
     this.githubBtn = document.getElementById('github-btn') as HTMLButtonElement;
     this.githubBtn.addEventListener('click', () => this.openGithub());
 
+    this.updaterPanel = document.getElementById('updater-panel') as HTMLElement;
+    this.updaterArrow = this.updaterPanel.querySelector('.arrow-pointer') as HTMLElement;
     this.updaterBtn = document.getElementById('updater-btn') as HTMLButtonElement;
     this.updaterBtn.addEventListener('click', () => this.openUpdater());
 
@@ -222,7 +231,24 @@ export class Main {
   }
 
   private openUpdater() {
-    console.log('Updater');
+    this.updaterPanel.classList.toggle('open');
+    this.updaterPanel.classList.toggle('hidden');
+
+    // Check if the panel is already open, and in that case, close it.
+    if (this.updaterPanel.classList.contains('hidden')) {
+      return;
+    }
+
+    // Update the arrow position based on the button position
+    const btnRect = this.updaterBtn.getBoundingClientRect();
+    const panelRect = this.updaterPanel.getBoundingClientRect();
+
+    // Remember that the status bar has padding, so we need to also "pad" the arrow position.
+    const statusBarPaddingRight = window.getComputedStyle(this.statusBar) as CSSStyleDeclaration;
+    const paddingRight = parseInt(statusBarPaddingRight?.getPropertyValue('padding-right') || '0');
+
+    this.updaterArrow.style.left = `${btnRect.left - panelRect.left - paddingRight}px`;
+    this.updaterArrow.style.top = `${panelRect.height}px`;
   }
 }
 
