@@ -470,7 +470,7 @@ async fn handle_mod_toggled(
     is_checked: bool,
 ) -> Result<Vec<ListItem>, String> {
     let mod_id = unescape(mod_id);
-    
+
     println!("Mod {} checkbox changed to: {}", mod_id, is_checked);
 
     let game_info = GAME_SELECTED.read().unwrap().clone();
@@ -1232,14 +1232,14 @@ async fn remove_category(app: tauri::AppHandle, category: &str) -> Result<(), St
 
 /// Util to send progress events to the webview.
 fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
-    let _ = app.get_webview_window("main").unwrap().emit(
-        "loading://progress",
-        ProgressPayload {
+    let _ = app
+        .get_webview_window("main")
+        .unwrap()
+        .emit("loading://progress", ProgressPayload {
             id: 0,
             progress,
             total,
-        },
-    );
+        });
 }
 
 /// Util function to de-escape ui-coming ids so they can be used in the backend.
@@ -1248,9 +1248,7 @@ fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
 /// - Can't start with numbers.
 /// - Can't contain a lot of common characters.
 fn unescape(id: &str) -> String {
-    id.replace("\\", "")
-        .replace("mod:", "")
-        .replace("cat:", "")
+    id.replace("\\", "").replace("mod:", "").replace("cat:", "")
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
