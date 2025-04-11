@@ -3,64 +3,49 @@ import { Main } from "./main";
 import { steamFormatToHtml } from "./utils/steamFormat";
 
 export class ModDetailsPanel {
+  private currentItemId: string;
+  private currentItemElement: HTMLElement | null;
+
   private slidingPanel: HTMLElement;
   private arrow: HTMLElement;
-  private content: HTMLElement;
+
+  private detailName: HTMLSpanElement;
+  private detailType: HTMLSpanElement;
+  private detailCreator: HTMLSpanElement;
+  private detailSize: HTMLSpanElement;
+  private detailLocation: HTMLSpanElement;
+  private detailDescriptionSection: HTMLDivElement;
+  private detailDescription: HTMLDivElement;
+
   private openModFolderBtn: HTMLButtonElement;
   private openModPageBtn: HTMLButtonElement;
-  private currentItemId: string;
+  private closeBtn: HTMLButtonElement;
 
-  constructor() {
+  constructor(main: Main) {
     this.currentItemId = '';
 
-    this.slidingPanel = document.createElement('div');
-    this.slidingPanel.className = 'sliding-panel hidden';
+    this.slidingPanel = document.getElementById('sliding-panel-content') as HTMLElement;
+    this.arrow = document.getElementById('sliding-panel-arrow') as HTMLElement;
 
-    this.arrow = document.createElement('div');
-    this.arrow.className = 'arrow-pointer arrow-pointer-left';
-    this.slidingPanel.appendChild(this.arrow);
+    this.detailName = document.getElementById('mod-detail-name') as HTMLSpanElement;
+    this.detailType = document.getElementById('mod-detail-type') as HTMLSpanElement;
+    this.detailCreator = document.getElementById('mod-detail-creator') as HTMLSpanElement;
+    this.detailSize = document.getElementById('mod-detail-size') as HTMLSpanElement;
+    this.detailLocation = document.getElementById('mod-detail-location') as HTMLSpanElement;
+    this.detailDescriptionSection = document.getElementById('mod-detail-description-section') as HTMLDivElement;
+    this.detailDescription = document.getElementById('mod-detail-description') as HTMLDivElement;
 
-    const header = document.createElement('div');
-    header.className = 'sliding-panel-header';
+    this.openModFolderBtn = document.getElementById('open-mod-folder-btn') as HTMLButtonElement;
+    this.openModPageBtn = document.getElementById('open-mod-page-btn') as HTMLButtonElement;
+    this.closeBtn = document.getElementById('sliding-panel-close-btn') as HTMLButtonElement;
 
-    const title = document.createElement('h2');
-    title.textContent = 'Mod Details';
-
-    const panelActions = document.createElement('div');
-    panelActions.className = 'panel-actions';
-
-    this.openModFolderBtn = document.createElement('button');
-    this.openModFolderBtn.className = 'panel-btn';
-    this.openModFolderBtn.title = 'Open Mod Folder';
-    this.openModFolderBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
     this.openModFolderBtn.addEventListener('click', () => this.openModFolder());
-
-    this.openModPageBtn = document.createElement('button');
-    this.openModPageBtn.className = 'panel-btn';
-    this.openModPageBtn.title = 'Open Mod Page in Browser';
-    this.openModPageBtn.innerHTML = '<i class="fa-solid fa-external-link-alt"></i>';
     this.openModPageBtn.addEventListener('click', () => this.openModUrl());
+    this.closeBtn.addEventListener('click', () => this.closeSlidingPanel());
 
-    const closeButton = document.createElement('button');
-    closeButton.className = 'sliding-panel-close';
-    closeButton.innerHTML = '<i class="fa-solid fa-times"></i>';
-    closeButton.addEventListener('click', () => this.closeSlidingPanel());
-
-    panelActions.appendChild(this.openModFolderBtn);
-    panelActions.appendChild(this.openModPageBtn);
-    header.appendChild(title);
-    header.appendChild(panelActions);
-    header.appendChild(closeButton);
-
-    // Crear el contenido del panel
-    this.content = document.createElement('div');
-    this.content.className = 'sliding-panel-content';
-    this.content.id = 'sliding-panel-content';
-
-    this.slidingPanel.appendChild(header);
-    this.slidingPanel.appendChild(this.content);
-
-    document.body.appendChild(this.slidingPanel);
+    main.modTree.getTreeParentElement().addEventListener("scroll", () => {
+      this.updateArrowPosition();
+    });
   }
 
   /**
@@ -68,7 +53,7 @@ export class ModDetailsPanel {
    * @param {Main} main - The main instance.
    * @param {string} itemId - The id of the mod to show details for.
    */
-  public toggleModDetails(main: Main, itemId: string) {
+  public toggleModDetails(itemId: string) {
     const itemElement = main.modTree.getItemElementById(itemId);
     if (!itemElement) {
       this.closeSlidingPanel();
@@ -88,49 +73,25 @@ export class ModDetailsPanel {
       return;
     }
 
-    // Update the arrow position, and set it to update again when scrolling the mod tree.
-    this.updateArrowPosition(itemElement);
-    main.modTree.getTreeParentElement().addEventListener("scroll", () => {
-      this.updateArrowPosition(itemElement);
-    });
-
-    // Update the panel content with the mod details.
-    // FIXME: This needs proper html formatting/parsing.
-    this.content.innerHTML = `
-      <div class="mod-detail-section">
-        <h3>General Information</h3>
-        <div class="mod-detail-item">
-          <strong>Name:</strong>
-          <span>${modDetails.name}</span>
-        </div>
-        <div class="mod-detail-item">
-          <strong>Type:</strong>
-          <span>${modDetails.type || 'N/A'}</span>
-        </div>
-        <div class="mod-detail-item">
-          <strong>Creator:</strong>
-          <span>${modDetails.creator || 'N/A'}</span>
-        </div>
-        <div class="mod-detail-item">
-          <strong>Size:</strong>
-          <span>${modDetails.size || 'N/A'}</span>
-        </div>
-        <div class="mod-detail-item">
-          <strong>Location:</strong>
-          <span>${modDetails.location || 'N/A'}</span>
-        </div>
-      </div>
-      ${modDetails.description ? `
-        <div class="mod-detail-section">
-          <h3>Description</h3>
-          <div class="mod-description">
-            ${steamFormatToHtml(modDetails.description)}
-          </div>
-        </div>
-      ` : ''}
-    `;
-
+    this.currentItemElement = itemElement;
     this.currentItemId = itemId;
+
+    this.updateArrowPosition();
+
+    this.detailName.textContent = modDetails.name;
+    this.detailType.textContent = modDetails.type || 'N/A';
+    this.detailCreator.textContent = modDetails.creator || 'N/A';
+    this.detailSize.textContent = modDetails.size || 'N/A';
+    this.detailLocation.textContent = modDetails.location || 'N/A';
+
+    if (modDetails.description) {
+      this.detailDescriptionSection.classList.remove('hidden');
+      this.detailDescription.innerHTML = steamFormatToHtml(modDetails.description);
+    } else {
+      this.detailDescriptionSection.classList.add('hidden');
+      this.detailDescription.innerHTML = '';
+    }
+
     if (!this.slidingPanel.classList.contains('open') && !isSameItem) {
       this.openSlidingPanel();
     }
@@ -176,6 +137,9 @@ export class ModDetailsPanel {
    * Close the sliding panel.
    */
   public closeSlidingPanel() {
+    this.currentItemId = '';
+    this.currentItemElement = null;
+
     this.slidingPanel.classList.remove('open');
     setTimeout(() => {
       this.slidingPanel.classList.add('hidden');
@@ -187,16 +151,17 @@ export class ModDetailsPanel {
    */
   public clearContent() {
     this.closeSlidingPanel();
-    this.content.innerHTML = '';
   }
 
   /**
    * Update the arrow position to keep pointing to the correct mod item.
    * @param {HTMLElement} itemElement - The item element.
    */
-  private updateArrowPosition(itemElement: HTMLElement) {
-    const itemRect = itemElement.getBoundingClientRect();
-    const arrowTop = itemRect.top + (itemRect.height / 2) - 10;
-    this.arrow.style.top = `${arrowTop}px`;
+  private updateArrowPosition() {
+    if (this.currentItemElement) {
+      const itemRect = this.currentItemElement.getBoundingClientRect();
+      const arrowTop = itemRect.top + (itemRect.height / 2) - 10;
+      this.arrow.style.top = `${arrowTop}px`;
+    }
   }
 }

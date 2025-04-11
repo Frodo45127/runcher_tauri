@@ -36,7 +36,7 @@ export class Main {
     this.modTree = new ModTree(this);
     this.packList = new PackList(this);
     this.settingsModal = new SettingsModal();
-    this.modDetails = new ModDetailsPanel();
+    this.modDetails = new ModDetailsPanel(this);
     this.statusBar = new StatusBar();
 
     // Add event listener for launch button

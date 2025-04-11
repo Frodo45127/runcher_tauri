@@ -259,7 +259,7 @@ export class ModTree {
         });
 
         itemContent.addEventListener('dblclick', () => {
-          main.modDetails.toggleModDetails(main, itemElement.getAttribute('data-id') || '');
+          main.modDetails.toggleModDetails(itemElement.getAttribute('data-id') || '');
         });
 
         this.itemElements.set(itemElement.getAttribute('data-id') || '', itemElement);

@@ -149,6 +149,55 @@
       <div class="progress-text">0%</div>
     </div>
 
+    <!-- Mod Details Panel -->
+    <div class="sliding-panel hidden" id="sliding-panel-content">
+      <div class="arrow-pointer arrow-pointer-left" id="sliding-panel-arrow"></div>
+      <div class="sliding-panel-header">
+        <h2>Mod Details</h2>
+        <div class="panel-actions">
+          <button class="panel-btn" id="open-mod-folder-btn" title="Open Mod Folder">
+            <i class="fa-solid fa-folder-open"></i>
+          </button>
+          <button class="panel-btn" id="open-mod-page-btn" title="Open Mod Page in Browser">
+            <i class="fa-solid fa-external-link-alt"></i>
+          </button>
+        </div>
+        <button class="sliding-panel-close" id="sliding-panel-close-btn">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+      <div class="sliding-panel-content" id="sliding-panel-content">
+        <div class="mod-detail-section">
+          <h3>General Information</h3>
+          <div class="mod-detail-item">
+            <strong>Name:</strong>
+            <span id="mod-detail-name"></span>
+          </div>
+          <div class="mod-detail-item">
+            <strong>Type:</strong>
+            <span id="mod-detail-type"></span>
+          </div>
+          <div class="mod-detail-item">
+            <strong>Creator:</strong>
+            <span id="mod-detail-creator"></span>
+          </div>
+          <div class="mod-detail-item">
+            <strong>Size:</strong>
+            <span id="mod-detail-size"></span>
+          </div>
+          <div class="mod-detail-item">
+            <strong>Location:</strong>
+            <span id="mod-detail-location"></span>
+          </div>
+        </div>
+        <div class="mod-detail-section hidden" id="mod-detail-description-section">
+          <h3>Description</h3>
+          <div class="mod-description" id="mod-detail-description">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
       <div class="modal-content">
