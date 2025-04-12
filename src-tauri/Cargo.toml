@@ -1,5 +1,5 @@
 [package]
-name = "runcher_tauri"
+name = "runcher-tauri"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
@@ -31,6 +31,7 @@ serde_json = "^1"
 
 # Error managing.
 anyhow = "^1.0"
+thiserror = "^1.0"
 
 # Compression support
 zstd = "^0.13"
@@ -65,8 +66,14 @@ steam-workshop-api = { git = "https://github.com/Frodo45127/rs-steam-workshop-ap
 # For random ipc channel name generator.
 rand = "^0"
 
+# URL parsing support.
+url = "^2"
+
 # Internal dependencies.
 common_utils = { git = "https://github.com/Frodo45127/rust_common_utils.git", branch = "master" }
 rpfm_lib = { git = "https://github.com/Frodo45127/rpfm.git", branch = "develop", features = ["integration_log", "integration_git"] }
 rpfm_extensions = { git = "https://github.com/Frodo45127/rpfm.git", branch = "develop" }
 futures-util = "0.3.31"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"

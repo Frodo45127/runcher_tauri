@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "runcher_tauri",
+  "productName": "runcher-tauri",
   "version": "0.1.0",
-  "identifier": "com.runcher_tauri.app",
+  "identifier": "com.runcher-tauri.app",
   "build": {
     "beforeDevCommand": "pnpm run dev",
     "devUrl": "http://localhost:1420",
@@ -36,6 +36,18 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwNjI3QTExQkFDNTAzQzEKUldUQkE4VzZFWHBpVUthMTBuN2dzS2pudHk5cDFiWkF4SkgyUDdrd3JKN2VPM0w3NTdaUWM2djcK",
+      "endpoints": [
+        "https://github.com/Frodo45127/runcher_tauri/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

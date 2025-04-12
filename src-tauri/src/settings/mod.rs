@@ -38,7 +38,7 @@ const PROFILES_FILE: &str = "profiles.json";
 const GAME_CONFIG_FILE: &str = "game_config.json";
 
 //-------------------------------------------------------------------------------//
-//                             Enums
+//                             Structs & Enums
 //-------------------------------------------------------------------------------//
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

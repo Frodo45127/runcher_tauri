@@ -1,8 +1,32 @@
+import { invoke, Channel } from '@tauri-apps/api/core';
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const GITHUB_URL = "https://github.com/Frodo45127/runcher";
 const DISCORD_URL = "https://discord.gg/moddingden";
 const PATREON_URL = "https://www.patreon.com/RPFM";
+
+type DownloadEvent =
+  | {
+    event: 'started';
+    data: {
+      url: string;
+      downloadId: number;
+      contentLength: number;
+    };
+  }
+  | {
+    event: 'progress';
+    data: {
+      downloadId: number;
+      chunkLength: number;
+    };
+  }
+  | {
+    event: 'finished';
+    data: {
+      downloadId: number;
+    };
+  };
 
 export class StatusBar {
   private statusBar: HTMLElement;
@@ -14,6 +38,8 @@ export class StatusBar {
   private updaterPanel: HTMLElement;
   private updaterArrow: HTMLElement;
   private updaterBtn: HTMLButtonElement;
+
+  private onEventChannelAppUpdater: Channel<DownloadEvent>;
 
   constructor() {
     this.statusBar = document.querySelector('.status-bar') as HTMLElement;
@@ -30,6 +56,12 @@ export class StatusBar {
     this.discordBtn.addEventListener('click', () => this.openDiscord());
     this.githubBtn.addEventListener('click', () => this.openGithub());
     this.updaterBtn.addEventListener('click', () => this.toggleUpdater());
+
+    // Channel for events for the App updater.
+    this.onEventChannelAppUpdater = new Channel<DownloadEvent>();
+    this.onEventChannelAppUpdater.onmessage = (message) => {
+      console.log(`got download event ${message.event}`);
+    };
   }
 
   /**
@@ -75,5 +107,14 @@ export class StatusBar {
 
     this.updaterArrow.style.left = `${btnRect.left - panelRect.left - paddingRight}px`;
     this.updaterArrow.style.top = `${panelRect.height}px`;
+    /*
+    try {
+      invoke('fetch_update').then(() => {
+        const onEvent = this.onEventChannelAppUpdater;
+        invoke('download', { onEvent });
+      });
+    } catch (e) {
+      console.log(e);
+    }*/
   }
 }

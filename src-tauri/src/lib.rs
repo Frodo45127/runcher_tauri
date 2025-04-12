@@ -23,6 +23,7 @@ use crate::mod_manager::profiles::Profile;
 
 mod mod_manager;
 mod settings;
+mod updater;
 
 /// Sentry client guard, so we can reuse it later on and keep it in scope for the entire duration of the program.
 //static ref SENTRY_GUARD: Arc<RwLock<ClientInitGuard>> = Arc::new(RwLock::new(Logger::init(&{
@@ -1254,6 +1255,7 @@ fn unescape(id: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -1266,6 +1268,9 @@ pub fn run() {
                 println!("Tauri application ready event triggered");
                 // Puedes realizar acciones adicionales si es necesario
             });
+
+            // State for the updater.
+            app.manage(updater::PendingUpdate(Mutex::new(None)));
 
             Ok(())
         })
@@ -1289,7 +1294,9 @@ pub fn run() {
             open_mod_url,
             create_category,
             rename_category,
-            remove_category
+            remove_category,
+            #[cfg(desktop)] updater::fetch_update,
+            #[cfg(desktop)] updater::install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
