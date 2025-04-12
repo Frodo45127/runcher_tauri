@@ -29,7 +29,7 @@ export function steamFormatToHtml(text: string): string {
 
   // No parse
   html = html.replace(/\[noparse\](.*?)\[\/noparse\]/g, 
-    (match, p1) => p1.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    (_match, p1) => p1.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 
   // Horizontal rule
   html = html.replace(/\[hr\]\[\/hr\]/g, '<hr>');
@@ -38,7 +38,7 @@ export function steamFormatToHtml(text: string): string {
   html = html.replace(/\[url=([^\]]+)\](.*?)\[\/url\]/g, '<a href="$1" target="_blank">$2</a>');
 
   // Lists
-  html = html.replace(/\[list\]([\s\S]*?)\[\/list\]/g, (match, content) => {
+  html = html.replace(/\[list\]([\s\S]*?)\[\/list\]/g, (_match, content) => {
     const items = content.split('[*]').filter((item: string) => item.trim());
     return '<ul class="mod-details-description-ulist">' + items
       .filter((item: string) => item !== '<br/>')
@@ -52,7 +52,7 @@ export function steamFormatToHtml(text: string): string {
   });
 
   // Unfinished Lists (damn tabletop caps compat mod)
-  html = html.replace(/\[list\]([\s\S]*?)$/g, (match, content) => {
+  html = html.replace(/\[list\]([\s\S]*?)$/g, (_match, content) => {
     const items = content.split('[*]').filter((item: string) => item.trim());
     return '<ul class="mod-details-description-ulist">' + items
       .filter((item: string) => item !== '<br/>')
@@ -65,7 +65,7 @@ export function steamFormatToHtml(text: string): string {
       .join('') + '</ul>';
   });
 
-  html = html.replace(/\[olist\]([\s\S]*?)\[\/olist\]/g, (match, content) => {
+  html = html.replace(/\[olist\]([\s\S]*?)\[\/olist\]/g, (_match, content) => {
     const items = content.trim().split('[*]').filter((item: string) => item.trim());
     return '<ol class="mod-details-description-olist">' + items
       .filter((item: string) => item !== '<br/>')
@@ -87,7 +87,7 @@ export function steamFormatToHtml(text: string): string {
     '<pre><code>$1</code></pre>');
 
   // Tables
-  html = html.replace(/\[table(?:=([^\]]+))?\]([\s\S]*?)\[\/table\]/g, (match, attrs, content) => {
+  html = html.replace(/\[table(?:=([^\]]+))?\]([\s\S]*?)\[\/table\]/g, (_match, attrs, content) => {
     const tableAttrs = [];
     if (attrs) {
       const attrPairs = attrs.split(' ');
