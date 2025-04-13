@@ -29,7 +29,8 @@ use rpfm_lib::games::GameInfo;
 use rpfm_lib::utils::path_to_absolute_string;
 
 use crate::mod_manager::mods::Mod;
-use crate::settings::AppSettings;
+use crate::settings::{config_path, AppSettings};
+use crate::SETTINGS;
 
 #[cfg(target_os = "windows")]
 use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
@@ -170,7 +171,7 @@ pub fn request_mods_data_raw(
         return Ok(vec![]);
     }
 
-    let settings = AppSettings::load(app_handle)?;
+    let settings = SETTINGS.read().unwrap();
     let game_path = settings.game_path(game)?;
     let steam_id = game.steam_id(&game_path)? as u32;
     let published_file_ids = mod_ids.join(",");
@@ -180,13 +181,16 @@ pub fn request_mods_data_raw(
         "{} get-published-file-details -s {steam_id} -p {published_file_ids} -i {ipc_channel} & exit",
         &*WORKSHOPPER_PATH
     );
-    let mut file = BufWriter::new(File::create(BAT_GET_PUBLISHED_FILE_DETAILS)?);
+
+    let config_path = config_path(app_handle)?;
+    let bat_path = config_path.join(BAT_GET_PUBLISHED_FILE_DETAILS);
+    let mut file = BufWriter::new(File::create(&bat_path)?);
     file.write_all(command_string.as_bytes())?;
     file.flush()?;
 
     let mut command = Command::new("cmd");
     command.arg("/C");
-    command.arg(BAT_GET_PUBLISHED_FILE_DETAILS);
+    command.arg(&bat_path);
 
     // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
     #[cfg(target_os = "windows")]
@@ -197,14 +201,14 @@ pub fn request_mods_data_raw(
     }
 
     command.spawn()?;
-
+    
     let channel = ipc_channel.to_ns_name::<GenericNamespaced>()?;
     let server = ListenerOptions::new().name(channel).create_sync()?;
+
     let mut stream = server.accept()?;
-
     let mut message = String::new();
-    stream.read_to_string(&mut message)?;
 
+    stream.read_to_string(&mut message)?;
     if message == "{}" {
         Err(anyhow!("Error retrieving Steam Workshop data."))
     } else {
@@ -221,11 +225,10 @@ pub fn request_user_names(
         return Ok(HashMap::new());
     }
 
-    let mut client = Workshop::new(None);
-
     let settings = AppSettings::load(app_handle)?;
     let api_key = settings.string("steam_api_key")?;
     if !api_key.is_empty() {
+        let mut client = Workshop::new(None);
         client.set_apikey(Some(api_key));
         get_player_names(&client, user_ids)
     } else {

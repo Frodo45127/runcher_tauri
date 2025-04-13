@@ -1,6 +1,13 @@
 use anyhow::anyhow;
 use base64::prelude::BASE64_STANDARD;
-use regex::Regex;
+use serde::Serialize;
+use tauri::{AppHandle, async_runtime::Sender, Emitter, Listener, Manager};
+
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
+use std::fs::DirBuilder;
+
 use rpfm_lib::schema::Schema;
 use rpfm_lib::{
     binary::WriteBytes,
@@ -9,17 +16,45 @@ use rpfm_lib::{
         supported_games::{KEY_ARENA, KEY_EMPIRE, SupportedGames},
     },
 };
-use serde::{Deserialize, Serialize};
-use settings::*;
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::{Arc, LazyLock, Mutex, RwLock};
-use std::{cell::LazyCell, fs::DirBuilder};
-use tauri::{Emitter, Listener, Manager};
-
 use crate::mod_manager::game_config::GameConfig;
+use crate::mod_manager::integrations::store_loop;
 use crate::mod_manager::load_order::{LoadOrder, LoadOrderDirectionMove};
+use crate::mod_manager::mods::Mod;
 use crate::mod_manager::profiles::Profile;
+use crate::settings::*;
+
+/// This macro is used to clone the variables into the closures without the compiler complaining.
+///
+/// Mainly for use with UI stuff, but you can use it with anything clonable.
+#[macro_export]
+macro_rules! clone {
+    (@param _) => ( _ );
+    (@param $x:ident) => ( $x );
+    ($($n:ident),+ => move || $body:expr) => (
+        {
+            $( let $n = $n.clone(); )+
+            move || $body
+        }
+    );
+    ($($y:ident $n:ident),+ => move || $body:expr) => (
+        {
+            $( #[allow(unused_mut)] let mut $n = $n.clone(); )+
+            move || $body
+        }
+    );
+    ($($n:ident),+ => move |$($p:tt),+| $body:expr) => (
+        {
+            $( let $n = $n.clone(); )+
+            move |$(clone!(@param $p),)+| $body
+        }
+    );
+    ($($y:ident $n:ident),+ => move |$($p:tt),+| $body:expr) => (
+        {
+            $( #[allow(unused_mut)] let mut $n = $n.clone(); )+
+            move |$(clone!(@param $p),)+| $body
+        }
+    );
+}
 
 mod mod_manager;
 mod settings;
@@ -32,7 +67,7 @@ mod updater;
 //}, true, true, release_name!()).unwrap()));
 
 /// Currently loaded schema.
-static SCHEMA: LazyLock<Option<Schema>> = LazyLock::new(|| None);
+static SCHEMA: LazyLock<Arc<RwLock<Option<Schema>>>> = LazyLock::new(|| Arc::new(RwLock::new(None)));
 static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
 
@@ -51,20 +86,7 @@ static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> = LazyLock::new(|| {
     ))
 });
 
-const REGEX_MAP_INFO_DISPLAY_NAME: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<display_name>(.*)</display_name>").unwrap());
-const REGEX_MAP_INFO_DESCRIPTION: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<description>(.*)</description>").unwrap());
-const REGEX_MAP_INFO_TYPE: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<type>(.*)</type>").unwrap());
-const REGEX_MAP_INFO_TEAM_SIZE_1: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<team_size_1>(.*)</team_size_1>").unwrap());
-const REGEX_MAP_INFO_TEAM_SIZE_2: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<team_size_2>(.*)</team_size_2>").unwrap());
-const REGEX_MAP_INFO_DEFENDER_FUNDS_RATIO: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<defender_funds_ratio>(.*)</defender_funds_ratio>").unwrap());
-const REGEX_MAP_INFO_HAS_KEY_BUILDINGS: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"<has_key_buildings>(.*)</has_key_buildings>").unwrap());
+static STORE_THREAD_COMMS: LazyLock<Arc<Mutex<Option<Sender<(Sender<anyhow::Result<Vec<Mod>>>, AppHandle, GameInfo, Vec<String>)>>>>> = LazyLock::new(|| Arc::new(Mutex::new(None)));
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_SUBTITLE: &str = " -- When I learned maths";
@@ -487,6 +509,7 @@ async fn handle_mod_toggled(
 
     let _ = game_config
         .update_mod_list(&app, &game_info, &game_path, &mut load_order, false)
+        .await
         .map_err(|e| format!("Error loading data: {}", e))?;
     let items = load_packs(&app, &game_config, &game_info, &game_path, &load_order)
         .await
@@ -712,14 +735,6 @@ async fn load_data(
             let settings = SETTINGS.read().unwrap().clone();
             let game_path = settings.game_path(game)?;
 
-            game_config.update_mod_list(
-                app,
-                &game,
-                &game_path,
-                &mut load_order,
-                skip_network_update,
-            )?;
-
             *GAME_LOAD_ORDER.write().unwrap() = load_order;
             *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
 
@@ -748,18 +763,31 @@ async fn load_data(
             send_progress_event(&app, 10, 100);
 
             let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+            let online_data_receiver = game_config.update_mod_list(
+                app,
+                &game,
+                &game_path,
+                &mut load_order,
+                skip_network_update,
+            ).await?;
+            
+            send_progress_event(&app, 30, 100);
+            if let Some(tx_recv) = online_data_receiver {
+                let a = game_config.update_mod_list_with_online_data(tx_recv, app).await?;
+                dbg!(a);
 
-            let _ = game_config.update_mod_list(&app, &game, &game_path, &mut load_order, false)?;
-
+            }
+            send_progress_event(&app, 50, 100);
             let mods = load_mods(&app, &game, &game_config).await?;
 
-            send_progress_event(&app, 50, 100);
+            send_progress_event(&app, 70, 100);
 
             let items = load_packs(&app, &game_config, &game, &game_path, &load_order).await?;
 
             send_progress_event(&app, 90, 100);
 
             *GAME_LOAD_ORDER.write().unwrap() = load_order;
+            *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
             /*
                         // Load the mods to the UI. This does an early return, just in case you add something after this.
                         match self.load_mods_to_ui(game, &game_path, skip_network_update) {
@@ -1271,6 +1299,11 @@ pub fn run() {
 
             // State for the updater.
             app.manage(updater::PendingUpdate(Mutex::new(None)));
+
+            // Setup the store thread, so we can use it later for retrieving info from mods.
+            let (sender, receiver) = tauri::async_runtime::channel(32);
+            *STORE_THREAD_COMMS.lock().unwrap() = Some(sender);
+            tauri::async_runtime::spawn(store_loop(receiver));
 
             Ok(())
         })

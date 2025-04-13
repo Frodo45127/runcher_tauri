@@ -14,6 +14,8 @@
 
 use anyhow::Result;
 use serde::Deserialize;
+use tauri::async_runtime::{Receiver, Sender};
+use tauri::AppHandle;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -136,4 +138,22 @@ pub fn is_game_locked(game: &GameInfo, game_path: &Path) -> bool {
 
 pub fn toggle_game_locked(game: &GameInfo, game_path: &Path, toggle: bool) -> bool {
     steam::toggle_game_locked(game, game_path, toggle).unwrap_or_default()
+}
+
+pub async fn store_loop(mut response: Receiver<(Sender<Result<Vec<Mod>>>, AppHandle, GameInfo, Vec<String>)>) {
+    dbg!("starting loop.");
+    loop {
+        let recv = response.recv().await;
+        dbg!(&recv);
+        match recv {
+            Some((tx_send, app, game, mod_ids)) => {
+                dbg!(1);
+                let request = request_mods_data(&app, &game, &mod_ids);
+                let a = tx_send.send(request).await;
+                dbg!(a);
+            }
+
+            None => {dbg!("closed");},
+        }
+    }
 }
