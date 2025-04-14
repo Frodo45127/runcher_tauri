@@ -272,6 +272,7 @@ pub fn populate_mods_with_online_data(
         return Ok(());
     }
 
+    // TODO: Remove this.
     if let Ok(user_names) = request_user_names(app_handle, &user_ids) {
         populate_mods_with_author_names(mods, &user_names);
     }

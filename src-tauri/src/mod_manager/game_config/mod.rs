@@ -29,11 +29,11 @@ use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType, supported_games::KEY
 use rpfm_lib::integrations::log::error;
 
 //use crate::games::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
-use crate::mod_manager::{load_order::LoadOrder, mods::Mod};
-use crate::{settings::*, GAME_SELECTED, SETTINGS, STORE_THREAD_COMMS};
+use crate::mod_manager::{integrations::TxStoreResponse, load_order::LoadOrder, mods::Mod};
+use crate::{settings::*, GAME_SELECTED, SETTINGS, INTEGRATIONS};
 use crate::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 
-use super::integrations::populate_mods_with_online_data;
+use super::integrations::Integrations;
 use super::{generate_map_pack, move_to_destination, secondary_mods_packs_paths, secondary_mods_path};
 
 //mod versions;
@@ -250,7 +250,7 @@ impl GameConfig {
         game_path: &Path,
         load_order: &mut LoadOrder,
         skip_network_update: bool,
-    ) -> Result<Option<Receiver<Result<Vec<Mod>>>>> {
+    ) -> Result<Option<Receiver<TxStoreResponse>>> {
         let mut receiver = None;
 
         // Clear the mod paths, just in case a failure while loading them leaves them unclean.
@@ -493,10 +493,8 @@ impl GameConfig {
 
                 // Ignore network population errors for now.
                 if !skip_network_update {
-                    let sender = STORE_THREAD_COMMS.lock().unwrap().clone().unwrap();
-                    let (tx_send, tx_recv) = channel(32);
-                    let _ = sender.send((tx_send, app_handle.clone(), game.clone(), steam_ids.clone())).await;
-                    receiver = Some(tx_recv);
+                    let integrations = (*INTEGRATIONS.lock().unwrap()).clone();
+                    receiver = Some(integrations.request_remote_mods_data(app_handle, game, &steam_ids).await);
                 }
 
                 // Then, if the game supports secondary mod path (only since Shogun 2) we check for mods in there. These have middle priority.
@@ -857,15 +855,14 @@ impl GameConfig {
         Ok(receiver)
     }
 
-    pub async fn update_mod_list_with_online_data(&mut self, mut tx_recv: Receiver<Result<Vec<Mod>>>, app: &tauri::AppHandle) -> Result<()> {
-        let response = tx_recv.recv().await.unwrap();
-        match response {
-            Ok(workshop_items) => {
+    pub async fn update_mod_list_with_online_data(&mut self, tx_recv: Receiver<TxStoreResponse>, app: &tauri::AppHandle) -> Result<()> {
+        match Integrations::recv_remote_mods_data(tx_recv).await {
+            Ok(remote_mods) => {
                         
                 let game = GAME_SELECTED.read().unwrap().clone();
                 let game_path = SETTINGS.read().unwrap().game_path(&game)?;
-                
-                if populate_mods_with_online_data(app, self.mods_mut(), &workshop_items).is_ok() {
+
+                if Integrations::populate_mods_with_online_data(app, self.mods_mut(), &remote_mods).is_ok() {
                     
                     // Shogun 2 uses two types of mods:
                     // - Pack mods turned binary: they're pack mods with a few extra bytes at the beginning. RPFM lib is capable to open them, save them as Packs, then do one of these:
@@ -882,7 +879,9 @@ impl GameConfig {
                     //
                     // So, once population is done, we need to do some post-processing. Our mods need to be moved to either /data or /secondary if we don't have them there.
                     // Shogun 2 mods need to be turned into packs and moved to either /data or /secondary.
-                    let steam_user_id = crate::mod_manager::integrations::store_user_id(app, &game)?.to_string();
+                    let integrations = INTEGRATIONS.lock().unwrap().clone();
+                    let tx_recv = integrations.store_user_id(app, &game).await;
+                    let steam_user_id = Integrations::recv_store_user_id(tx_recv).await?.to_string();
                     let secondary_path = secondary_mods_path(app, game.key()).ok();
                     let game_data_path = game.data_path(&game_path);
                     

@@ -4342,6 +4342,7 @@ dependencies = [
  "getset",
  "interprocess",
  "open",
+ "paste",
  "rand 0.7.3",
  "rayon",
  "regex",

@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use base64::prelude::BASE64_STANDARD;
 use serde::Serialize;
-use tauri::{AppHandle, async_runtime::Sender, Emitter, Listener, Manager};
+use tauri::{Emitter, Listener, Manager};
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -16,10 +16,10 @@ use rpfm_lib::{
         supported_games::{KEY_ARENA, KEY_EMPIRE, SupportedGames},
     },
 };
+
 use crate::mod_manager::game_config::GameConfig;
-use crate::mod_manager::integrations::store_loop;
+use crate::mod_manager::integrations::Integrations;
 use crate::mod_manager::load_order::{LoadOrder, LoadOrderDirectionMove};
-use crate::mod_manager::mods::Mod;
 use crate::mod_manager::profiles::Profile;
 use crate::settings::*;
 
@@ -86,7 +86,7 @@ static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> = LazyLock::new(|| {
     ))
 });
 
-static STORE_THREAD_COMMS: LazyLock<Arc<Mutex<Option<Sender<(Sender<anyhow::Result<Vec<Mod>>>, AppHandle, GameInfo, Vec<String>)>>>>> = LazyLock::new(|| Arc::new(Mutex::new(None)));
+static INTEGRATIONS: LazyLock<Arc<Mutex<Integrations>>> = LazyLock::new(|| Arc::new(Mutex::new(Integrations::new())));
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_SUBTITLE: &str = " -- When I learned maths";
@@ -121,7 +121,7 @@ struct ProgressPayload {
 }
 
 #[tauri::command]
-fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
+async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
     use base64::Engine;
 
     let mut folder_list = String::new();
@@ -221,9 +221,14 @@ fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
                 }
 
                 let command = BASE64_STANDARD.encode(command);
-                crate::mod_manager::integrations::launch_game(&app, &game, &command, false)
-                    .map_err(|e| format!("Error launching the game: {}", e))?;
-                Ok(format!("Game {} launched successfully!", id))
+                let integrations = INTEGRATIONS.lock().unwrap().clone();
+                
+                // TODO: do something with this receiver.
+                let tx_recv = integrations.launch_game(&app, &game, &command, false).await;
+                match Integrations::recv_launch_game(tx_recv).await {
+                    Ok(_) => Ok(format!("Game {id} launched successfully!")),
+                    Err(e) => Err(format!("Game {id} failed to launch with the following error: {e}")),
+                }
             } else if cfg!(target_os = "linux") {
                 Err(format!("Unsupported OS."))
             } else {
@@ -773,9 +778,7 @@ async fn load_data(
             
             send_progress_event(&app, 30, 100);
             if let Some(tx_recv) = online_data_receiver {
-                let a = game_config.update_mod_list_with_online_data(tx_recv, app).await?;
-                dbg!(a);
-
+                game_config.update_mod_list_with_online_data(tx_recv, app).await?;
             }
             send_progress_event(&app, 50, 100);
             let mods = load_mods(&app, &game, &game_config).await?;
@@ -1299,11 +1302,6 @@ pub fn run() {
 
             // State for the updater.
             app.manage(updater::PendingUpdate(Mutex::new(None)));
-
-            // Setup the store thread, so we can use it later for retrieving info from mods.
-            let (sender, receiver) = tauri::async_runtime::channel(32);
-            *STORE_THREAD_COMMS.lock().unwrap() = Some(sender);
-            tauri::async_runtime::spawn(store_loop(receiver));
 
             Ok(())
         })
