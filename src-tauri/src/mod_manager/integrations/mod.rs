@@ -14,8 +14,8 @@
 
 use anyhow::{Error, Result};
 use serde::Deserialize;
-use tauri::async_runtime::{Receiver, Sender, channel};
 use tauri::AppHandle;
+use tauri::async_runtime::{Receiver, Sender, channel};
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -41,22 +41,21 @@ const CREATE_NEW_CONSOLE: u32 = 0x00000010;
 // TODO: Cache user ids, once multi-store support is in.
 #[derive(Clone)]
 pub struct Integrations {
-    sender: Sender<TxStoreSend>
+    sender: Sender<TxStoreSend>,
 }
 
 pub enum TxStoreSend {
     LaunchGame(Sender<TxStoreResponse>, AppHandle, GameInfo, String, bool),
     RequestRemoteModData(Sender<TxStoreResponse>, AppHandle, GameInfo, Vec<String>),
-    StoreUserId(Sender<TxStoreResponse>, AppHandle, GameInfo)
+    StoreUserId(Sender<TxStoreResponse>, AppHandle, GameInfo),
 }
 
 pub enum TxStoreResponse {
     VecMod(Vec<Mod>),
     U64(u64),
     Success(()),
-    Error(Error)
+    Error(Error),
 }
-
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 pub enum PublishedFileVisibilityDerive {
@@ -100,33 +99,65 @@ impl Integrations {
         let (sender, receiver) = tauri::async_runtime::channel(32);
         tauri::async_runtime::spawn(Self::store_loop(receiver));
 
-        Self {
-            sender
-        }
+        Self { sender }
     }
-    
+
     recv!(launch_game, Success, ());
-    pub async fn launch_game(&self, app: &AppHandle, game: &GameInfo, command_to_pass: &str, wait_for_finish: bool) -> Receiver<TxStoreResponse> {
+    pub async fn launch_game(
+        &self,
+        app: &AppHandle,
+        game: &GameInfo,
+        command_to_pass: &str,
+        wait_for_finish: bool,
+    ) -> Receiver<TxStoreResponse> {
         let (tx_send, tx_recv) = channel(32);
-        let _ = self.sender.send(TxStoreSend::LaunchGame(tx_send, app.clone(), game.clone(), command_to_pass.to_owned(), wait_for_finish)).await;
+        let _ = self
+            .sender
+            .send(TxStoreSend::LaunchGame(
+                tx_send,
+                app.clone(),
+                game.clone(),
+                command_to_pass.to_owned(),
+                wait_for_finish,
+            ))
+            .await;
         tx_recv
     }
 
     recv!(remote_mods_data, VecMod, Vec<Mod>);
-    pub async fn request_remote_mods_data(&self, app: &AppHandle, game: &GameInfo, remote_mod_ids: &[String]) -> Receiver<TxStoreResponse> {
+    pub async fn request_remote_mods_data(
+        &self,
+        app: &AppHandle,
+        game: &GameInfo,
+        remote_mod_ids: &[String],
+    ) -> Receiver<TxStoreResponse> {
         let (tx_send, tx_recv) = channel(32);
-        let _ = self.sender.send(TxStoreSend::RequestRemoteModData(tx_send, app.clone(), game.clone(), remote_mod_ids.to_vec())).await;
+        let _ = self
+            .sender
+            .send(TxStoreSend::RequestRemoteModData(
+                tx_send,
+                app.clone(),
+                game.clone(),
+                remote_mod_ids.to_vec(),
+            ))
+            .await;
         tx_recv
     }
 
     recv!(store_user_id, U64, u64);
-    pub async fn store_user_id(&self, app: &AppHandle, game: &GameInfo) -> Receiver<TxStoreResponse> {
+    pub async fn store_user_id(
+        &self,
+        app: &AppHandle,
+        game: &GameInfo,
+    ) -> Receiver<TxStoreResponse> {
         let (tx_send, tx_recv) = channel(32);
-        let _ = self.sender.send(TxStoreSend::StoreUserId(tx_send, app.clone(), game.clone())).await;
+        let _ = self
+            .sender
+            .send(TxStoreSend::StoreUserId(tx_send, app.clone(), game.clone()))
+            .await;
         tx_recv
     }
 
-    
     pub fn populate_mods_with_online_data(
         app_handle: &tauri::AppHandle,
         local_mods: &mut HashMap<String, Mod>,
@@ -137,7 +168,7 @@ impl Integrations {
 
     //-------------------------------------------------------------------------------//
     //                             Private functions
-    //-------------------------------------------------------------------------------//  
+    //-------------------------------------------------------------------------------//
 
     async fn store_loop(mut response: Receiver<TxStoreSend>) {
         loop {
@@ -145,22 +176,41 @@ impl Integrations {
             match recv {
                 Some(TxStoreSend::RequestRemoteModData(tx_send, app, game, mod_ids)) => {
                     match Self::wrapper_request_mods_data(&app, &game, &mod_ids) {
-                        Ok(data) => { let _ = tx_send.send(TxStoreResponse::VecMod(data)).await; }
-                        Err(e) => { let _ = tx_send.send(TxStoreResponse::Error(e)).await; }
+                        Ok(data) => {
+                            let _ = tx_send.send(TxStoreResponse::VecMod(data)).await;
+                        }
+                        Err(e) => {
+                            let _ = tx_send.send(TxStoreResponse::Error(e)).await;
+                        }
                     }
                 }
 
-                Some(TxStoreSend::LaunchGame(tx_send, app, game, command_to_pass, wait_for_finish)) => {
-                    match Self::wrapper_launch_game(&app, &game, &command_to_pass, wait_for_finish) {
-                        Ok(data) => { let _ = tx_send.send(TxStoreResponse::Success(data)).await; }
-                        Err(e) => { let _ = tx_send.send(TxStoreResponse::Error(e)).await; }
+                Some(TxStoreSend::LaunchGame(
+                    tx_send,
+                    app,
+                    game,
+                    command_to_pass,
+                    wait_for_finish,
+                )) => {
+                    match Self::wrapper_launch_game(&app, &game, &command_to_pass, wait_for_finish)
+                    {
+                        Ok(data) => {
+                            let _ = tx_send.send(TxStoreResponse::Success(data)).await;
+                        }
+                        Err(e) => {
+                            let _ = tx_send.send(TxStoreResponse::Error(e)).await;
+                        }
                     }
                 }
-    
+
                 Some(TxStoreSend::StoreUserId(tx_send, app, game)) => {
                     match Self::wrapper_store_user_id(&app, &game) {
-                        Ok(data) => { let _ = tx_send.send(TxStoreResponse::U64(data)).await; }
-                        Err(e) => { let _ = tx_send.send(TxStoreResponse::Error(e)).await; }
+                        Ok(data) => {
+                            let _ = tx_send.send(TxStoreResponse::U64(data)).await;
+                        }
+                        Err(e) => {
+                            let _ = tx_send.send(TxStoreResponse::Error(e)).await;
+                        }
                     }
                 }
 
@@ -176,7 +226,7 @@ impl Integrations {
             None => panic!("Something broke with a receiver."),
         }
     }
-    
+
     fn wrapper_request_mods_data(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,

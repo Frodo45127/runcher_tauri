@@ -6,16 +6,18 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
-use rpfm_lib::schema::Schema;
 use rpfm_lib::games::{
     GameInfo,
     supported_games::{KEY_ARENA, SupportedGames},
 };
+use rpfm_lib::schema::Schema;
 
 use crate::frontend_types::*;
 use crate::mod_manager::game_config::GameConfig;
 use crate::mod_manager::integrations::Integrations;
-use crate::mod_manager::load_order::{CUSTOM_MOD_LIST_FILE_NAME, LoadOrder, LoadOrderDirectionMove};
+use crate::mod_manager::load_order::{
+    CUSTOM_MOD_LIST_FILE_NAME, LoadOrder, LoadOrderDirectionMove,
+};
 use crate::mod_manager::profiles::Profile;
 use crate::settings::*;
 
@@ -31,7 +33,8 @@ mod updater;
 //}, true, true, release_name!()).unwrap()));
 
 /// Currently loaded schema.
-static SCHEMA: LazyLock<Arc<RwLock<Option<Schema>>>> = LazyLock::new(|| Arc::new(RwLock::new(None)));
+static SCHEMA: LazyLock<Arc<RwLock<Option<Schema>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
 static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
 
@@ -50,7 +53,8 @@ static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> = LazyLock::new(|| {
     ))
 });
 
-static INTEGRATIONS: LazyLock<Arc<Mutex<Integrations>>> = LazyLock::new(|| Arc::new(Mutex::new(Integrations::new())));
+static INTEGRATIONS: LazyLock<Arc<Mutex<Integrations>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(Integrations::new())));
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_SUBTITLE: &str = " -- When I learned maths";
@@ -151,9 +155,9 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
 
                 command
             } else if cfg!(target_os = "linux") {
-                return Err(format!("Unsupported OS."))
+                return Err(format!("Unsupported OS."));
             } else {
-                return Err(format!("Unsupported OS."))
+                return Err(format!("Unsupported OS."));
             };
 
             let command = BASE64_STANDARD.encode(command);
@@ -162,7 +166,9 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
             let tx_recv = integrations.launch_game(&app, &game, &command, false).await;
             match Integrations::recv_launch_game(tx_recv).await {
                 Ok(_) => Ok(format!("Game {id} launched successfully!")),
-                Err(e) => Err(format!("Game {id} failed to launch with the following error: {e}")),
+                Err(e) => Err(format!(
+                    "Game {id} failed to launch with the following error: {e}"
+                )),
             }
         }
         None => Err(format!(
@@ -666,17 +672,15 @@ async fn load_data(
             send_progress_event(&app, 10, 100);
 
             let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
-            let online_data_receiver = game_config.update_mod_list(
-                app,
-                &game,
-                &game_path,
-                &mut load_order,
-                skip_network_update,
-            ).await?;
-            
+            let online_data_receiver = game_config
+                .update_mod_list(app, &game, &game_path, &mut load_order, skip_network_update)
+                .await?;
+
             send_progress_event(&app, 30, 100);
             if let Some(tx_recv) = online_data_receiver {
-                game_config.update_mod_list_with_online_data(tx_recv, app).await?;
+                game_config
+                    .update_mod_list_with_online_data(tx_recv, app)
+                    .await?;
             }
             send_progress_event(&app, 50, 100);
             let mods = load_mods(&app, &game, &game_config).await?;
@@ -958,7 +962,6 @@ async fn load_packs(
     Ok(items)
 }
 
-
 #[tauri::command]
 async fn move_pack_in_load_order_in_direction(
     app: tauri::AppHandle,
@@ -1182,8 +1185,10 @@ pub fn run() {
             create_category,
             rename_category,
             remove_category,
-            #[cfg(desktop)] updater::fetch_update,
-            #[cfg(desktop)] updater::install_update
+            #[cfg(desktop)]
+            updater::fetch_update,
+            #[cfg(desktop)]
+            updater::install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

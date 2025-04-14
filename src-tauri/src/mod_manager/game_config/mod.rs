@@ -30,11 +30,13 @@ use rpfm_lib::integrations::log::error;
 
 //use crate::games::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 use crate::mod_manager::{integrations::TxStoreResponse, load_order::LoadOrder, mods::Mod};
-use crate::{settings::*, GAME_SELECTED, SETTINGS, INTEGRATIONS};
+use crate::{GAME_SELECTED, INTEGRATIONS, SETTINGS, settings::*};
 use crate::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 
 use super::integrations::Integrations;
-use super::{generate_map_pack, move_to_destination, secondary_mods_packs_paths, secondary_mods_path};
+use super::{
+    generate_map_pack, move_to_destination, secondary_mods_packs_paths, secondary_mods_path,
+};
 
 //mod versions;
 
@@ -494,7 +496,11 @@ impl GameConfig {
                 // Ignore network population errors for now.
                 if !skip_network_update {
                     let integrations = (*INTEGRATIONS.lock().unwrap()).clone();
-                    receiver = Some(integrations.request_remote_mods_data(app_handle, game, &steam_ids).await);
+                    receiver = Some(
+                        integrations
+                            .request_remote_mods_data(app_handle, game, &steam_ids)
+                            .await,
+                    );
                 }
 
                 // Then, if the game supports secondary mod path (only since Shogun 2) we check for mods in there. These have middle priority.
@@ -855,15 +861,19 @@ impl GameConfig {
         Ok(receiver)
     }
 
-    pub async fn update_mod_list_with_online_data(&mut self, tx_recv: Receiver<TxStoreResponse>, app: &tauri::AppHandle) -> Result<()> {
+    pub async fn update_mod_list_with_online_data(
+        &mut self,
+        tx_recv: Receiver<TxStoreResponse>,
+        app: &tauri::AppHandle,
+    ) -> Result<()> {
         match Integrations::recv_remote_mods_data(tx_recv).await {
             Ok(remote_mods) => {
-                        
                 let game = GAME_SELECTED.read().unwrap().clone();
                 let game_path = SETTINGS.read().unwrap().game_path(&game)?;
 
-                if Integrations::populate_mods_with_online_data(app, self.mods_mut(), &remote_mods).is_ok() {
-                    
+                if Integrations::populate_mods_with_online_data(app, self.mods_mut(), &remote_mods)
+                    .is_ok()
+                {
                     // Shogun 2 uses two types of mods:
                     // - Pack mods turned binary: they're pack mods with a few extra bytes at the beginning. RPFM lib is capable to open them, save them as Packs, then do one of these:
                     //   - If the mod pack is in /data, we copy it there.
@@ -881,21 +891,26 @@ impl GameConfig {
                     // Shogun 2 mods need to be turned into packs and moved to either /data or /secondary.
                     let integrations = INTEGRATIONS.lock().unwrap().clone();
                     let tx_recv = integrations.store_user_id(app, &game).await;
-                    let steam_user_id = Integrations::recv_store_user_id(tx_recv).await?.to_string();
+                    let steam_user_id =
+                        Integrations::recv_store_user_id(tx_recv).await?.to_string();
                     let secondary_path = secondary_mods_path(app, game.key()).ok();
                     let game_data_path = game.data_path(&game_path);
-                    
+
                     for modd in self.mods_mut().values_mut() {
                         if let Some(last_path) = modd.paths().last() {
-                            
                             // Only copy bins which are not yet in the destination folder and which are not made by the steam user.
-                            let legacy_mod = modd.id().ends_with(".bin") && !modd.file_name().is_empty();
-                            if legacy_mod && modd.file_name().ends_with(".pack"){
-                                
+                            let legacy_mod =
+                                modd.id().ends_with(".bin") && !modd.file_name().is_empty();
+                            if legacy_mod && modd.file_name().ends_with(".pack") {
                                 // This is for Packs. Map mods use a different process.
-                                if let Ok(mut pack) = Pack::read_and_merge(&[last_path.to_path_buf()], true, false, false, false) {
+                                if let Ok(mut pack) = Pack::read_and_merge(
+                                    &[last_path.to_path_buf()],
+                                    true,
+                                    false,
+                                    false,
+                                    false,
+                                ) {
                                     if let Ok(ref data_path) = game_data_path {
-                                        
                                         let mod_name = if legacy_mod {
                                             if let Some(name) = modd.file_name().split('/').last() {
                                                 name.to_string()
@@ -905,36 +920,58 @@ impl GameConfig {
                                         } else {
                                             modd.id().to_string()
                                         };
-                                        
-                                        let _ = move_to_destination(data_path, &secondary_path, &steam_user_id, &game, modd, &mod_name, &mut pack, false);
+
+                                        let _ = move_to_destination(
+                                            data_path,
+                                            &secondary_path,
+                                            &steam_user_id,
+                                            &game,
+                                            modd,
+                                            &mod_name,
+                                            &mut pack,
+                                            false,
+                                        );
                                     }
                                 }
                             }
-                            
                             // If it's not a pack, but is reported as a legacy mod, is a map mod from Shogun 2.
                             else if legacy_mod && game.key() == KEY_SHOGUN_2 {
                                 if let Some(name) = modd.file_name().clone().split('/').last() {
-                                    
                                     // Maps only contain a folder name. We need to change it into a pack name.
                                     let name = name.replace(" ", "_");
                                     let pack_name = name.to_owned() + ".pack";
-                                    
+
                                     if let Ok(ref data_path) = game_data_path {
                                         if let Ok(file) = File::open(last_path) {
                                             let mut file = BufReader::new(file);
                                             if let Ok(metadata) = file.get_ref().metadata() {
-                                                let mut data = Vec::with_capacity(metadata.len() as usize);
+                                                let mut data =
+                                                    Vec::with_capacity(metadata.len() as usize);
                                                 if file.read_to_end(&mut data).is_ok() {
-                                                    
-                                                    let reader = BufReader::new(Cursor::new(data.to_vec()));
+                                                    let reader =
+                                                        BufReader::new(Cursor::new(data.to_vec()));
                                                     let mut decompressor = ZlibDecoder::new(reader);
                                                     let mut data_dec = vec![];
-                                                    
-                                                    if decompressor.read_to_end(&mut data_dec).is_ok() {
-                                                        let mut pack = generate_map_pack(&game, &data_dec, &pack_name, &name)?;
-                                                        
+
+                                                    if decompressor
+                                                        .read_to_end(&mut data_dec)
+                                                        .is_ok()
+                                                    {
+                                                        let mut pack = generate_map_pack(
+                                                            &game, &data_dec, &pack_name, &name,
+                                                        )?;
+
                                                         // Once done generating the pack, just do the same as with normal mods.
-                                                        let _ = move_to_destination(data_path, &secondary_path, &steam_user_id, &game, modd, &pack_name, &mut pack, false);
+                                                        let _ = move_to_destination(
+                                                            data_path,
+                                                            &secondary_path,
+                                                            &steam_user_id,
+                                                            &game,
+                                                            modd,
+                                                            &pack_name,
+                                                            &mut pack,
+                                                            false,
+                                                        );
                                                     }
                                                 }
                                             }
@@ -944,24 +981,25 @@ impl GameConfig {
                             }
                         }
                     }
-                    
+
                     // Before continuing, we need to do some cleaning. There's a chance that due to the order of operations done to populate the mod list
                     // Some legacy packs get split into two distinct mods. We need to detect them and clean them up here.
-                    let alt_names = self.mods()
+                    let alt_names = self
+                        .mods()
                         .par_iter()
                         .filter_map(|(_, modd)| modd.alt_name())
                         .collect::<Vec<_>>();
-                    
+
                     for alt_name in &alt_names {
                         self.mods_mut().remove(alt_name);
                         self.categories_mut().iter_mut().for_each(|(_, mods)| {
                             mods.retain(|modd| modd != alt_name);
                         });
                     }
-                    
+
                     self.save(app, &game)?;
                 }
-            },
+            }
             Err(error) => return Err(anyhow!("Failed to get data from store: {}", error)),
         }
 

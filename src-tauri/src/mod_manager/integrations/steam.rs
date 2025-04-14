@@ -28,9 +28,9 @@ use rpfm_lib::files::{EncodeableExtraData, pack::Pack};
 use rpfm_lib::games::GameInfo;
 use rpfm_lib::utils::path_to_absolute_string;
 
-use crate::mod_manager::mods::Mod;
-use crate::settings::{config_path, AppSettings};
 use crate::SETTINGS;
+use crate::mod_manager::mods::Mod;
+use crate::settings::{AppSettings, config_path};
 
 #[cfg(target_os = "windows")]
 use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
@@ -201,7 +201,7 @@ pub fn request_mods_data_raw(
     }
 
     command.spawn()?;
-    
+
     let channel = ipc_channel.to_ns_name::<GenericNamespaced>()?;
     let server = ListenerOptions::new().name(channel).create_sync()?;
 

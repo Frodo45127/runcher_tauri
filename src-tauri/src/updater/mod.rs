@@ -8,11 +8,10 @@
 // https://github.com/Frodo45127/runcher/blob/master/LICENSE.
 //---------------------------------------------------------------------------//
 
-/// Updater code. Mostly copied from the tauri docs, that's why it has custom error and result types.
-
-use std::sync::Mutex;
 use serde::Serialize;
-use tauri::{ipc::Channel, AppHandle, State};
+/// Updater code. Mostly copied from the tauri docs, that's why it has custom error and result types.
+use std::sync::Mutex;
+use tauri::{AppHandle, State, ipc::Channel};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use url::Url;
 
@@ -62,14 +61,19 @@ pub enum DownloadEvent {
     Finished,
 }
 
-
 //-------------------------------------------------------------------------------//
 //                             Implementations
 //-------------------------------------------------------------------------------//
 
 #[tauri::command]
-pub async fn fetch_update(app: AppHandle, pending_update: State<'_, PendingUpdate>) -> Result<Option<UpdateMetadata>> {
-    let url = Url::parse("https://github.com/Frodo45127/runcher_tauri/releases/latest/download/latest.json").expect("invalid URL");
+pub async fn fetch_update(
+    app: AppHandle,
+    pending_update: State<'_, PendingUpdate>,
+) -> Result<Option<UpdateMetadata>> {
+    let url = Url::parse(
+        "https://github.com/Frodo45127/runcher_tauri/releases/latest/download/latest.json",
+    )
+    .expect("invalid URL");
 
     let update = app
         .updater_builder()
@@ -89,26 +93,32 @@ pub async fn fetch_update(app: AppHandle, pending_update: State<'_, PendingUpdat
 }
 
 #[tauri::command]
-pub async fn install_update(pending_update: State<'_, PendingUpdate>, on_event: Channel<DownloadEvent>) -> Result<()> {
+pub async fn install_update(
+    pending_update: State<'_, PendingUpdate>,
+    on_event: Channel<DownloadEvent>,
+) -> Result<()> {
     let Some(update) = pending_update.0.lock().unwrap().take() else {
         return Err(Error::NoPendingUpdate);
     };
 
     let mut started = false;
 
-    // TODO: Replace this with download_and_install when the app is ready. 
-    update.download(|chunk_length, content_length| {
-        if !started {
-            let _ = on_event.send(DownloadEvent::Started { content_length });
-            started = true;
-        }
+    // TODO: Replace this with download_and_install when the app is ready.
+    update
+        .download(
+            |chunk_length, content_length| {
+                if !started {
+                    let _ = on_event.send(DownloadEvent::Started { content_length });
+                    started = true;
+                }
 
-        let _ = on_event.send(DownloadEvent::Progress { chunk_length });
-    },
-    || {
-        let _ = on_event.send(DownloadEvent::Finished);
-    },).await?;
+                let _ = on_event.send(DownloadEvent::Progress { chunk_length });
+            },
+            || {
+                let _ = on_event.send(DownloadEvent::Finished);
+            },
+        )
+        .await?;
 
     Ok(())
 }
-
