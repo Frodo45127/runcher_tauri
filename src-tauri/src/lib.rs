@@ -1,61 +1,25 @@
 use anyhow::anyhow;
 use base64::prelude::BASE64_STANDARD;
-use serde::Serialize;
 use tauri::{Emitter, Listener, Manager};
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
-use std::fs::DirBuilder;
 
 use rpfm_lib::schema::Schema;
-use rpfm_lib::{
-    binary::WriteBytes,
-    games::{
-        GameInfo,
-        supported_games::{KEY_ARENA, KEY_EMPIRE, SupportedGames},
-    },
+use rpfm_lib::games::{
+    GameInfo,
+    supported_games::{KEY_ARENA, SupportedGames},
 };
 
+use crate::frontend_types::*;
 use crate::mod_manager::game_config::GameConfig;
 use crate::mod_manager::integrations::Integrations;
-use crate::mod_manager::load_order::{LoadOrder, LoadOrderDirectionMove};
+use crate::mod_manager::load_order::{CUSTOM_MOD_LIST_FILE_NAME, LoadOrder, LoadOrderDirectionMove};
 use crate::mod_manager::profiles::Profile;
 use crate::settings::*;
 
-/// This macro is used to clone the variables into the closures without the compiler complaining.
-///
-/// Mainly for use with UI stuff, but you can use it with anything clonable.
-#[macro_export]
-macro_rules! clone {
-    (@param _) => ( _ );
-    (@param $x:ident) => ( $x );
-    ($($n:ident),+ => move || $body:expr) => (
-        {
-            $( let $n = $n.clone(); )+
-            move || $body
-        }
-    );
-    ($($y:ident $n:ident),+ => move || $body:expr) => (
-        {
-            $( #[allow(unused_mut)] let mut $n = $n.clone(); )+
-            move || $body
-        }
-    );
-    ($($n:ident),+ => move |$($p:tt),+| $body:expr) => (
-        {
-            $( let $n = $n.clone(); )+
-            move |$(clone!(@param $p),)+| $body
-        }
-    );
-    ($($y:ident $n:ident),+ => move |$($p:tt),+| $body:expr) => (
-        {
-            $( #[allow(unused_mut)] let mut $n = $n.clone(); )+
-            move |$(clone!(@param $p),)+| $body
-        }
-    );
-}
-
+mod frontend_types;
 mod mod_manager;
 mod settings;
 mod updater;
@@ -92,8 +56,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_SUBTITLE: &str = " -- When I learned maths";
 
 //const FALLBACK_LOCALE_EN: &str = include_str!("../../locale/English_en.ftl");
-const SENTRY_DSN_KEY: &str =
-    "https://4c058b715c304d55b928c3e44a63b4ff@o152833.ingest.sentry.io/4504851217711104";
+//const SENTRY_DSN_KEY: &str =
+//    "https://4c058b715c304d55b928c3e44a63b4ff@o152833.ingest.sentry.io/4504851217711104";
 
 const SQL_SCRIPTS_REPO: &str = "https://github.com/Frodo45127/twpatcher-sql-scripts";
 const SQL_SCRIPTS_BRANCH: &str = "master";
@@ -104,21 +68,6 @@ const REPO_NAME: &str = "runcher";
 
 const RESERVED_PACK_NAME: &str = "zzzzzzzzzzzzzzzzzzzzrun_you_fool_thron.pack";
 const RESERVED_PACK_NAME_ALTERNATIVE: &str = "!!!!!!!!!!!!!!!!!!!!!run_you_fool_thron.pack";
-
-const VANILLA_MOD_LIST_FILE_NAME: &str = "used_mods.txt";
-const CUSTOM_MOD_LIST_FILE_NAME: &str = "mod_list.txt";
-const USER_SCRIPT_FILE_NAME: &str = "user.script.txt";
-const USER_SCRIPT_EMPIRE_FILE_NAME: &str = "user.empire_script.txt";
-
-/// Progress payload for the progress event. Basically, it's for providing a way to update the progress bar from the Rust side.
-/// The id is:
-/// - 0: Generic 0-100 loading process.
-#[derive(Serialize, Clone)]
-struct ProgressPayload {
-    id: i32,
-    progress: i32,
-    total: i32,
-}
 
 #[tauri::command]
 async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
@@ -159,38 +108,18 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
         }
     }*/
 
-    // NOTE: On Empire and Napoleon we need to use the user_script, not the custom file, as it doesn't seem to work.
-    // Older versions of shogun 2 also used the user_script, but the latest update enabled use of custom mod lists.
-    let file_path = if *game.raw_db_version() >= 1 {
-        game_path.join(CUSTOM_MOD_LIST_FILE_NAME)
-    } else {
-        // Games may fail to launch if we don't have this path created, which is done the first time we start the game.
-        let config_path = game
-            .config_path(&game_path)
-            .ok_or(format!("Error getting the game's config path."))?;
-        let scripts_path = config_path.join("scripts");
-        DirBuilder::new()
-            .recursive(true)
-            .create(&scripts_path)
-            .map_err(|e| format!("Error creating the scripts path: {}", e))?;
-
-        // Empire has its own user script.
-        if game.key() == KEY_EMPIRE {
-            scripts_path.join(USER_SCRIPT_EMPIRE_FILE_NAME)
-        } else {
-            scripts_path.join(USER_SCRIPT_FILE_NAME)
-        }
-    };
+    let file_path = LoadOrder::path_as_load_order_file(&game, &game_path)
+        .map_err(|e| format!("Error getting the load order file path: {}", e))?;
 
     // Setup the launch options stuff. This may add a line to the folder list, so we need to resave the load order file after this.
     let folder_list_pre = folder_list.to_owned();
-    save_load_order_file(&file_path, &game, &folder_list, &pack_list)
+    LoadOrder::save_as_load_order_file(&file_path, &game, &folder_list, &pack_list)
         .map_err(|e| format!("Error saving the load order file: {}", e))?;
     prepare_launch_options(&game, &data_path, &mut folder_list)
         .map_err(|e| format!("Error preparing launch options: {}", e))?;
 
     if folder_list != folder_list_pre {
-        save_load_order_file(&file_path, &game, &folder_list, &pack_list)
+        LoadOrder::save_as_load_order_file(&file_path, &game, &folder_list, &pack_list)
             .map_err(|e| format!("Error saving the load order file: {}", e))?;
     }
 
@@ -199,7 +128,7 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
     // Here we just build the commands and pass them to workshopper.
     match game.executable_path(&game_path) {
         Some(exec_game) => {
-            if cfg!(target_os = "windows") {
+            let command = if cfg!(target_os = "windows") {
                 let mut command = format!(
                     "cmd /C start /W /d \"{}\" \"{}\" \"{}\";",
                     game_path.to_string_lossy().replace('\\', "/"),
@@ -220,49 +149,26 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
                     }
                 }
 
-                let command = BASE64_STANDARD.encode(command);
-                let integrations = INTEGRATIONS.lock().unwrap().clone();
-                
-                // TODO: do something with this receiver.
-                let tx_recv = integrations.launch_game(&app, &game, &command, false).await;
-                match Integrations::recv_launch_game(tx_recv).await {
-                    Ok(_) => Ok(format!("Game {id} launched successfully!")),
-                    Err(e) => Err(format!("Game {id} failed to launch with the following error: {e}")),
-                }
+                command
             } else if cfg!(target_os = "linux") {
-                Err(format!("Unsupported OS."))
+                return Err(format!("Unsupported OS."))
             } else {
-                Err(format!("Unsupported OS."))
+                return Err(format!("Unsupported OS."))
+            };
+
+            let command = BASE64_STANDARD.encode(command);
+            let integrations = INTEGRATIONS.lock().unwrap().clone();
+
+            let tx_recv = integrations.launch_game(&app, &game, &command, false).await;
+            match Integrations::recv_launch_game(tx_recv).await {
+                Ok(_) => Ok(format!("Game {id} launched successfully!")),
+                Err(e) => Err(format!("Game {id} failed to launch with the following error: {e}")),
             }
         }
         None => Err(format!(
             "Executable path not found. Is the game folder configured correctly in the settings?"
         )),
     }
-}
-
-fn save_load_order_file(
-    file_path: &Path,
-    game: &GameInfo,
-    folder_list: &str,
-    pack_list: &str,
-) -> anyhow::Result<()> {
-    use std::fs::File;
-    use std::io::BufWriter;
-    use std::io::Write;
-
-    let mut file = BufWriter::new(File::create(file_path)?);
-
-    // Napoleon, Empire and Shogun 2 require the user.script.txt or mod list file (for Shogun's latest update) to be in UTF-16 LE. What the actual fuck.
-    if *game.raw_db_version() < 2 {
-        file.write_string_u16(folder_list)?;
-        file.write_string_u16(pack_list)?;
-    } else {
-        file.write_all(folder_list.as_bytes())?;
-        file.write_all(pack_list.as_bytes())?;
-    }
-
-    file.flush().map_err(From::from)
 }
 
 fn prepare_launch_options(
@@ -565,14 +471,6 @@ fn handle_mod_category_change(
     *GAME_CONFIG.lock().unwrap() = Some(game_config);
 
     Ok(())
-}
-
-#[tauri::command]
-fn on_window_ready() -> Result<String, String> {
-    println!("Window HTML fully loaded and ready!");
-    // Aquí puedes colocar cualquier lógica que necesites ejecutar cuando la ventana esté lista
-    // Por ejemplo, cargar datos iniciales, verificar actualizaciones, etc.
-    Ok("Window ready event received".to_string())
 }
 
 #[tauri::command]
@@ -1060,47 +958,6 @@ async fn load_packs(
     Ok(items)
 }
 
-#[derive(serde::Serialize)]
-struct SidebarIcon {
-    id: String,
-    name: String,
-    icon: String,
-}
-
-#[derive(serde::Serialize, Default)]
-struct TreeCategory {
-    id: String,
-    name: String,
-    size: String,
-    status: String,
-    last_played: String,
-    children: Vec<TreeItem>,
-}
-
-#[derive(serde::Serialize, Default)]
-struct TreeItem {
-    id: String,
-    name: String,
-    flags: String,
-    location: String,
-    creator: String,
-    r#type: String,
-    size: String,
-    created: u64,
-    updated: u64,
-    description: String,
-    is_checked: bool,
-}
-
-#[derive(serde::Serialize, Default)]
-struct ListItem {
-    id: String,
-    pack: String,
-    r#type: String,
-    order: i32,
-    location: String,
-    steam_id: String,
-}
 
 #[tauri::command]
 async fn move_pack_in_load_order_in_direction(
@@ -1313,7 +1170,6 @@ pub fn run() {
             init_settings,
             load_settings,
             save_settings,
-            on_window_ready,
             get_available_languages,
             get_available_date_formats,
             browse_folder,

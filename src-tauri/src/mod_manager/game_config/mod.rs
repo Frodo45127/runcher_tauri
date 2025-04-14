@@ -16,7 +16,7 @@ use getset::*;
 use rayon::{iter::Either, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
-use tauri::async_runtime::{channel, Receiver};
+use tauri::async_runtime::Receiver;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{DirBuilder, File};

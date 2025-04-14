@@ -8,7 +8,7 @@
 // https://github.com/Frodo45127/runcher/blob/master/LICENSE.
 //---------------------------------------------------------------------------//
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use getset::*;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,9 @@ use std::fs::{DirBuilder, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
+use rpfm_lib::binary::WriteBytes;
 use rpfm_lib::files::{Container, ContainerPath, pack::Pack};
-use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
+use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType, supported_games::KEY_EMPIRE};
 use rpfm_lib::utils::{path_to_absolute_path, path_to_absolute_string};
 
 use crate::settings::{game_config_path, sql_scripts_extracted_path};
@@ -30,6 +31,11 @@ use super::secondary_mods_path;
 
 const FILE_NAME_START: &str = "last_load_order_";
 const FILE_NAME_END: &str = ".json";
+
+#[allow(unused)] const VANILLA_MOD_LIST_FILE_NAME: &str = "used_mods.txt";
+pub const CUSTOM_MOD_LIST_FILE_NAME: &str = "mod_list.txt";
+const USER_SCRIPT_FILE_NAME: &str = "user.script.txt";
+const USER_SCRIPT_EMPIRE_FILE_NAME: &str = "user.empire_script.txt";
 
 //-------------------------------------------------------------------------------//
 //                              Enums & Structs
@@ -106,6 +112,52 @@ impl LoadOrder {
         let mut file = BufWriter::new(File::create(path)?);
         file.write_all(to_string_pretty(&self)?.as_bytes())?;
         Ok(())
+    }
+
+    pub fn save_as_load_order_file(
+        file_path: &Path,
+        game: &GameInfo,
+        folder_list: &str,
+        pack_list: &str,
+    ) -> anyhow::Result<()> {    
+        let mut file = BufWriter::new(File::create(file_path)?);
+    
+        // Napoleon, Empire and Shogun 2 require the user.script.txt or mod list file (for Shogun's latest update) to be in UTF-16 LE.
+        if *game.raw_db_version() < 2 {
+            file.write_string_u16(folder_list)?;
+            file.write_string_u16(pack_list)?;
+        } else {
+            file.write_all(folder_list.as_bytes())?;
+            file.write_all(pack_list.as_bytes())?;
+        }
+    
+        file.flush().map_err(From::from)
+    }
+
+    pub fn path_as_load_order_file(game: &GameInfo, game_path: &Path) -> Result<PathBuf> {
+
+        // NOTE: On Empire and Napoleon we need to use the user_script, not the custom file, as it doesn't seem to work.
+        // Older versions of shogun 2 also used the user_script, but the latest update enabled use of custom mod lists.
+        if *game.raw_db_version() >= 1 {
+            Ok(game_path.join(CUSTOM_MOD_LIST_FILE_NAME))
+        } else {
+            // Games may fail to launch if we don't have this path created, which is done the first time we start the game.
+            let config_path = game
+            .config_path(&game_path)
+            .ok_or(anyhow!("Error getting the game's config path."))?;
+            let scripts_path = config_path.join("scripts");
+            DirBuilder::new()
+                .recursive(true)
+                .create(&scripts_path)
+                .map_err(|e| anyhow!("Error creating the scripts path: {}", e))?;
+            
+            // Empire has its own user script.
+            if game.key() == KEY_EMPIRE {
+                Ok(scripts_path.join(USER_SCRIPT_EMPIRE_FILE_NAME))
+            } else {
+                Ok(scripts_path.join(USER_SCRIPT_FILE_NAME))
+            }
+        }
     }
 
     pub fn update(

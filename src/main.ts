@@ -201,13 +201,5 @@ export class Main {
 // Initialize the main instance once the DOM is loaded.
 window.addEventListener("DOMContentLoaded", async () => {
   window.name = "main";
-  try {
-    // Notify Rust that the window is ready
-    const response = await invoke('on_window_ready');
-    console.log('Window ready notification sent to Rust:', response);
-  } catch (error) {
-    console.error('Error during window ready notification:', error);
-  }
-
   globalThis.main = new Main();
 });
