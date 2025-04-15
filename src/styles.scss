@@ -1788,20 +1788,21 @@ body {
 			align-items: center;
 			margin-bottom: 0.5rem;
 
-			input {
-				overflow: hidden;
-			}
-			select {
-				overflow: hidden;
-			}
 			label {
 				min-width: 100px;
 				margin-right: 0.5rem;
 			}
 
+			select {
+				flex: 1;
+				overflow: hidden;
+				border: 1px solid var(--border-color);
+			}
+
 			input[type="text"],
 			input[type="number"] {
 				flex: 1;
+				overflow: hidden;
 				padding: 0.25rem;
 				border: 1px solid var(--border-color);
 				border-radius: 4px;

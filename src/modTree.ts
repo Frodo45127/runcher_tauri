@@ -932,6 +932,7 @@ export class ModTree {
       }) as ListItem[];
 
       main.packList.renderPackList(main, listData);
+      main.launchOptions.loadOptions();
     } catch (error) {
       console.error('Failed to handle mod toggled:', error);
     } finally {

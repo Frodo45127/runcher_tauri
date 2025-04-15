@@ -25,7 +25,7 @@ export class Main {
   public modDetails: ModDetailsPanel;
   public loadingManager: LoadingManager;
   private statusBar: StatusBar;
-  private launchOptions: LaunchOptionsPanel;
+  public launchOptions: LaunchOptionsPanel;
 
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
@@ -122,7 +122,8 @@ export class Main {
       if (button) {
         const id = button.dataset.id || '';
         const result = await invoke("launch_game", {
-          id: id
+          id: id,
+          launchOptions: this.launchOptions.getOptions()
         });
 
         this.showStatusMessage(result as string);

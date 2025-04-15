@@ -35,8 +35,8 @@ const FILE_NAME_END: &str = ".json";
 #[allow(unused)]
 const VANILLA_MOD_LIST_FILE_NAME: &str = "used_mods.txt";
 pub const CUSTOM_MOD_LIST_FILE_NAME: &str = "mod_list.txt";
-const USER_SCRIPT_FILE_NAME: &str = "user.script.txt";
-const USER_SCRIPT_EMPIRE_FILE_NAME: &str = "user.empire_script.txt";
+pub const USER_SCRIPT_FILE_NAME: &str = "user.script.txt";
+pub const USER_SCRIPT_EMPIRE_FILE_NAME: &str = "user.empire_script.txt";
 
 //-------------------------------------------------------------------------------//
 //                              Enums & Structs

@@ -59,6 +59,7 @@ pub struct AppSettings {
     pub check_updates_on_start: bool,
     pub check_schema_updates_on_start: bool,
     pub check_sql_scripts_updates_on_start: bool,
+    pub launch_options: HashMap<String, String>,
 }
 
 //-------------------------------------------------------------------------------//
@@ -84,6 +85,7 @@ impl Default for AppSettings {
             check_updates_on_start: true,
             check_schema_updates_on_start: true,
             check_sql_scripts_updates_on_start: true,
+            launch_options: HashMap::new(),
         }
     }
 }
@@ -268,11 +270,12 @@ pub fn sql_scripts_extracted_path(app_handle: &tauri::AppHandle) -> Result<PathB
     Ok(config_path(app_handle)?.join(SQL_SCRIPTS_EXTRACTED_FOLDER))
 }
 
-pub fn sql_scripts_extracted_extended_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
-    Ok(config_path(app_handle)?.join(format!(
-        "{}/twpatcher/scripts",
-        SQL_SCRIPTS_EXTRACTED_FOLDER
-    )))
+pub fn sql_scripts_extracted_twpatcher_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
+    Ok(sql_scripts_extracted_path(app_handle)?.join(format!("twpatcher/scripts")))
+}
+
+pub fn sql_presets_extracted_twpatcher_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
+    Ok(sql_scripts_extracted_path(app_handle)?.join(format!("twpatcher/presets")))
 }
 
 pub fn sql_scripts_local_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {

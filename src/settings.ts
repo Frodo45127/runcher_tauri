@@ -22,6 +22,7 @@ export interface AppSettings {
   check_updates_on_start: boolean;
   check_schema_updates_on_start: boolean;
   check_sql_scripts_updates_on_start: boolean;
+  launch_options: { [key: string]: string };
 }
 
 export class SettingsManager {
@@ -46,7 +47,8 @@ export class SettingsManager {
       date_format: 'DD/MM/YYYY',
       check_updates_on_start: true,
       check_schema_updates_on_start: true,
-      check_sql_scripts_updates_on_start: true
+      check_sql_scripts_updates_on_start: true,
+      launch_options: {}
     };
   }
 
@@ -66,28 +68,28 @@ export class SettingsManager {
       console.error('Failed to load settings:', error);
     }
   }
-  
+
   /**
    * Apply app settings.
    * @param {Main} main - The main instance of the application.
    */
   public async applySettings(main: Main) {
     try {
-      if (this.isLoaded) { 
+      if (this.isLoaded) {
         await main.sidebar.updateSidebarIcons(this);
-        
+
         const treeFilter = document.getElementById('tree-filter') as HTMLInputElement;
         if (treeFilter && this.appSettings.tree_filter_value) {
           treeFilter.value = this.appSettings.tree_filter_value;
           main.modTree.filterTreeItems(this, this.appSettings.tree_filter_value);
         }
-        
+
         const listFilter = document.getElementById('list-filter') as HTMLInputElement;
         if (listFilter && this.appSettings.list_filter_value) {
           listFilter.value = this.appSettings.list_filter_value;
           main.packList.filterListItems(this, this.appSettings.list_filter_value);
         }
-        
+
         // Set panel width from settings
         document.documentElement.style.setProperty('--right-panel-width', `${this.appSettings.right_panel_width}px`);
       } else {
@@ -103,7 +105,7 @@ export class SettingsManager {
    */
   public async saveSettings() {
     try {
-      await invoke('save_settings', { 
+      await invoke('save_settings', {
         settings: {
           tree_open_state: this.appSettings.tree_open_state,
           tree_filter_value: this.appSettings.tree_filter_value,
@@ -120,7 +122,8 @@ export class SettingsManager {
           date_format: this.appSettings.date_format,
           check_updates_on_start: this.appSettings.check_updates_on_start,
           check_schema_updates_on_start: this.appSettings.check_schema_updates_on_start,
-          check_sql_scripts_updates_on_start: this.appSettings.check_sql_scripts_updates_on_start
+          check_sql_scripts_updates_on_start: this.appSettings.check_sql_scripts_updates_on_start,
+          launch_options: this.appSettings.launch_options
         }
       });
     } catch (error) {

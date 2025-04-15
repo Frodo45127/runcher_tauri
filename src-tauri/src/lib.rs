@@ -40,6 +40,9 @@ static SCHEMA: LazyLock<Arc<RwLock<Option<Schema>>>> =
 static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppSettings::default())));
 
+static LAUNCH_OPTIONS: LazyLock<Arc<RwLock<LaunchOptions>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(LaunchOptions::new())));
+
 static GAME_LOAD_ORDER: LazyLock<Arc<RwLock<LoadOrder>>> =
     LazyLock::new(|| Arc::new(RwLock::new(LoadOrder::default())));
 
@@ -76,7 +79,7 @@ const RESERVED_PACK_NAME: &str = "zzzzzzzzzzzzzzzzzzzzrun_you_fool_thron.pack";
 const RESERVED_PACK_NAME_ALTERNATIVE: &str = "!!!!!!!!!!!!!!!!!!!!!run_you_fool_thron.pack";
 
 #[tauri::command]
-async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> {
+async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<LaunchOption>) -> Result<String, String> {
     use base64::Engine;
 
     let mut folder_list = String::new();
@@ -121,7 +124,7 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
     let folder_list_pre = folder_list.to_owned();
     LoadOrder::save_as_load_order_file(&file_path, &game, &folder_list, &pack_list)
         .map_err(|e| format!("Error saving the load order file: {}", e))?;
-    prepare_launch_options(&game, &data_path, &mut folder_list)
+    LAUNCH_OPTIONS.write().unwrap().prepare_launch_options(&app, &launch_options, &game, &data_path, &mut folder_list)
         .map_err(|e| format!("Error preparing launch options: {}", e))?;
 
     if folder_list != folder_list_pre {
@@ -183,7 +186,7 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
 async fn get_launch_options(app: tauri::AppHandle) -> Result<Vec<LaunchOption>, String> {
     let game = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game).unwrap();
-    let options = generate_options(&app, &game, &game_path).map_err(|e| format!("Error generating launch options: {}", e))?;
+    let options = LAUNCH_OPTIONS.write().unwrap().generate_options(&app, &game, &game_path).map_err(|e| format!("Error generating launch options: {}", e))?;
     Ok(options)
 }
 
