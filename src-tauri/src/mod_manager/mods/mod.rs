@@ -15,8 +15,8 @@ use sha256::try_digest;
 
 use std::path::{Path, PathBuf};
 
-use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType};
-use rpfm_lib::utils::path_to_absolute_string;
+use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType, supported_games::{KEY_ROME_2, KEY_ATTILA, KEY_THRONES_OF_BRITANNIA}};
+use rpfm_lib::utils::{path_to_absolute_path, path_to_absolute_string};
 
 //pub mod versions;
 
@@ -198,18 +198,20 @@ impl Mod {
 
     /// Returns if the mod is enabled or not.
     pub fn enabled(&self, game: &GameInfo, data_path: &Path) -> bool {
+        let data_path = path_to_absolute_path(data_path, false);
+
         // For mod packs we just return it.
-        // For movie packs in Shogun 2 and newer games, just return it.
-        // For movie packs in Empire and Napoleon:
+        // For movie packs in Warhammer I and newer games, just return it.
+        // For movie packs in older games:
         // - If it's in /data it's always enabled.
         // - If it's in /secondary or /content, we respect the bool.
         if self.pack_type == PFHFileType::Mod {
             self.enabled
         } else if self.pack_type == PFHFileType::Movie {
-            if *game.raw_db_version() >= 1 {
+            if *game.raw_db_version() >= 2 && (game.key() != KEY_ROME_2 && game.key() != KEY_ATTILA && game.key() != KEY_THRONES_OF_BRITANNIA) {
                 self.enabled
             } else if let Some(path) = self.paths().first() {
-                if path.starts_with(data_path) {
+                if path.starts_with(&data_path) {
                     true
                 } else {
                     self.enabled
@@ -230,14 +232,16 @@ impl Mod {
     }
 
     pub fn can_be_toggled(&self, game: &GameInfo, data_path: &Path) -> bool {
+        let data_path = path_to_absolute_path(data_path, false);
+
         // Same checks as in the "enabled" function.
         if self.pack_type == PFHFileType::Mod {
             true
         } else if self.pack_type == PFHFileType::Movie {
-            if *game.raw_db_version() >= 1 {
+            if *game.raw_db_version() >= 2 && (game.key() != KEY_ROME_2 && game.key() != KEY_ATTILA && game.key() != KEY_THRONES_OF_BRITANNIA) {
                 true
             } else if let Some(path) = self.paths().first() {
-                !path.starts_with(data_path)
+                !path.starts_with(&data_path)
             } else {
                 false
             }

@@ -3,17 +3,22 @@ use base64::prelude::BASE64_STANDARD;
 use tauri::{Emitter, Listener, Manager};
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::fs::DirBuilder;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
+use rpfm_lib::files::pack::Pack;
 use rpfm_lib::games::{
     GameInfo,
-    supported_games::{KEY_ARENA, SupportedGames},
+    pfh_file_type::PFHFileType,
+    supported_games::*,
 };
 use rpfm_lib::schema::Schema;
+use rpfm_lib::utils::path_to_absolute_string;
 
 use crate::frontend_types::*;
 use crate::launch_options::*;
+use crate::mod_manager::{SECONDARY_FOLDER_NAME, secondary_mods_path};
 use crate::mod_manager::game_config::GameConfig;
 use crate::mod_manager::integrations::Integrations;
 use crate::mod_manager::load_order::{
@@ -105,6 +110,37 @@ async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<Launch
         &mut pack_list,
         &mut folder_list,
     );
+
+    // If our folder list contains the secondary folder, we need to make sure we create the masks folder in it,
+    // and mask in there all non-enabled movie files. Note that we only use this in games older than warhammer. Newer games use the exclude_pack_file command.
+    if *game.raw_db_version() <= 1 || (*game.raw_db_version() == 2 && (game.key() == KEY_ROME_2 || game.key() == KEY_ATTILA || game.key() == KEY_THRONES_OF_BRITANNIA)) {
+        let secondary_mods_path = secondary_mods_path(&app, game.key()).unwrap_or_else(|_| PathBuf::new());
+        let secondary_mods_path_str = path_to_absolute_string(&secondary_mods_path);
+
+        if secondary_mods_path.is_dir() && folder_list.contains(&secondary_mods_path_str) {
+            let masks_path = secondary_mods_path.join(SECONDARY_FOLDER_NAME);
+
+            // Remove all files in it so previous maskings do not interfere.
+            if masks_path.is_dir() {
+                let _ = std::fs::remove_dir_all(&masks_path);
+            }
+
+            let _ = DirBuilder::new().recursive(true).create(&masks_path);
+
+            let mut mask_pack = Pack::new_with_version(game.pfh_version_by_file_type(PFHFileType::Movie));
+            mask_pack.set_pfh_file_type(PFHFileType::Movie);
+
+            for path in std::fs::read_dir(secondary_mods_path).map_err(|e| format!("Error reading the secondary mods path: {}", e))? {
+                let file_name = path.unwrap().file_name().to_string_lossy().to_string();
+
+                if let Some(modd) = game_config.mods().get(&file_name) {
+                    if modd.pack_type() == &PFHFileType::Movie && !modd.enabled(&game, &data_path) {
+                        mask_pack.save(Some(&masks_path.join(file_name)), &game, &None).map_err(|e| format!("Error saving the mask pack: {}", e))?;
+                    }
+                }
+            }
+        }
+    }
 
     // Check if we are loading a save. First option is no save load. Any index above that is a save.
     let mut extra_args: Vec<String> = vec![];
@@ -489,30 +525,16 @@ async fn load_data(
                     .update_mod_list_with_online_data(tx_recv, app)
                     .await;
             }
+
             send_progress_event(&app, 50, 100);
             let mods = load_mods(&app, &game, &game_config).await?;
 
             send_progress_event(&app, 70, 100);
-
             let items = load_packs(&app, &game_config, &game, &game_path, &load_order).await?;
 
             send_progress_event(&app, 90, 100);
-
             *GAME_LOAD_ORDER.write().unwrap() = load_order;
             *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
-            /*
-                        // Load the mods to the UI. This does an early return, just in case you add something after this.
-                        match self.load_mods_to_ui(game, &game_path, skip_network_update) {
-                            Ok(network_receiver) => {
-
-                                // Load the launch options for the game selected, as some of them may depend on mods we just loaded.
-                                let _ = setup_actions(self, game, self.game_config().read().unwrap().as_ref().unwrap(), &game_path, &self.game_load_order().read().unwrap());
-
-                                return Ok(network_receiver)
-                            },
-                            Err(error) => show_dialog(self.main_window(), error, false),
-                        }
-            */
 
             send_progress_event(&app, 100, 100);
 

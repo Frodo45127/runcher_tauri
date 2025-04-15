@@ -56,6 +56,8 @@ const REGEX_MAP_INFO_DEFENDER_FUNDS_RATIO: LazyCell<Regex> =
 const REGEX_MAP_INFO_HAS_KEY_BUILDINGS: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"<has_key_buildings>(.*)</has_key_buildings>").unwrap());
 
+pub const SECONDARY_FOLDER_NAME: &str = "masks";
+
 pub fn copy_to_secondary(
     app_handle: &tauri::AppHandle,
     game: &GameInfo,

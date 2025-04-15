@@ -26,7 +26,7 @@ use rpfm_lib::utils::files_from_subdir;
 
 #[cfg(target_os = "windows")]use crate::mod_manager::integrations::DETACHED_PROCESS;
 use crate::mod_manager::load_order::*;
-use crate::{GAME_CONFIG, GAME_LOAD_ORDER, SCHEMA, SETTINGS};
+use crate::{GAME_CONFIG, GAME_LOAD_ORDER, SETTINGS};
 use crate::settings::{sql_presets_extracted_twpatcher_path, sql_scripts_extracted_twpatcher_path, sql_scripts_local_path, sql_scripts_remote_path, temp_packs_folder};
 
 pub const RESERVED_PACK_NAME: &str = "zzzzzzzzzzzzzzzzzzzzrun_you_fool_thron.pack";
@@ -140,8 +140,14 @@ impl LaunchOptions {
             };
 
             // Prepare the command to generate the temp pack.
-            let mut cmd = Command::new("cmd");
-            cmd.arg("/C");
+            let mut cmd = if cfg!(target_os = "windows") {
+                let mut cmd = Command::new("cmd");
+                cmd.arg("/C");
+                cmd
+            } else {
+                Command::new("sh")
+            };
+
             cmd.arg(&*PATCHER_PATH);
             cmd.arg("-g");
             cmd.arg(game.key());
@@ -459,7 +465,10 @@ impl LaunchOptions {
                 }
             }
 
-            // Scripts are done in a separate step, because they're dynamic.
+            // Scripts are done in a separate step, because they're dynamic. Priority is:
+            // - Local scripts.
+            // - Extracted scripts.
+            // - Remote scripts.
             let extracted_scripts_folder = sql_scripts_extracted_twpatcher_path(app)?;
             let presets_folder = sql_presets_extracted_twpatcher_path(app)?;
 
