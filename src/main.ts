@@ -7,6 +7,7 @@ import { SettingsModal } from "./settingsModal";
 import { ModDetailsPanel } from "./modDetails";
 import { LoadingManager } from "./loadingManager";
 import { StatusBar } from "./statusBar";
+import { LaunchOptionsPanel } from "./launchOptions";
 
 // Store the main instance, which should contain everything in the app.
 declare global {
@@ -24,6 +25,7 @@ export class Main {
   public modDetails: ModDetailsPanel;
   public loadingManager: LoadingManager;
   private statusBar: StatusBar;
+  private launchOptions: LaunchOptionsPanel;
 
   private launchBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
@@ -38,6 +40,7 @@ export class Main {
     this.settingsModal = new SettingsModal();
     this.modDetails = new ModDetailsPanel(this);
     this.statusBar = new StatusBar();
+    this.launchOptions = new LaunchOptionsPanel();
 
     // Add event listener for launch button
     this.launchBtn = document.getElementById("launch-game-btn") as HTMLButtonElement;
@@ -172,6 +175,9 @@ export class Main {
       if (this.settingsManager.appSettings.selected_tree_item) {
         this.modTree.selectTreeItem(this, this.settingsManager.appSettings.selected_tree_item);
       }
+
+      // Load the launch options.
+      this.launchOptions.loadOptions();
 
       // Save settings after change
       await this.settingsManager.saveSettings();

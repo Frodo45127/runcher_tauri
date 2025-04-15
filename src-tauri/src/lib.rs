@@ -13,6 +13,7 @@ use rpfm_lib::games::{
 use rpfm_lib::schema::Schema;
 
 use crate::frontend_types::*;
+use crate::launch_options::*;
 use crate::mod_manager::game_config::GameConfig;
 use crate::mod_manager::integrations::Integrations;
 use crate::mod_manager::load_order::{
@@ -22,6 +23,7 @@ use crate::mod_manager::profiles::Profile;
 use crate::settings::*;
 
 mod frontend_types;
+mod launch_options;
 mod mod_manager;
 mod settings;
 mod updater;
@@ -177,212 +179,12 @@ async fn launch_game(app: tauri::AppHandle, id: &str) -> Result<String, String> 
     }
 }
 
-fn prepare_launch_options(
-    game: &GameInfo,
-    data_path: &Path,
-    folder_list: &mut String,
-) -> anyhow::Result<()> {
-    /*
-    let actions_ui = app_ui.actions_ui();
-
-    // We only use the reserved pack if we need to.
-    if (actions_ui.enable_logging_checkbox().is_enabled() && actions_ui.enable_logging_checkbox().is_checked()) ||
-        (actions_ui.enable_skip_intro_checkbox().is_enabled() && actions_ui.enable_skip_intro_checkbox().is_checked()) ||
-        (actions_ui.remove_trait_limit_checkbox().is_enabled() && actions_ui.remove_trait_limit_checkbox().is_checked()) ||
-        (actions_ui.remove_siege_attacker_checkbox().is_enabled() && actions_ui.remove_siege_attacker_checkbox().is_checked()) ||
-        (actions_ui.enable_translations_combobox().is_enabled() && actions_ui.enable_translations_combobox().current_index() != 0) ||
-        (actions_ui.universal_rebalancer_combobox().is_enabled() && actions_ui.universal_rebalancer_combobox().current_index() != 0) ||
-        (actions_ui.enable_dev_only_ui_checkbox().is_enabled() && actions_ui.enable_dev_only_ui_checkbox().is_checked()) ||
-        (actions_ui.unit_multiplier_spinbox().is_enabled() && actions_ui.unit_multiplier_spinbox().value() != 1.00) ||
-        actions_ui.scripts_to_execute().read().unwrap().iter().any(|(_, item)| item.is_checked()) {
-
-        // We need to use an alternative name for Shogun 2, Rome 2, Attila and Thrones because their load order logic for movie packs seems... either different or broken.
-        let reserved_pack_name = if game.key() == KEY_SHOGUN_2 || game.key() == KEY_ROME_2 || game.key() == KEY_ATTILA || game.key() == KEY_THRONES_OF_BRITANNIA {
-            RESERVED_PACK_NAME_ALTERNATIVE
-        } else {
-            RESERVED_PACK_NAME
-        };
-
-        // If the reserved pack is loaded from a custom folder we need to CLEAR SAID FOLDER before anything else. Otherwise we may end up with old packs messing up stuff.
-        if *game.raw_db_version() >= 1 {
-            let temp_packs_folder = temp_packs_folder(game)?;
-            let files = files_from_subdir(&temp_packs_folder, false)?;
-            for file in &files {
-                std::fs::remove_file(file)?;
-            }
-        }
-
-        // Support for add_working_directory seems to be only present in rome 2 and newer games. For older games, we drop the pack into /data.
-        let temp_path = if *game.raw_db_version() >= 1 {
-            let temp_packs_folder = temp_packs_folder(game)?;
-            let temp_path = temp_packs_folder.join(reserved_pack_name);
-            folder_list.push_str(&format!("add_working_directory \"{}\";\n", temp_packs_folder.to_string_lossy()));
-            temp_path
-        } else {
-            data_path.join(reserved_pack_name)
-        };
-
-        // Prepare the command to generate the temp pack.
-        let mut cmd = Command::new("cmd");
-        cmd.arg("/C");
-        cmd.arg(&*PATCHER_PATH);
-        cmd.arg("-g");
-        cmd.arg(game.key());
-        cmd.arg("-l");
-        cmd.arg(CUSTOM_MOD_LIST_FILE_NAME);
-        cmd.arg("-p");
-        cmd.arg(temp_path.to_string_lossy().to_string());   // Use a custom path out of /data, if available.
-        cmd.arg("-s");                                      // Skip updates. Updates will be shipped with Runcher updates.
-
-        // Logging check.
-        if actions_ui.enable_logging_checkbox().is_enabled() && actions_ui.enable_logging_checkbox().is_checked() {
-            cmd.arg("-e");
-        }
-
-        // Skip Intros check.
-        if actions_ui.enable_skip_intro_checkbox().is_enabled() && actions_ui.enable_skip_intro_checkbox().is_checked() {
-            cmd.arg("-i");
-        }
-
-        // Remove Trait Limit check.
-        if actions_ui.remove_trait_limit_checkbox().is_enabled() && actions_ui.remove_trait_limit_checkbox().is_checked() {
-            cmd.arg("-r");
-        }
-
-        // Remove Siege Attacker check.
-        if actions_ui.remove_siege_attacker_checkbox().is_enabled() && actions_ui.remove_siege_attacker_checkbox().is_checked() {
-            cmd.arg("-a");
-        }
-
-        // Enable Dev-only UI check.
-        if actions_ui.enable_dev_only_ui_checkbox().is_enabled() && actions_ui.enable_dev_only_ui_checkbox().is_checked() {
-            cmd.arg("-d");
-        }
-
-        // Translations check.
-        if actions_ui.enable_translations_combobox().is_enabled() && actions_ui.enable_translations_combobox().current_index() != 0 {
-            cmd.arg("-t");
-            cmd.arg(app_ui.actions_ui().enable_translations_combobox().current_text().to_std_string());
-        }
-
-        // Universal Rebalancer check.
-        if actions_ui.universal_rebalancer_combobox().is_enabled() && actions_ui.universal_rebalancer_combobox().current_index() != 0 {
-            cmd.arg("-u");
-            cmd.arg(app_ui.actions_ui().universal_rebalancer_combobox().current_text().to_std_string());
-        }
-
-        // Unit Multiplier check.
-        if actions_ui.unit_multiplier_spinbox().is_enabled() && actions_ui.unit_multiplier_spinbox().value() != 1.00 {
-            cmd.arg("-m");
-            cmd.arg(app_ui.actions_ui().unit_multiplier_spinbox().value().to_string());
-        }
-
-        // Script checks.
-        let sql_folder_extracted = sql_scripts_extracted_extended_path()?;
-        let sql_folder_local = sql_scripts_local_path()?.join(game.key());
-        let sql_folder_remote = sql_scripts_remote_path()?.join(game.key());
-        actions_ui.scripts_to_execute().read().unwrap()
-            .iter()
-            .filter(|(_, item)| item.is_checked())
-            .for_each(|(script, item)| {
-                cmd.arg("--sql-script");
-
-                let script_params = if script.metadata().parameters().is_empty() {
-                    vec![]
-                } else {
-                    let mut script_params = vec![];
-                    let script_container = item.parent_widget().parent_widget();
-
-                    // First check if we have a preset set. If not, we can check each param.
-                    let preset_combo_name = format!("{}_preset_combo", script.metadata().key());
-                    let preset_key = if let Ok(widget) = script_container.find_child::<QComboBox>(&preset_combo_name) {
-                        widget.current_text().to_std_string()
-                    } else {
-                        String::new()
-                    };
-
-                    let preset = if !preset_key.is_empty() {
-                        let preset_path = sql_scripts_extracted_path().unwrap().join("twpatcher/presets");
-                        if preset_path.is_dir() {
-                            files_from_subdir(&preset_path, false).unwrap()
-                                .iter()
-                                .filter_map(|x| Preset::read(x).ok())
-                                .find(|x| *x.key() == preset_key)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-
-                    match preset {
-                        Some(preset) => {
-                            for param in script.metadata().parameters() {
-                                match preset.params().get(param.key()) {
-                                    Some(value) => script_params.push(value.to_string()),
-                                    None => script_params.push(param.default_value().to_string()),
-                                }
-                            }
-                        }
-                        None => {
-                            for param in script.metadata().parameters() {
-                                let object_name = format!("{}_{}", script.metadata().key(), param.key());
-                                match param.r#type() {
-                                    ParamType::Bool => {
-                                        if let Ok(widget) = script_container.find_child::<QCheckBox>(&object_name) {
-                                            script_params.push(widget.is_checked().to_string());
-                                        }
-                                    },
-                                    ParamType::Integer => {
-                                        if let Ok(widget) = script_container.find_child::<QSpinBox>(&object_name) {
-                                            script_params.push(widget.value().to_string());
-                                        }
-                                    },
-                                    ParamType::Float => {
-                                        if let Ok(widget) = script_container.find_child::<QDoubleSpinBox>(&object_name) {
-                                            script_params.push(widget.value().to_string());
-                                        }
-                                    },
-                                }
-                            }
-                        }
-                    }
-
-
-                    script_params
-                };
-
-                // When there's a collision, default to the local script path.
-                let script_name = format!("{}.yml", script.metadata().key());
-                let local_script_path = sql_folder_local.join(&script_name);
-                let extracted_script_path = sql_folder_extracted.join(&script_name);
-                let remote_script_path = sql_folder_remote.join(&script_name);
-                let script_path = if PathBuf::from(&local_script_path).is_file() {
-                    local_script_path
-                } else if PathBuf::from(&extracted_script_path).is_file() {
-                    extracted_script_path
-                } else {
-                    remote_script_path
-                };
-
-                if script_params.is_empty() {
-                    cmd.arg(script_path);
-                } else {
-                    cmd.arg(format!("{};{}", script_path.to_string_lossy().to_string().replace("\\", "/"), script_params.join(";")));
-                }
-            });
-
-        cmd.creation_flags(DETACHED_PROCESS);
-
-        let mut h = cmd.spawn().map_err(|err| anyhow!("Error when preparing the game patch: {}", err))?;
-        if let Ok(status) = h.wait() {
-            if !status.success() {
-                return Err(anyhow!("Something failed while creating the load order patch. Check the patcher terminal to see what happened."))
-            }
-        }
-    }*/
-
-    Ok(())
+#[tauri::command]
+async fn get_launch_options(app: tauri::AppHandle) -> Result<Vec<LaunchOption>, String> {
+    let game = GAME_SELECTED.read().unwrap().clone();
+    let game_path = SETTINGS.read().unwrap().game_path(&game).unwrap();
+    let options = generate_options(&app, &game, &game_path).map_err(|e| format!("Error generating launch options: {}", e))?;
+    Ok(options)
 }
 
 #[tauri::command]
@@ -677,10 +479,12 @@ async fn load_data(
                 .await?;
 
             send_progress_event(&app, 30, 100);
+
+            // NOTE: THIS CAN FAIL AND IT NEEDS TO NOT FAIL THE ENTIRE LOAD.
             if let Some(tx_recv) = online_data_receiver {
-                game_config
+                let _ = game_config
                     .update_mod_list_with_online_data(tx_recv, app)
-                    .await?;
+                    .await;
             }
             send_progress_event(&app, 50, 100);
             let mods = load_mods(&app, &game, &game_config).await?;
@@ -1185,6 +989,7 @@ pub fn run() {
             create_category,
             rename_category,
             remove_category,
+            get_launch_options,
             #[cfg(desktop)]
             updater::fetch_update,
             #[cfg(desktop)]

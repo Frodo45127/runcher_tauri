@@ -94,6 +94,9 @@
               <button id="launch-game-btn" class="primary-btn">
                 <i class="fa-solid fa-play"></i> Launch Game
               </button>
+              <button id="launch-options-btn" class="icon-btn" title="Launch Options">
+                <i class="fa-solid fa-cog"></i>
+              </button>
               <button id="settings-btn" class="icon-btn" title="Settings">
                 <i class="fa-solid fa-gear"></i>
               </button>
@@ -364,6 +367,20 @@
         </div>
       </div>
       <div class="version-text">v1.0.0 - From Estalia with love!</div>
+    </div>
+
+    <!-- Launch Options Panel -->
+    <div class="sliding-panel hidden" id="launch-options-panel">
+      <div class="arrow-pointer arrow-pointer-top" id="launch-options-arrow"></div>
+      <div class="sliding-panel-header">
+        <h2>Launch Options</h2>
+        <button class="sliding-panel-close" id="launch-options-close-btn">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+      <div class="sliding-panel-content" id="launch-options-content">
+        <!-- Will be populated dynamically -->
+      </div>
     </div>
   </body>
 </html>

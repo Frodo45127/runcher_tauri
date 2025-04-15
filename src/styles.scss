@@ -411,15 +411,20 @@ body {
 	border-bottom: 0px solid transparent;
 	transition: none;
 
-	/*&.arrow-pointer-top {}*/
+	&.arrow-pointer-top {
+		top: -30px;
+		border-left: 30px solid transparent;
+		border-right: 30px solid transparent;
+		border-bottom: 30px solid var(--panel-bg);
+		transition: top ease-in-out;
+	}
+
 	&.arrow-pointer-bottom {
 		bottom: -30px;
 		border-left: 30px solid transparent;
 		border-right: 30px solid transparent;
 		border-top: 30px solid var(--panel-bg);
 		transition: bottom ease-in-out;
-
-
 	}
 	&.arrow-pointer-left {
 		left: -30px;
@@ -443,6 +448,13 @@ body {
 		border-bottom: 0px solid transparent;
 		z-index: -1;
 
+		&.arrow-pointer-top {
+			top: 1px;
+			right: -15px;
+			border-left: 15px solid transparent;
+			border-right: 15px solid transparent;
+			border-bottom: 15px solid var(--border-color);
+		}
 		&.arrow-pointer-bottom {
 			bottom: 1px;
 			left: -15px;
@@ -1745,3 +1757,104 @@ body {
 		text-align: center;
 	}
 }
+
+.launch-option {
+	margin-bottom: 1rem;
+	padding: 0.5rem;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+
+	.option-header {
+		display: flex;
+		align-items: center;
+		margin-bottom: 0.5rem;
+
+		input[type="checkbox"] {
+			margin-right: 0.5rem;
+		}
+
+		label {
+			font-weight: bold;
+		}
+	}
+
+	.option-parameters {
+		margin-left: 1.5rem;
+		padding-left: 0.5rem;
+		border-left: 1px solid var(--border-color);
+
+		.option-parameter {
+			display: flex;
+			align-items: center;
+			margin-bottom: 0.5rem;
+
+			input {
+				overflow: hidden;
+			}
+			select {
+				overflow: hidden;
+			}
+			label {
+				min-width: 100px;
+				margin-right: 0.5rem;
+			}
+
+			input[type="text"],
+			input[type="number"] {
+				flex: 1;
+				padding: 0.25rem;
+				border: 1px solid var(--border-color);
+				border-radius: 4px;
+			}
+
+			input[type="checkbox"] {
+				margin-right: 0.5rem;
+			}
+		}
+	}
+}
+
+/*
+#launch-options-panel {
+	display: none;
+	position: fixed;
+	top: 0;
+	right: 0;
+	width: 300px;
+	height: 100%;
+	background-color: var(--background-color);
+	box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+	z-index: 1200;
+	transform: translateX(100%);
+	transition: transform 0.3s ease;
+
+	&.active {
+		display: flex;
+	}
+
+	&.hidden {
+		transform: translateX(100%);
+	}
+
+	&:not(.hidden) {
+		transform: translateX(0);
+	}
+
+	.sliding-panel-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		border-bottom: 1px solid var(--border-color);
+
+		h2 {
+			margin: 0;
+		}
+	}
+
+	.sliding-panel-content {
+		padding: 1rem;
+		overflow-y: auto;
+		max-height: calc(100% - 60px);
+	}
+}*/
