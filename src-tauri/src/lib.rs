@@ -8,23 +8,19 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 use rpfm_lib::files::pack::Pack;
-use rpfm_lib::games::{
-    GameInfo,
-    pfh_file_type::PFHFileType,
-    supported_games::*,
-};
+use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType, supported_games::*};
 use rpfm_lib::schema::Schema;
 use rpfm_lib::utils::path_to_absolute_string;
 
 use crate::frontend_types::*;
 use crate::launch_options::*;
-use crate::mod_manager::{SECONDARY_FOLDER_NAME, secondary_mods_path};
 use crate::mod_manager::game_config::GameConfig;
 use crate::mod_manager::integrations::Integrations;
 use crate::mod_manager::load_order::{
     CUSTOM_MOD_LIST_FILE_NAME, LoadOrder, LoadOrderDirectionMove,
 };
 use crate::mod_manager::profiles::Profile;
+use crate::mod_manager::{SECONDARY_FOLDER_NAME, secondary_mods_path};
 use crate::settings::*;
 
 mod frontend_types;
@@ -84,7 +80,11 @@ const RESERVED_PACK_NAME: &str = "zzzzzzzzzzzzzzzzzzzzrun_you_fool_thron.pack";
 const RESERVED_PACK_NAME_ALTERNATIVE: &str = "!!!!!!!!!!!!!!!!!!!!!run_you_fool_thron.pack";
 
 #[tauri::command]
-async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<LaunchOption>) -> Result<String, String> {
+async fn launch_game(
+    app: tauri::AppHandle,
+    id: &str,
+    launch_options: Vec<LaunchOption>,
+) -> Result<String, String> {
     use base64::Engine;
 
     let mut folder_list = String::new();
@@ -113,8 +113,14 @@ async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<Launch
 
     // If our folder list contains the secondary folder, we need to make sure we create the masks folder in it,
     // and mask in there all non-enabled movie files. Note that we only use this in games older than warhammer. Newer games use the exclude_pack_file command.
-    if *game.raw_db_version() <= 1 || (*game.raw_db_version() == 2 && (game.key() == KEY_ROME_2 || game.key() == KEY_ATTILA || game.key() == KEY_THRONES_OF_BRITANNIA)) {
-        let secondary_mods_path = secondary_mods_path(&app, game.key()).unwrap_or_else(|_| PathBuf::new());
+    if *game.raw_db_version() <= 1
+        || (*game.raw_db_version() == 2
+            && (game.key() == KEY_ROME_2
+                || game.key() == KEY_ATTILA
+                || game.key() == KEY_THRONES_OF_BRITANNIA))
+    {
+        let secondary_mods_path =
+            secondary_mods_path(&app, game.key()).unwrap_or_else(|_| PathBuf::new());
         let secondary_mods_path_str = path_to_absolute_string(&secondary_mods_path);
 
         if secondary_mods_path.is_dir() && folder_list.contains(&secondary_mods_path_str) {
@@ -127,15 +133,20 @@ async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<Launch
 
             let _ = DirBuilder::new().recursive(true).create(&masks_path);
 
-            let mut mask_pack = Pack::new_with_version(game.pfh_version_by_file_type(PFHFileType::Movie));
+            let mut mask_pack =
+                Pack::new_with_version(game.pfh_version_by_file_type(PFHFileType::Movie));
             mask_pack.set_pfh_file_type(PFHFileType::Movie);
 
-            for path in std::fs::read_dir(secondary_mods_path).map_err(|e| format!("Error reading the secondary mods path: {}", e))? {
+            for path in std::fs::read_dir(secondary_mods_path)
+                .map_err(|e| format!("Error reading the secondary mods path: {}", e))?
+            {
                 let file_name = path.unwrap().file_name().to_string_lossy().to_string();
 
                 if let Some(modd) = game_config.mods().get(&file_name) {
                     if modd.pack_type() == &PFHFileType::Movie && !modd.enabled(&game, &data_path) {
-                        mask_pack.save(Some(&masks_path.join(file_name)), &game, &None).map_err(|e| format!("Error saving the mask pack: {}", e))?;
+                        mask_pack
+                            .save(Some(&masks_path.join(file_name)), &game, &None)
+                            .map_err(|e| format!("Error saving the mask pack: {}", e))?;
                     }
                 }
             }
@@ -160,7 +171,10 @@ async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<Launch
     let folder_list_pre = folder_list.to_owned();
     LoadOrder::save_as_load_order_file(&file_path, &game, &folder_list, &pack_list)
         .map_err(|e| format!("Error saving the load order file: {}", e))?;
-    LAUNCH_OPTIONS.write().unwrap().prepare_launch_options(&app, &launch_options, &game, &data_path, &mut folder_list)
+    LAUNCH_OPTIONS
+        .write()
+        .unwrap()
+        .prepare_launch_options(&app, &launch_options, &game, &data_path, &mut folder_list)
         .map_err(|e| format!("Error preparing launch options: {}", e))?;
 
     if folder_list != folder_list_pre {
@@ -222,7 +236,11 @@ async fn launch_game(app: tauri::AppHandle, id: &str, launch_options: Vec<Launch
 async fn get_launch_options(app: tauri::AppHandle) -> Result<Vec<LaunchOption>, String> {
     let game = GAME_SELECTED.read().unwrap().clone();
     let game_path = SETTINGS.read().unwrap().game_path(&game).unwrap();
-    let options = LAUNCH_OPTIONS.write().unwrap().generate_options(&app, &game, &game_path).map_err(|e| format!("Error generating launch options: {}", e))?;
+    let options = LAUNCH_OPTIONS
+        .write()
+        .unwrap()
+        .generate_options(&app, &game, &game_path)
+        .map_err(|e| format!("Error generating launch options: {}", e))?;
     Ok(options)
 }
 
@@ -953,14 +971,14 @@ async fn remove_category(app: tauri::AppHandle, category: &str) -> Result<(), St
 
 /// Util to send progress events to the webview.
 fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
-    let _ = app
-        .get_webview_window("main")
-        .unwrap()
-        .emit("loading://progress", ProgressPayload {
+    let _ = app.get_webview_window("main").unwrap().emit(
+        "loading://progress",
+        ProgressPayload {
             id: 0,
             progress,
             total,
-        });
+        },
+    );
 }
 
 /// Util function to de-escape ui-coming ids so they can be used in the backend.
