@@ -3,7 +3,6 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import { Main } from "./main";
 
 export interface AppSettings {
   tree_open_state: { [key: string]: boolean };
