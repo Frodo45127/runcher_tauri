@@ -51,9 +51,9 @@ TODO:
             - [ ] Sharing through direct vpn tunnel.
     - [ ] Launch options:
         - [ ] Running game detection.
-        - [ ] Dynamic menu (mainly for SQL scripts).
+        - [x] Dynamic menu (mainly for SQL scripts).
         - [ ] Move unit multiplier to SQL script.
-        - [ ] Autoapply translation patches
+        - [x] Autoapply translation patches
         - [ ] Make more evident the patches applied on launch.
         - [ ] Launch to save.
         - [ ] Support custom launch flags from yaml.
@@ -118,4 +118,4 @@ TODO:
         - [ ] Pretty installer?
         - [ ] Welcome message.
         - [ ] Quick tour.
-        
+
