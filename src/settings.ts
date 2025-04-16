@@ -64,6 +64,7 @@ export class SettingsManager {
       };
 
       this.isLoaded = true;
+      this.applySettings();
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -71,9 +72,8 @@ export class SettingsManager {
 
   /**
    * Apply app settings.
-   * @param {Main} main - The main instance of the application.
    */
-  public async applySettings(main: Main) {
+  public async applySettings() {
     try {
       if (this.isLoaded) {
         await main.sidebar.updateSidebarIcons(this);
