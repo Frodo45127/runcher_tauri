@@ -1468,6 +1468,9 @@ body {
 					}
 
 					.setting-group {
+						overflow-y: scroll;
+						overflow-x: hidden;
+						height: 60vh;
 						margin-bottom: 32px;
 						max-width: 100%;
 						h3 {
@@ -1539,9 +1542,6 @@ body {
 
 						/* Game paths scrollable container */
 						.game-path-container {
-							overflow-y: scroll;
-							overflow-x: hidden;
-							height: 60vh;
 
 							/* Game path item */
 							.game-path-item {
