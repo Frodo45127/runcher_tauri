@@ -12,7 +12,7 @@
 //!
 //! For now we only support steam workshop, so all calls are redirected to the steam module.
 
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Error, Result};
 use serde::Deserialize;
 use tauri::AppHandle;
 use tauri::async_runtime::{Receiver, Sender, channel};
@@ -24,6 +24,7 @@ use std::process::exit;
 use rpfm_lib::games::GameInfo;
 
 use crate::mod_manager::mods::Mod;
+use self::steam::SteamIntegration;
 
 mod steam;
 
@@ -42,6 +43,71 @@ const CREATE_NEW_CONSOLE: u32 = 0x00000010;
 #[derive(Clone)]
 pub struct Integrations {
     sender: Sender<TxStoreSend>,
+
+    steam: SteamIntegration,
+}
+
+// Generic trait that all integrations must implement.
+trait Integration {
+
+    /// This function requests the public remote data of the mods from the integration.
+    /// You'll need to call populate_mods_with_online_data after this to dump the data into the real mods.
+    fn request_mods_data(
+        app: &AppHandle,
+        game: &GameInfo,
+        remote_ids: &[String],
+    ) -> Result<Vec<Mod>>;
+
+    /// This function populates the mods with the online data retrieved with the integration into a mod list.
+    fn populate_mods_with_online_data(
+        app: &AppHandle,
+        mods: &mut HashMap<String, Mod>,
+        remote_mods: &[Mod],
+    ) -> Result<()>;
+
+    /// This function populates the mods with the author names of the users that uploaded them.
+    /// Otherwise mods will only show the id of the uploader, not their name.
+    fn populate_mods_with_author_names(
+        mods: &mut HashMap<String, Mod>,
+        user_names: &HashMap<String, String>,
+    );
+
+    /// This function uploads a mod to the site of the integration.
+    ///
+    /// If the mod doesn't yet exists in the site, it creates it. If it already exists, it updates it.
+    ///
+    /// If the site has some logic to avoid re-uploading the same mod file, you can use force_update to bypass it.
+    fn upload_mod_to_integration(
+        app: &AppHandle,
+        game: &GameInfo,
+        modd: &Mod,
+        title: &str,
+        description: &str,
+        tags: &[String],
+        changelog: &str,
+        visibility: &Option<u32>,
+        force_update: bool,
+    ) -> Result<()>;
+
+    /// This function launches a game through the integration, if said integration supports it.
+    /// Only for integrations with stores. Will fail for 3rd party modding sites.
+    fn launch_game(_app: &AppHandle, _game: &GameInfo, _command_to_pass: &str, _wait_for_finish: bool) -> Result<()> {
+        Err(anyhow!("Not implemented for this integration."))
+    }
+
+    /// This function returns the user id of the user logged in the integration.
+    fn user_id(app: &AppHandle, game: &GameInfo) -> Result<String>;
+
+    /// This function returns if the game can be locked, so it doesn't get updated.
+    fn can_game_locked(game: &GameInfo, game_path: &Path) -> Result<bool>;
+
+    /// This function returns if the game is locked, so it doesn't get updated.
+    fn is_game_locked(game: &GameInfo, game_path: &Path) -> Result<bool>;
+
+    /// This function is used to toggle the game update state, allowing to prevent the game from being updated.
+    ///
+    /// NOTE: This will return `Ok(false)` if the game cannot be locked.
+    fn toggle_game_locked(game: &GameInfo, game_path: &Path, toggle: bool) -> Result<bool>;
 }
 
 pub enum TxStoreSend {
@@ -99,7 +165,10 @@ impl Integrations {
         let (sender, receiver) = tauri::async_runtime::channel(32);
         tauri::async_runtime::spawn(Self::store_loop(receiver));
 
-        Self { sender }
+        Self {
+            sender,
+            steam: SteamIntegration::default(),
+        }
     }
 
     recv!(launch_game, Success, ());
@@ -163,7 +232,7 @@ impl Integrations {
         local_mods: &mut HashMap<String, Mod>,
         remote_mods: &[Mod],
     ) -> Result<()> {
-        steam::populate_mods_with_online_data(app_handle, local_mods, remote_mods)
+        SteamIntegration::populate_mods_with_online_data(app_handle, local_mods, remote_mods)
     }
 
     //-------------------------------------------------------------------------------//
@@ -206,7 +275,7 @@ impl Integrations {
                 Some(TxStoreSend::StoreUserId(tx_send, app, game)) => {
                     match Self::wrapper_store_user_id(&app, &game) {
                         Ok(data) => {
-                            let _ = tx_send.send(TxStoreResponse::U64(data)).await;
+                            let _ = tx_send.send(TxStoreResponse::U64(data.parse::<u64>().unwrap())).await;
                         }
                         Err(e) => {
                             let _ = tx_send.send(TxStoreResponse::Error(e)).await;
@@ -230,11 +299,12 @@ impl Integrations {
     fn wrapper_request_mods_data(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,
-        mod_ids: &[String],
+        remote_ids: &[String],
     ) -> Result<Vec<Mod>> {
-        steam::request_mods_data(app_handle, game, mod_ids)
+        SteamIntegration::request_mods_data(app_handle, game, remote_ids)
     }
 
+    /*
     fn wrapper_request_pre_upload_info(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,
@@ -254,7 +324,7 @@ impl Integrations {
         visibility: &Option<u32>,
         force_update: bool,
     ) -> Result<()> {
-        steam::upload_mod_to_workshop(
+        SteamIntegration::upload_mod_to_workshop(
             app_handle,
             game,
             modd,
@@ -265,7 +335,7 @@ impl Integrations {
             visibility,
             force_update,
         )
-    }
+    }*/
 
     fn wrapper_launch_game(
         app_handle: &tauri::AppHandle,
@@ -273,30 +343,30 @@ impl Integrations {
         command_to_pass: &str,
         wait_for_finish: bool,
     ) -> Result<()> {
-        steam::launch_game(app_handle, game, command_to_pass, wait_for_finish)
+        SteamIntegration::launch_game(app_handle, game, command_to_pass, wait_for_finish)
     }
-
+    /*
     fn wrapper_download_subscribed_mods(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,
         published_file_ids: &Option<Vec<String>>,
     ) -> Result<()> {
-        steam::download_subscribed_mods(app_handle, game, published_file_ids)
-    }
+        SteamIntegration::download_subscribed_mods(app_handle, game, published_file_ids)
+    }*/
 
-    fn wrapper_store_user_id(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<u64> {
-        steam::user_id(app_handle, game)
+    fn wrapper_store_user_id(app_handle: &tauri::AppHandle, game: &GameInfo) -> Result<String> {
+        SteamIntegration::user_id(app_handle, game)
     }
 
     fn wrapper_can_game_locked(game: &GameInfo, game_path: &Path) -> bool {
-        steam::can_game_locked(game, game_path).unwrap_or_default()
+        SteamIntegration::can_game_locked(game, game_path).unwrap_or_default()
     }
 
     fn wrapper_is_game_locked(game: &GameInfo, game_path: &Path) -> bool {
-        steam::is_game_locked(game, game_path).unwrap_or_default()
+        SteamIntegration::is_game_locked(game, game_path).unwrap_or_default()
     }
 
     fn wrapper_toggle_game_locked(game: &GameInfo, game_path: &Path, toggle: bool) -> bool {
-        steam::toggle_game_locked(game, game_path, toggle).unwrap_or_default()
+        SteamIntegration::toggle_game_locked(game, game_path, toggle).unwrap_or_default()
     }
 }

@@ -538,10 +538,12 @@ async fn load_data(
             send_progress_event(&app, 30, 100);
 
             // NOTE: THIS CAN FAIL AND IT NEEDS TO NOT FAIL THE ENTIRE LOAD.
+            // TODO: Notify when this fails.
             if let Some(tx_recv) = online_data_receiver {
-                let _ = game_config
+                let a = game_config
                     .update_mod_list_with_online_data(tx_recv, app)
                     .await;
+                dbg!(&a);
             }
 
             send_progress_event(&app, 50, 100);
