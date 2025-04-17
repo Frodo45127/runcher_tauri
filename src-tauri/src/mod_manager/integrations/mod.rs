@@ -13,7 +13,7 @@
 //! For now we only support steam workshop, so all calls are redirected to the steam module.
 
 use anyhow::{anyhow, Error, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::async_runtime::{Receiver, Sender, channel};
 
@@ -49,6 +49,13 @@ pub struct Integrations {
 
 // Generic trait that all integrations must implement.
 trait Integration {
+
+    /// This function is used to request the current remote metadata of a mod.
+    fn request_mod_remote_metadata(
+        app: &AppHandle,
+        game: &GameInfo,
+        remote_id: &str,
+    ) -> Result<RemoteMetadata>;
 
     /// This function requests the public remote data of the mods from the integration.
     /// You'll need to call populate_mods_with_online_data after this to dump the data into the real mods.
@@ -113,7 +120,9 @@ trait Integration {
 pub enum TxStoreSend {
     LaunchGame(Sender<TxStoreResponse>, AppHandle, GameInfo, String, bool),
     RequestRemoteModData(Sender<TxStoreResponse>, AppHandle, GameInfo, Vec<String>),
+    RequestModRemoteMetadata(Sender<TxStoreResponse>, AppHandle, GameInfo, String),
     StoreUserId(Sender<TxStoreResponse>, AppHandle, GameInfo),
+    UploadMod(Sender<TxStoreResponse>, AppHandle, GameInfo, Mod, String, String, Vec<String>, String, Option<u32>, bool),
 }
 
 pub enum TxStoreResponse {
@@ -121,9 +130,10 @@ pub enum TxStoreResponse {
     U64(u64),
     Success(()),
     Error(Error),
+    RemoteMetadata(RemoteMetadata),
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum PublishedFileVisibilityDerive {
     Public,
     FriendsOnly,
@@ -132,13 +142,14 @@ pub enum PublishedFileVisibilityDerive {
     Unlisted,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct PreUploadInfo {
-    pub published_file_id: u64,
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RemoteMetadata {
+    pub remote_id: u64,
     pub title: String,
     pub description: String,
     pub visibility: PublishedFileVisibilityDerive,
     pub tags: Vec<String>,
+    //pub preview: String,
 }
 
 //-------------------------------------------------------------------------------//
@@ -146,6 +157,10 @@ pub struct PreUploadInfo {
 //-------------------------------------------------------------------------------//
 
 /// Macro to generate recv functions for each function that returns a receiver, so we don't need to go around unwraping and awaiting the receiver.
+/// The params are:
+/// - The name of the function to generate the recv for.
+/// - The name of the success enum variant that the function returns.
+/// - The type of the data that the success function returns.
 macro_rules! recv {
     ($l:ident, $m:ident, $n:ty) => {
         paste::item! {
@@ -193,6 +208,21 @@ impl Integrations {
         tx_recv
     }
 
+    recv!(request_mod_remote_metadata, RemoteMetadata, RemoteMetadata);
+    pub async fn request_mod_remote_metadata(
+        &self,
+        app: &AppHandle,
+        game: &GameInfo,
+        remote_id: &str,
+    ) -> Receiver<TxStoreResponse> {
+        let (tx_send, tx_recv) = channel(32);
+        let _ = self
+            .sender
+            .send(TxStoreSend::RequestModRemoteMetadata(tx_send, app.clone(), game.clone(), remote_id.to_string()))
+            .await;
+        tx_recv
+    }
+
     recv!(remote_mods_data, VecMod, Vec<Mod>);
     pub async fn request_remote_mods_data(
         &self,
@@ -223,6 +253,27 @@ impl Integrations {
         let _ = self
             .sender
             .send(TxStoreSend::StoreUserId(tx_send, app.clone(), game.clone()))
+            .await;
+        tx_recv
+    }
+
+    recv!(upload_mod, Success, ());
+    pub async fn upload_mod(
+        &self,
+        app: &AppHandle,
+        game: &GameInfo,
+        modd: &Mod,
+        title: &str,
+        description: &str,
+        tags: &[String],
+        changelog: &str,
+        visibility: &Option<u32>,
+        force_update: bool,
+    ) -> Receiver<TxStoreResponse> {
+        let (tx_send, tx_recv) = channel(32);
+        let _ = self
+            .sender
+            .send(TxStoreSend::UploadMod(tx_send, app.clone(), game.clone(), modd.clone(), title.to_string(), description.to_string(), tags.to_vec(), changelog.to_string(), visibility.clone(), force_update))
             .await;
         tx_recv
     }
@@ -272,10 +323,32 @@ impl Integrations {
                     }
                 }
 
+                Some(TxStoreSend::RequestModRemoteMetadata(tx_send, app, game, remote_id)) => {
+                    match Self::wrapper_request_mod_remote_metadata(&app, &game, &remote_id) {
+                        Ok(data) => {
+                            let _ = tx_send.send(TxStoreResponse::RemoteMetadata(data)).await;
+                        }
+                        Err(e) => {
+                            let _ = tx_send.send(TxStoreResponse::Error(e)).await;
+                        }
+                    }
+                }
+
                 Some(TxStoreSend::StoreUserId(tx_send, app, game)) => {
                     match Self::wrapper_store_user_id(&app, &game) {
                         Ok(data) => {
                             let _ = tx_send.send(TxStoreResponse::U64(data.parse::<u64>().unwrap())).await;
+                        }
+                        Err(e) => {
+                            let _ = tx_send.send(TxStoreResponse::Error(e)).await;
+                        }
+                    }
+                }
+
+                Some(TxStoreSend::UploadMod(tx_send, app, game, modd, title, description, tags, changelog, visibility, force_update)) => {
+                    match Self::wrapper_upload_mod_to_integration(&app, &game, &modd, &title, &description, &tags, &changelog, &visibility, force_update) {
+                        Ok(data) => {
+                            let _ = tx_send.send(TxStoreResponse::Success(data)).await;
                         }
                         Err(e) => {
                             let _ = tx_send.send(TxStoreResponse::Error(e)).await;
@@ -304,16 +377,15 @@ impl Integrations {
         SteamIntegration::request_mods_data(app_handle, game, remote_ids)
     }
 
-    /*
-    fn wrapper_request_pre_upload_info(
+    fn wrapper_request_mod_remote_metadata(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,
-        mod_id: &str,
-    ) -> Result<PreUploadInfo> {
-        steam::request_pre_upload_info(app_handle, game, mod_id)
+        remote_id: &str,
+    ) -> Result<RemoteMetadata> {
+        SteamIntegration::request_mod_remote_metadata(app_handle, game, remote_id)
     }
 
-    fn wrapper_upload_mod_to_workshop(
+    fn wrapper_upload_mod_to_integration(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,
         modd: &Mod,
@@ -324,7 +396,7 @@ impl Integrations {
         visibility: &Option<u32>,
         force_update: bool,
     ) -> Result<()> {
-        SteamIntegration::upload_mod_to_workshop(
+        SteamIntegration::upload_mod_to_integration(
             app_handle,
             game,
             modd,
@@ -335,7 +407,7 @@ impl Integrations {
             visibility,
             force_update,
         )
-    }*/
+    }
 
     fn wrapper_launch_game(
         app_handle: &tauri::AppHandle,

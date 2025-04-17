@@ -120,6 +120,13 @@ body {
 	display: none !important;
 }
 
+/* Generic error message */
+.error-message {
+	margin-top: 0.5rem;
+	color: var(--error-color, #dc3545);
+	font-size: 0.875rem;
+}
+
 /* Prevent text selection. Needs the additional tags because at least on linux, only the webkit one works. */
 .prevent-select {
 	-webkit-user-select: none; /* Safari */
@@ -1382,6 +1389,65 @@ body {
 		}
 	}
 
+	/* Modal contents for the upload mod modal. This have !important to override the default modal content styles. */
+	.modal-content-upload-mod {
+		width: 80vw !important;
+		.tab-content {
+			display: block !important;
+
+			/* Column layout for the upload mod modal. Inuitive as fuck, but it works. */
+			.setting-group-column-layout {
+				display: flex !important;
+				flex-direction: row !important;
+				.setting-item {
+					margin: 10px !important;
+				}
+				.setting-column-left {
+					flex: 1 !important;
+					max-width: 280px !important;
+
+					label {
+						flex: 1 !important;
+					}
+
+					select {
+						flex: 1 !important;
+						max-width: 170px !important;
+						min-width: 170px !important;
+					}
+				}
+
+				.setting-column-right {
+					flex: 1 !important;
+
+					label {
+						flex: 1 !important;
+					}
+
+					input[type="text"] {
+						flex: 1 !important;
+						min-width: 95% !important;
+					}
+					textarea {
+						flex: 1 !important;
+						min-width: 45% !important;
+						min-height: 300px !important;
+						#upload-mod-description {
+							min-height: 300px !important;
+						}
+					}
+					#upload-mod-changelog-preview, #upload-mod-description-preview {
+						flex: 1 !important;
+						min-width: 45% !important;
+						max-height: 300px !important;
+						overflow-y: scroll !important;
+						overflow-x: hidden !important;
+					}
+				}
+			}
+		}
+	}
+
 	.modal-content {
 		background-color: $background-color_11;
 		border-radius: 8px;
@@ -1644,12 +1710,6 @@ body {
 										}
 									}
 								}
-
-								.path-error-message {
-									margin-top: 0.5rem;
-									color: var(--error-color, #dc3545);
-									font-size: 0.875rem;
-								}
 							}
 						}
 					}
@@ -1697,6 +1757,42 @@ body {
 					background-color: $background-color_18;
 				}
 			}
+		}
+
+		.preview-container {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 10px;
+			margin-top: 10px;
+
+			img {
+				width: 256px;
+				height: 256px;
+				object-fit: cover;
+				border: 1px solid var(--border-color);
+				border-radius: 4px;
+			}
+
+			button {
+				width: 100%;
+			}
+		}
+
+		textarea {
+			resize: vertical;
+			min-height: 100px;
+			font-family: inherit;
+			padding: 8px;
+		}
+
+		select {
+			appearance: none;
+			background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+			background-repeat: no-repeat;
+			background-position: right 8px center;
+			background-size: 16px;
+			padding-right: 24px;
 		}
 	}
 }

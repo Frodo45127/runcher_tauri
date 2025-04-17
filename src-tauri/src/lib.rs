@@ -15,7 +15,7 @@ use rpfm_lib::utils::path_to_absolute_string;
 use crate::frontend_types::*;
 use crate::launch_options::*;
 use crate::mod_manager::game_config::GameConfig;
-use crate::mod_manager::integrations::Integrations;
+use crate::mod_manager::integrations::{Integrations, RemoteMetadata};
 use crate::mod_manager::load_order::{
     CUSTOM_MOD_LIST_FILE_NAME, LoadOrder, LoadOrderDirectionMove,
 };
@@ -971,6 +971,206 @@ async fn remove_category(app: tauri::AppHandle, category: &str) -> Result<(), St
     Ok(())
 }
 
+#[tauri::command]
+async fn request_mod_remote_metadata(
+    app: tauri::AppHandle,
+    mod_id: &str,
+) -> Result<RemoteMetadata, String> {
+    let mod_id = unescape(mod_id);
+
+    let game = GAME_SELECTED.read().unwrap().clone();
+    let game_config = GAME_CONFIG.lock().unwrap().clone();
+    if let Some(game_config) = game_config {
+        if let Some(modd) = game_config.mods().get(&mod_id) {
+            if let Some(remote_id) = modd.steam_id() {
+                let integrations = INTEGRATIONS.lock().unwrap().clone();
+                let receiver = integrations.request_mod_remote_metadata(
+                    &app,
+                    &game,
+                    remote_id
+                ).await;
+
+                return Integrations::recv_request_mod_remote_metadata(receiver).await
+                    .map_err(|e| format!("Error requesting mod remote metadata: {}", e));
+            } else {
+                Err(format!("Remote ID not found"))
+            }
+        } else {
+            Err(format!("Mod not found"))
+        }
+    } else {
+        Err(format!("Game config not found"))
+    }
+}
+
+#[tauri::command]
+async fn mod_tags_available(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let game = GAME_SELECTED.read().unwrap().clone();
+    let tags = game.steam_workshop_tags()
+        .map_err(|e| format!("Error requesting mod tags: {}", e))?;
+    Ok(tags)
+}
+
+#[tauri::command]
+async fn upload_mod(
+    app: tauri::AppHandle,
+    mod_id: &str,
+    title: &str,
+    description: &str,
+    changelog: &str,
+    visibility: &str,
+    preview: Option<String>
+) -> Result<(), String> {
+    let mod_id = unescape(mod_id);
+    let game = GAME_SELECTED.read().unwrap().clone();
+    let game_config = GAME_CONFIG.lock().unwrap().clone();
+    if let Some(game_config) = game_config {
+        if let Some(modd) = game_config.mods().get(&mod_id) {
+
+            //let tags = vec![];
+            let visibility = visibility.parse::<u32>().unwrap();
+
+            let integrations = INTEGRATIONS.lock().unwrap().clone();
+            /*
+            let receiver = integrations.upload_mod(
+                &app,
+                &game,
+                modd,
+                &title,
+                &description,
+                &tags,
+                &changelog,
+                &Some(visibility),
+                true
+            ).await;
+
+            return Integrations::recv_upload_mod(receiver).await
+                .map_err(|e| format!("Error uploading mod: {}", e));
+            */
+        }
+    }
+
+    Ok(())
+
+
+
+
+
+
+    /*
+    let selection = self.mod_list_selection();
+    if selection.len() == 1 && !selection[0].data_1a(VALUE_IS_CATEGORY).to_bool() {
+        let mod_id = selection[0].data_1a(VALUE_MOD_ID).to_string().to_std_string();
+        let game_config = self.game_config().read().unwrap();
+        if let Some(ref game_config) = *game_config {
+            if let Some(modd) = game_config.mods().get(&mod_id) {
+                let game = self.game_selected().read().unwrap();
+
+                // Before loading the dialog, we need to do some sanity checks, which include:
+                // - Check if the mod was previously uploaded.
+                // - Retrieve updated data from the workshop if the file is already uploaded.
+                //
+                // We use the updated data to populate the dialog. If it was never uploaded (no steam id), we just load the dialog.
+                let mod_data = if let Some(steam_id) = modd.steam_id() {
+                    request_pre_upload_info(&game, steam_id)?
+                } else {
+                    PreUploadInfo::default()
+                };
+
+                // If no errors were found, load the UI Template.
+                let template_path = if cfg!(debug_assertions) { WORKSHOP_UPLOAD_VIEW_DEBUG } else { WORKSHOP_UPLOAD_VIEW_RELEASE };
+                let main_widget = load_template(self.main_window(), template_path)?;
+                let dialog = main_widget.static_downcast::<QDialog>();
+
+                let title_label: QPtr<QLabel> = find_widget(&main_widget.static_upcast(), "title_label")?;
+                let description_label: QPtr<QLabel> = find_widget(&main_widget.static_upcast(), "description_label")?;
+                let changelog_label: QPtr<QLabel> = find_widget(&main_widget.static_upcast(), "changelog_label")?;
+                let tag_label: QPtr<QLabel> = find_widget(&main_widget.static_upcast(), "tag_label")?;
+                let visibility_label: QPtr<QLabel> = find_widget(&main_widget.static_upcast(), "visibility_label")?;
+
+                let title_line_edit: QPtr<QLineEdit> = find_widget(&main_widget.static_upcast(), "title_line_edit")?;
+                let description_text_edit: QPtr<QTextEdit> = find_widget(&main_widget.static_upcast(), "description_text_edit")?;
+                let changelog_text_edit: QPtr<QTextEdit> = find_widget(&main_widget.static_upcast(), "changelog_text_edit")?;
+                let tag_combo_box: QPtr<QComboBox> = find_widget(&main_widget.static_upcast(), "tag_combo_box")?;
+                let visibility_combo_box: QPtr<QComboBox> = find_widget(&main_widget.static_upcast(), "visibility_combo_box")?;
+
+                let button_box: QPtr<QDialogButtonBox> = find_widget(&main_widget.static_upcast(), "button_box")?;
+                button_box.button(StandardButton::Ok).released().connect(dialog.slot_accept());
+
+                dialog.set_window_title(&qtr("upload_to_workshop_title"));
+                title_label.set_text(&qtr("upload_workshop_title"));
+                description_label.set_text(&qtr("upload_workshop_description"));
+                changelog_label.set_text(&qtr("upload_workshop_changelog"));
+                tag_label.set_text(&qtr("upload_workshop_tag"));
+                visibility_label.set_text(&qtr("upload_workshop_visibility"));
+
+                let tags = game.steam_workshop_tags()?;
+                for tag in &tags {
+                    tag_combo_box.add_item_q_string(&QString::from_std_str(tag));
+                }
+
+                visibility_combo_box.add_item_q_string(&qtr("upload_workshop_visibility_public"));
+                visibility_combo_box.add_item_q_string(&qtr("upload_workshop_visibility_friends_only"));
+                visibility_combo_box.add_item_q_string(&qtr("upload_workshop_visibility_private"));
+                visibility_combo_box.add_item_q_string(&qtr("upload_workshop_visibility_unlisted"));
+
+                // If we got data from the workshop, populate it with that.
+                if mod_data.published_file_id > 0 {
+                    title_line_edit.set_text(&QString::from_std_str(mod_data.title));
+                    description_text_edit.set_plain_text(&QString::from_std_str(mod_data.description));
+                    changelog_text_edit.set_plain_text(&QString::from_std_str("me forgot changelog. Me sorry."));
+
+                    // For tag selection, we expect to have two. We need to pick the one that's not "mod".
+                    if let Some(selected_tag) = mod_data.tags.iter().find_or_first(|x| &**x != "mod") {
+                        tag_combo_box.set_current_text(&QString::from_std_str(selected_tag));
+                    }
+
+                    visibility_combo_box.set_current_index(match mod_data.visibility {
+                        PublishedFileVisibilityDerive::Public => 0,
+                        PublishedFileVisibilityDerive::FriendsOnly => 1,
+                        PublishedFileVisibilityDerive::Private => 2,
+                        PublishedFileVisibilityDerive::Unlisted => 3,
+                    });
+                }
+
+                // Otherwise, put default data there.
+                else {
+                    title_line_edit.set_text(&QString::from_std_str(modd.id()));
+                    changelog_text_edit.set_plain_text(&QString::from_std_str("Initial release."));
+                    visibility_combo_box.set_current_index(2);
+                }
+
+                if dialog.exec() == 1 {
+                    let mut title = title_line_edit.text().to_std_string();
+                    let description = description_text_edit.to_plain_text().to_std_string();
+                    let changelog = changelog_text_edit.to_plain_text().to_std_string();
+                    let tags = vec![tag_combo_box.current_text().to_std_string()];
+                    let visibility = visibility_combo_box.current_index() as u32;
+
+                    // We need at least a title. So if we don't have one, use the default one.
+                    if title.is_empty() {
+                        title = modd.id().to_string();
+                    }
+*/
+  //                  INTEGRATIONS.lock().unwrap().clone().upload_mod(&app, &game, modd, &title, &description, &tags, &changelog, &Some(visibility), true)
+  //                      .await
+  //                      .map_err(|e| format!("Error uploading mod: {}", e))
+/*                 } else {
+                    Ok(None)
+                }
+
+                // All the following elses should never really trigger unless it's a bug.
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }*/
+}
+
 /// Util to send progress events to the webview.
 fn send_progress_event(app: &tauri::AppHandle, progress: i32, total: i32) {
     let _ = app.get_webview_window("main").unwrap().emit(
@@ -1035,6 +1235,9 @@ pub fn run() {
             rename_category,
             remove_category,
             get_launch_options,
+            request_mod_remote_metadata,
+            mod_tags_available,
+            upload_mod,
             #[cfg(desktop)]
             updater::fetch_update,
             #[cfg(desktop)]

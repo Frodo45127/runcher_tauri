@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Main } from "./main";
 import { ListItem } from "./packList";
 import { SettingsManager } from "./settings";
+import { UploadModModal } from './uploadModModal';
 
 export interface TreeItem {
   id: string;
@@ -63,6 +64,8 @@ export class ModTree {
 
   private defaultCategory = 'Unassigned';
 
+  private uploadModModal: UploadModModal;
+
   constructor(main: Main) {
     this.categoryElements = new Map();
     this.itemElements = new Map();
@@ -95,6 +98,8 @@ export class ModTree {
     this.addCategoryPrevNameInput = document.getElementById('add-category-modal-prev-name-input') as HTMLInputElement;
     this.addCategoryErrorElement = document.getElementById('add-category-modal-error') as HTMLElement;
     this.addCategoryModalTitle = document.getElementById('add-category-modal-title') as HTMLElement;
+
+    this.uploadModModal = new UploadModModal();
 
     // Reorderable headers. Done here so we can recycle them when re-rendering the tree.
     this.treeHeader = document.createElement('div');
@@ -1122,7 +1127,13 @@ export class ModTree {
   }
 
   public async uploadMod() {
-    console.log('uploadMod');
+    const modId = this.selectedItems.values().next().value;
+    console.log(modId);
+    if (modId) {
+      this.uploadModModal.openModal(modId);
+    } else {
+      main.showStatusMessage('No mod selected.');
+    }
   }
 
   public async lockMod() {

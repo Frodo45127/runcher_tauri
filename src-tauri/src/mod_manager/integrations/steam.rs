@@ -31,11 +31,11 @@ use rpfm_lib::utils::path_to_absolute_string;
 
 use crate::SETTINGS;
 use crate::mod_manager::mods::Mod;
-use crate::settings::{AppSettings, config_path};
+use crate::settings::config_path;
 
 #[cfg(target_os = "windows")]
 use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
-use super::{Integration, PreUploadInfo, PublishedFileVisibilityDerive};
+use super::{Integration, RemoteMetadata, PublishedFileVisibilityDerive};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::os::unix::fs::PermissionsExt;
@@ -108,34 +108,35 @@ pub enum FileTypeDerive {
 //                             Implementations
 //-------------------------------------------------------------------------------//
 
-impl From<&QueryResultDerive> for PreUploadInfo {
+impl From<&QueryResultDerive> for RemoteMetadata {
     fn from(value: &QueryResultDerive) -> Self {
         Self {
-            published_file_id: value.published_file_id.clone(),
+            remote_id: value.published_file_id.clone(),
             title: value.title.clone(),
             description: value.description.clone(),
             visibility: value.visibility.clone(),
             tags: value.tags.to_vec(),
+            //preview: value.preview.clone(),
         }
     }
 }
 
 impl Integration for SteamIntegration {
-    /*
-    fn request_pre_upload_info(
+
+    fn request_mod_remote_metadata(
         app: &AppHandle,
         game: &GameInfo,
-        mod_id: &str,
-    ) -> Result<PreUploadInfo> {
+        remote_id: &str,
+    ) -> Result<RemoteMetadata> {
         if !is_steam_running() {
             return Err(anyhow!("Steam is not running."));
         }
 
-        let workshop_items = request_mods_data_raw(app, game, &[mod_id.to_owned()])?;
+        let workshop_items = request_mods_data_raw(app, game, &[remote_id.to_owned()])?;
         if workshop_items.is_empty() {
             return Err(anyhow!(
                 "Mod with SteamId {} not found in the Workshop.",
-                mod_id
+                remote_id
             ));
         }
 
@@ -146,10 +147,10 @@ impl Integration for SteamIntegration {
         //}
 
         let workshop_item = workshop_items.first().unwrap();
-        let data = PreUploadInfo::from(workshop_item);
+        let data = RemoteMetadata::from(workshop_item);
 
         Ok(data)
-    }*/
+    }
 
     fn request_mods_data(
         app: &AppHandle,
@@ -195,7 +196,7 @@ impl Integration for SteamIntegration {
             return Ok(HashMap::new());
         }
 
-        let settings = AppSettings::load(app)?;
+        let settings = SETTINGS.read().unwrap().clone();
         let api_key = settings.string("steam_api_key")?;
         if !api_key.is_empty() {
             let mut client = Workshop::new(None);
@@ -276,7 +277,7 @@ impl Integration for SteamIntegration {
             return Err(anyhow!("Steam is not running."));
         }
 
-        let settings = AppSettings::load(app)?;
+        let settings = SETTINGS.read().unwrap().clone();
         let game_path = settings.game_path(game)?;
         let steam_id = game.steam_id(&game_path)? as u32;
 
@@ -341,11 +342,11 @@ impl Integration for SteamIntegration {
             return Err(anyhow!("Steam is not running."));
         }
 
-        let settings = AppSettings::load(app)?;
+        let settings = SETTINGS.read().unwrap().clone();
         let game_path = settings.game_path(game)?;
         let steam_id = game.steam_id(&game_path)? as u32;
 
-        let mut command_string = format!(
+        let command_string = format!(
             "{} launch -b -s {steam_id} -c {command_to_pass}",
             &*WORKSHOPPER_PATH,
         );
@@ -369,7 +370,7 @@ impl Integration for SteamIntegration {
         game: &GameInfo,
         published_file_ids: &Option<Vec<String>>,
     ) -> Result<()> {
-        let settings = AppSettings::load(app)?;
+        let settings = SETTINGS.read().unwrap().clone();
         let game_path = settings.game_path(game)?;
         let steam_id = game.steam_id(&game_path)? as u32;
 
@@ -397,7 +398,7 @@ impl Integration for SteamIntegration {
             return Err(anyhow!("Steam is not running."));
         }
 
-        let settings = AppSettings::load(app)?;
+        let settings = SETTINGS.read().unwrap().clone();
         let game_path = settings.game_path(game)?;
         let steam_id = game.steam_id(&game_path)? as u32;
         let ipc_channel = rand::random::<u64>().to_string();

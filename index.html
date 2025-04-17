@@ -256,7 +256,7 @@
                         <button class="browse-btn"><i class="fa-solid fa-folder-open"></i></button>
                         <button class="select-game-btn hidden" disabled>Select Game</button>
                       </div>
-                      <div class="path-error-message hidden"></div>
+                      <div class="error-message hidden"></div>
                     </div>
                   </template>
                 </div>
@@ -340,6 +340,75 @@
             <button class="secondary-btn" id="add-category-modal-cancel-btn">Cancel</button>
             <button class="primary-btn hidden" id="add-category-modal-accept-add-btn">OK</button>
             <button class="primary-btn hidden" id="add-category-modal-accept-rename-btn">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Mod Modal -->
+    <div id="upload-mod-modal" class="modal">
+      <div class="modal-content modal-content-upload-mod">
+        <div class="modal-header">
+          <h2>Upload Mod</h2>
+        </div>
+        <div class="modal-container">
+          <div class="modal-body">
+            <div class="tab-content">
+              <div class="setting-group setting-group-column-layout">
+                <div class="setting-column-left">
+                  <div class="setting-item">
+                    <label>Preview Image (256x256)</label>
+                    <div class="preview-container">
+                      <img id="upload-mod-preview" src="icons/default-mod-preview.png" alt="Mod Preview">
+                      <input type="file" id="upload-mod-preview-input" accept="image/*" class="hidden">
+                      <button id="upload-mod-preview-btn" class="secondary-btn">Select Image</button>
+                    </div>
+                  </div>
+                  <div class="setting-item">
+                    <label>Visibility</label>
+                    <select id="upload-mod-visibility">
+                      <option value="Private" selected>Private</option>
+                      <option value="Public">Public</option>
+                      <option value="FriendsOnly">Friends Only</option>
+                      <option value="Unlisted">Unlisted</option>
+                    </select>
+                  </div>
+                  <div class="setting-item">
+                    <label>Tags</label>
+                    <select id="upload-mod-tags">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-column-right">
+                  <div class="setting-item">
+                    <label>Title</label>
+                    <input type="text" id="upload-mod-title" placeholder="Enter mod title...">
+                  </div>
+                  <div class="setting-item">
+                    <label>Description</label>
+                  </div>
+                  <div class="setting-item">
+                    <textarea id="upload-mod-description" placeholder="Enter mod description..." rows="4"></textarea>
+                    <div id="upload-mod-description-preview"></div>
+                  </div>
+                  <div class="setting-item">
+                    <label>Changelog</label>
+                  </div>
+                  <div class="setting-item">
+                    <textarea id="upload-mod-changelog" placeholder="Enter mod changelog..." rows="4"></textarea>
+                    <div id="upload-mod-changelog-preview"></div>
+                  </div>
+                </div>
+              </div>
+              <div id="upload-mod-error" class="error-message"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="button-group">
+            <button class="secondary-btn" id="upload-mod-cancel-btn">Cancel</button>
+            <button class="primary-btn" id="upload-mod-submit-btn">Upload</button>
           </div>
         </div>
       </div>
