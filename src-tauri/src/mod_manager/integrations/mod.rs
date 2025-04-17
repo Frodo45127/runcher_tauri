@@ -50,6 +50,14 @@ pub struct Integrations {
 // Generic trait that all integrations must implement.
 trait Integration {
 
+    /// This function is used to open the remote mod url in the browser.
+    ///
+    /// If in_app is true, it will try to open the url in the store's app (Steam, Epic, etc) instead of the browser.
+    fn open_remote_mod_url(
+        remote_id: &str,
+        in_app: bool,
+    ) -> Result<()>;
+
     /// This function is used to request the current remote metadata of a mod.
     fn request_mod_remote_metadata(
         app: &AppHandle,
@@ -120,7 +128,7 @@ trait Integration {
 pub enum TxStoreSend {
     LaunchGame(Sender<TxStoreResponse>, AppHandle, GameInfo, String, bool),
     RequestRemoteModData(Sender<TxStoreResponse>, AppHandle, GameInfo, Vec<String>),
-    RequestModRemoteMetadata(Sender<TxStoreResponse>, AppHandle, GameInfo, String),
+    RequestModRemoteMetadata(Sender<TxStoreResponse>, AppHandle, GameInfo, StoreId),
     StoreUserId(Sender<TxStoreResponse>, AppHandle, GameInfo),
     UploadMod(Sender<TxStoreResponse>, AppHandle, GameInfo, Mod, String, String, Vec<String>, String, Option<u32>, bool),
 }
@@ -140,6 +148,17 @@ pub enum PublishedFileVisibilityDerive {
     #[default]
     Private,
     Unlisted,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StoreId {
+    #[default] None,
+    Steam(String),
+    Epic(String),
+    Nexus(String),
+    ModDB(String),
+    LoversLab(String),
+    Github(String)
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -186,6 +205,13 @@ impl Integrations {
         }
     }
 
+    pub fn open_remote_mod_url(remote_id: &StoreId, in_app: bool) -> Result<()> {
+        match remote_id {
+            StoreId::Steam(id) => SteamIntegration::open_remote_mod_url(id, in_app),
+            _ => Err(anyhow!("Not implemented for this integration.")),
+        }
+    }
+
     recv!(launch_game, Success, ());
     pub async fn launch_game(
         &self,
@@ -213,12 +239,12 @@ impl Integrations {
         &self,
         app: &AppHandle,
         game: &GameInfo,
-        remote_id: &str,
+        remote_id: &StoreId,
     ) -> Receiver<TxStoreResponse> {
         let (tx_send, tx_recv) = channel(32);
         let _ = self
             .sender
-            .send(TxStoreSend::RequestModRemoteMetadata(tx_send, app.clone(), game.clone(), remote_id.to_string()))
+            .send(TxStoreSend::RequestModRemoteMetadata(tx_send, app.clone(), game.clone(), remote_id.clone()))
             .await;
         tx_recv
     }
@@ -380,9 +406,13 @@ impl Integrations {
     fn wrapper_request_mod_remote_metadata(
         app_handle: &tauri::AppHandle,
         game: &GameInfo,
-        remote_id: &str,
+        remote_id: &StoreId,
     ) -> Result<RemoteMetadata> {
-        SteamIntegration::request_mod_remote_metadata(app_handle, game, remote_id)
+        match remote_id {
+            StoreId::Steam(id) => SteamIntegration::request_mod_remote_metadata(app_handle, game, id),
+            StoreId::None => Err(anyhow!("No store id found.")),
+            _ => Err(anyhow!("Not implemented for this integration.")),
+        }
     }
 
     fn wrapper_upload_mod_to_integration(
@@ -440,5 +470,24 @@ impl Integrations {
 
     fn wrapper_toggle_game_locked(game: &GameInfo, game_path: &Path, toggle: bool) -> bool {
         SteamIntegration::toggle_game_locked(game, game_path, toggle).unwrap_or_default()
+    }
+}
+
+
+impl StoreId {
+    pub fn id(&self) -> Option<String> {
+        match self {
+            StoreId::None => None,
+            StoreId::Steam(id) => Some(id.clone()),
+            StoreId::Epic(id) => Some(id.clone()),
+            StoreId::Nexus(id) => Some(id.clone()),
+            StoreId::ModDB(id) => Some(id.clone()),
+            StoreId::LoversLab(id) => Some(id.clone()),
+            StoreId::Github(id) => Some(id.clone()),
+        }
+    }
+
+    pub fn is_steam(&self) -> bool {
+        matches!(self, StoreId::Steam(_))
     }
 }

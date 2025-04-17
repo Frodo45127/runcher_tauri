@@ -23,7 +23,7 @@ export class Sidebar {
     this.container = document.getElementById("sidebar-buttons") as HTMLElement;
 
     this.loadSidebarIcons(main).then(() => {
-      console.log("Sidebar icons loaded");
+      //console.log("Sidebar icons loaded");
     });
   }
 

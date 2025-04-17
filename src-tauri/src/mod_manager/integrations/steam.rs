@@ -35,7 +35,7 @@ use crate::settings::config_path;
 
 #[cfg(target_os = "windows")]
 use super::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
-use super::{Integration, RemoteMetadata, PublishedFileVisibilityDerive};
+use super::{Integration, RemoteMetadata, PublishedFileVisibilityDerive, StoreId};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::os::unix::fs::PermissionsExt;
@@ -123,6 +123,28 @@ impl From<&QueryResultDerive> for RemoteMetadata {
 
 impl Integration for SteamIntegration {
 
+    fn open_remote_mod_url(
+        remote_id: &str,
+        in_app: bool,
+    ) -> Result<()> {
+
+        if in_app && !is_steam_running() {
+            return Err(anyhow!("Steam is not running."));
+        }
+
+        if remote_id.is_empty() {
+            return Err(anyhow!("No Steam ID found."));
+        }
+
+        let _ = if in_app {
+            open::that(format!("steam://url/CommunityFilePage/{remote_id}"))
+        } else {
+            open::that(format!("https://steamcommunity.com/sharedfiles/filedetails/?id={remote_id}"))
+        };
+
+        Ok(())
+    }
+
     fn request_mod_remote_metadata(
         app: &AppHandle,
         game: &GameInfo,
@@ -171,7 +193,7 @@ impl Integration for SteamIntegration {
         let mut mods = vec![];
         for workshop_item in &workshop_items {
             let mut modd = Mod::default();
-            modd.set_steam_id(Some(workshop_item.published_file_id.to_string()));
+            modd.set_store_id(StoreId::Steam(workshop_item.published_file_id.to_string()));
 
             modd.set_name(workshop_item.title.to_owned());
             modd.set_creator(workshop_item.owner.to_string());
@@ -215,8 +237,8 @@ impl Integration for SteamIntegration {
         for workshop_item in remote_mods {
             if let Some(modd) = mods
                 .values_mut()
-                .filter(|modd| modd.steam_id().is_some())
-                .find(|modd| modd.steam_id() == workshop_item.steam_id())
+                .filter(|modd| modd.store_id().is_steam())
+                .find(|modd| modd.store_id() == workshop_item.store_id())
             {
                 modd.set_name(workshop_item.name().to_string());
                 modd.set_creator(workshop_item.creator().to_string());
@@ -301,9 +323,9 @@ impl Integration for SteamIntegration {
         let mut command_string = format!(
             "{} {} -b -s {steam_id} -f \"{pack_path}\" -t {} --tags {}",
             &*WORKSHOPPER_PATH,
-            match modd.steam_id() {
-                Some(published_file_id) => format!("update --published-file-id {published_file_id}"),
-                None => "upload".to_string(),
+            match modd.store_id() {
+                StoreId::Steam(published_file_id) => format!("update --published-file-id {published_file_id}"),
+                _ => "upload".to_string(),
             },
             BASE64_STANDARD.encode(title),
             tags.join(",")

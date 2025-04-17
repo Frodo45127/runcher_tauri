@@ -59,6 +59,7 @@ pub struct AppSettings {
     pub check_updates_on_start: bool,
     pub check_schema_updates_on_start: bool,
     pub check_sql_scripts_updates_on_start: bool,
+    pub open_remote_mod_in_app: bool,
     pub launch_options: HashMap<String, String>,
 }
 
@@ -85,6 +86,7 @@ impl Default for AppSettings {
             check_updates_on_start: true,
             check_schema_updates_on_start: true,
             check_sql_scripts_updates_on_start: true,
+            open_remote_mod_in_app: false,
             launch_options: HashMap::new(),
         }
     }

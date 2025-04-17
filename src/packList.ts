@@ -12,7 +12,6 @@ export interface ListItem {
   type: string;
   order: number;
   location: string;
-  steam_id: string;
 }
 
 const enum LoadOrderDirectionMove {
@@ -360,8 +359,7 @@ export class PackList {
           pack: element.dataset.pack || '',
           type: element.dataset.type || '',
           order: parseInt(element.dataset.order || '0'),
-          location: element.dataset.location || '',
-          steam_id: ''
+          location: element.dataset.location || ''
         };
         items.push(item);
       });

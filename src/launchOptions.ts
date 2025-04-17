@@ -49,7 +49,6 @@ export class LaunchOptionsPanel {
     }
 
     private renderOptions() {
-        console.log(this.options);
         this.content.innerHTML = '';
 
         this.options.forEach((option, index) => {

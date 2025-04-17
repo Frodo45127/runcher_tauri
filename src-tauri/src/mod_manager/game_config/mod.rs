@@ -28,12 +28,11 @@ use rpfm_lib::files::pack::Pack;
 use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType, supported_games::KEY_SHOGUN_2};
 use rpfm_lib::integrations::log::error;
 
-//use crate::games::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 use crate::mod_manager::{integrations::TxStoreResponse, load_order::LoadOrder, mods::Mod};
 use crate::{GAME_SELECTED, INTEGRATIONS, SETTINGS, settings::*};
 use crate::{RESERVED_PACK_NAME, RESERVED_PACK_NAME_ALTERNATIVE};
 
-use super::integrations::Integrations;
+use super::integrations::{Integrations, StoreId};
 use super::{
     generate_map_pack, move_to_destination, secondary_mods_packs_paths, secondary_mods_path,
 };
@@ -338,7 +337,7 @@ impl GameConfig {
                                         if !path_strip_split.is_empty() {
                                             let steam_id = path_strip_split[0].to_owned();
                                             steam_ids.push(steam_id.to_owned());
-                                            modd.set_steam_id(Some(steam_id));
+                                            modd.set_store_id(StoreId::Steam(steam_id));
                                         }
                                     }
                                     None => {
@@ -375,7 +374,7 @@ impl GameConfig {
                                         if !path_strip_split.is_empty() {
                                             let steam_id = path_strip_split[0].to_owned();
                                             steam_ids.push(steam_id.to_owned());
-                                            modd.set_steam_id(Some(steam_id));
+                                            modd.set_store_id(StoreId::Steam(steam_id));
                                         }
 
                                         self.mods_mut().insert(pack_name, modd);
@@ -443,7 +442,7 @@ impl GameConfig {
                                                 if !path_strip_split.is_empty() {
                                                     let steam_id = path_strip_split[0].to_owned();
                                                     steam_ids.push(steam_id.to_owned());
-                                                    modd.set_steam_id(Some(steam_id));
+                                                    modd.set_store_id(StoreId::Steam(steam_id));
                                                 }
                                             }
                                             None => {
@@ -480,7 +479,7 @@ impl GameConfig {
                                                 if !path_strip_split.is_empty() {
                                                     let steam_id = path_strip_split[0].to_owned();
                                                     steam_ids.push(steam_id.to_owned());
-                                                    modd.set_steam_id(Some(steam_id));
+                                                    modd.set_store_id(StoreId::Steam(steam_id));
                                                 }
 
                                                 self.mods_mut().insert(pack_name, modd);

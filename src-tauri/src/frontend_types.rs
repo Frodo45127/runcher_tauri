@@ -11,9 +11,6 @@ pub struct SidebarIcon {
 pub struct TreeCategory {
     pub id: String,
     pub name: String,
-    pub size: String,
-    pub status: String,
-    pub last_played: String,
     pub children: Vec<TreeItem>,
 }
 
@@ -39,7 +36,6 @@ pub struct ListItem {
     pub r#type: String,
     pub order: i32,
     pub location: String,
-    pub steam_id: String,
 }
 
 /// Progress payload for the progress event. Basically, it's for providing a way to update the progress bar from the Rust side.

@@ -21,6 +21,7 @@ export interface AppSettings {
   check_updates_on_start: boolean;
   check_schema_updates_on_start: boolean;
   check_sql_scripts_updates_on_start: boolean;
+  open_remote_mod_in_app: boolean;
   launch_options: { [key: string]: string };
 }
 
@@ -47,6 +48,7 @@ export class SettingsManager {
       check_updates_on_start: true,
       check_schema_updates_on_start: true,
       check_sql_scripts_updates_on_start: true,
+      open_remote_mod_in_app: false,
       launch_options: {}
     };
   }
@@ -122,6 +124,7 @@ export class SettingsManager {
           check_updates_on_start: this.appSettings.check_updates_on_start,
           check_schema_updates_on_start: this.appSettings.check_schema_updates_on_start,
           check_sql_scripts_updates_on_start: this.appSettings.check_sql_scripts_updates_on_start,
+          open_remote_mod_in_app: this.appSettings.open_remote_mod_in_app,
           launch_options: this.appSettings.launch_options
         }
       });

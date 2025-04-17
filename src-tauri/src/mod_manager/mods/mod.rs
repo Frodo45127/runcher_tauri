@@ -22,6 +22,8 @@ use rpfm_lib::games::{
 };
 use rpfm_lib::utils::{path_to_absolute_path, path_to_absolute_string};
 
+use super::integrations::StoreId;
+
 //pub mod versions;
 
 //-------------------------------------------------------------------------------//
@@ -37,8 +39,8 @@ pub struct Mod {
     /// Pack name of the mod.
     id: String,
 
-    /// Steam Workshop's id of this mod. AKA PublishedFileId.
-    steam_id: Option<String>,
+    /// Store id of this mod. May be None if the mod is not uploaded to any store.
+    store_id: StoreId,
 
     /// If the mod is enabled or not.
     #[getset(skip)]
@@ -82,7 +84,7 @@ pub struct Mod {
 pub struct ShareableMod {
     name: String,
     id: String,
-    steam_id: Option<String>,
+    store_id: StoreId,
     hash: String,
 }
 
@@ -96,7 +98,7 @@ impl From<&Mod> for ShareableMod {
         Self {
             name: value.name().to_owned(),
             id: value.id().to_owned(),
-            steam_id: value.steam_id().to_owned(),
+            store_id: value.store_id().to_owned(),
             hash,
         }
     }
@@ -113,15 +115,15 @@ impl Mod {
         data_path: &str,
         secondary_path: &str,
         content_path: &str,
-    ) -> (bool, bool, Option<String>) {
+    ) -> (bool, bool, StoreId) {
         // Shortcut for mods with no paths.
         if self.paths().is_empty() {
-            return (false, false, None);
+            return (false, false, StoreId::None);
         }
 
         let mut data = false;
         let mut secondary = false;
-        let mut content = None;
+        let mut content = StoreId::None;
 
         for path in self.paths() {
             let path = path_to_absolute_string(path);
@@ -130,7 +132,7 @@ impl Mod {
             } else if !secondary_path.is_empty() && path.starts_with(secondary_path) {
                 secondary = true;
             } else if !content_path.is_empty() && path.starts_with(content_path) {
-                content = self.steam_id.clone();
+                content = self.store_id.clone();
             }
         }
 

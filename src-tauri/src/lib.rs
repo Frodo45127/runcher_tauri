@@ -15,7 +15,7 @@ use rpfm_lib::utils::path_to_absolute_string;
 use crate::frontend_types::*;
 use crate::launch_options::*;
 use crate::mod_manager::game_config::GameConfig;
-use crate::mod_manager::integrations::{Integrations, RemoteMetadata};
+use crate::mod_manager::integrations::{Integrations, RemoteMetadata, StoreId};
 use crate::mod_manager::load_order::{
     CUSTOM_MOD_LIST_FILE_NAME, LoadOrder, LoadOrderDirectionMove,
 };
@@ -432,17 +432,11 @@ async fn open_mod_url(id: String) -> Result<(), String> {
 
     let game_config = GAME_CONFIG.lock().unwrap().clone().unwrap();
     let mod_info = game_config.mods().get(&mod_id).unwrap();
-    let remote_id = mod_info.steam_id().clone().unwrap_or_default();
+    let remote_id = mod_info.store_id();
+    let settings = SETTINGS.read().unwrap().clone();
 
-    // TODO: Rewrite this so it's not steam-exclusive.
-    if !remote_id.is_empty() {
-        let _ = open::that(
-            "https://steamcommunity.com/sharedfiles/filedetails/?id=".to_string() + &remote_id,
-        );
-    } else {
-        return Err("No remote ID found".to_string());
-    }
-    Ok(())
+    Integrations::open_remote_mod_url(&remote_id, settings.open_remote_mod_in_app)
+        .map_err(|e| format!("Error opening mod URL: {}", e))
 }
 
 #[tauri::command]
@@ -697,8 +691,17 @@ async fn load_mods(
                         if l_secondary {
                             locations.push("Secondary".to_owned());
                         }
-                        if let Some(id) = l_content {
-                            locations.push(format!("Content ({})", id));
+
+                        match l_content {
+                            StoreId::None => {},
+                            StoreId::Steam(id) |
+                            StoreId::Epic(id) |
+                            StoreId::Nexus(id) |
+                            StoreId::ModDB(id) |
+                            StoreId::LoversLab(id) |
+                            StoreId::Github(id) => {
+                                locations.push(format!("Content ({})", id));
+                            }
                         }
 
                         item.location = locations.join(",");
@@ -786,21 +789,33 @@ async fn load_packs(
                         } else if secondary_mods_path.is_dir()
                             && modd.paths()[0].starts_with(&secondary_mods_path)
                         {
-                            if let Some(ref id) = modd.steam_id() {
-                                format!("Secondary ({})", id)
-                            } else {
-                                "Secondary (Non-Steam)".to_string()
-                            }
-                        } else if let Some(ref id) = modd.steam_id() {
-                            format!("Content ({})", id)
-                        } else {
+                            format!("Secondary ({})", match modd.store_id() {
+                                StoreId::None => "Local",
+                                StoreId::Steam(ref id) => id,
+                                StoreId::Epic(ref id) => id,
+                                StoreId::Nexus(ref id) => id,
+                                StoreId::ModDB(ref id) => id,
+                                StoreId::LoversLab(ref id) => id,
+                                StoreId::Github(ref id) => id,
+                            })
+                        } else if let StoreId::None = modd.store_id() {
                             "Where the fuck is this pack?".to_string()
+                        } else {
+                            format!("Content ({})", match modd.store_id() {
+                                StoreId::None => "Local",
+                                StoreId::Steam(ref id) => id,
+                                StoreId::Epic(ref id) => id,
+                                StoreId::Nexus(ref id) => id,
+                                StoreId::ModDB(ref id) => id,
+                                StoreId::LoversLab(ref id) => id,
+                                StoreId::Github(ref id) => id,
+                            })
                         };
 
-                        item.steam_id = modd.steam_id().clone().unwrap_or_default();
+                        //item.store_id = modd.store_id().clone();
                         items.push(item);
                     } else {
-                        // TODO: fix this case in shogun 2.
+                        // TODO: fix this case in shogun 2. Also seen up to warhammer 1....
                         //error!("Error loading Pack to UI: {}", modd.paths()[0].to_string_lossy())
                     }
                 }
@@ -982,19 +997,15 @@ async fn request_mod_remote_metadata(
     let game_config = GAME_CONFIG.lock().unwrap().clone();
     if let Some(game_config) = game_config {
         if let Some(modd) = game_config.mods().get(&mod_id) {
-            if let Some(remote_id) = modd.steam_id() {
-                let integrations = INTEGRATIONS.lock().unwrap().clone();
-                let receiver = integrations.request_mod_remote_metadata(
-                    &app,
-                    &game,
-                    remote_id
-                ).await;
+            let integrations = INTEGRATIONS.lock().unwrap().clone();
+            let receiver = integrations.request_mod_remote_metadata(
+                &app,
+                &game,
+                &modd.store_id()
+            ).await;
 
-                return Integrations::recv_request_mod_remote_metadata(receiver).await
-                    .map_err(|e| format!("Error requesting mod remote metadata: {}", e));
-            } else {
-                Err(format!("Remote ID not found"))
-            }
+            return Integrations::recv_request_mod_remote_metadata(receiver).await
+                .map_err(|e| format!("Error requesting mod remote metadata: {}", e));
         } else {
             Err(format!("Mod not found"))
         }
@@ -1004,7 +1015,7 @@ async fn request_mod_remote_metadata(
 }
 
 #[tauri::command]
-async fn mod_tags_available(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+async fn mod_tags_available() -> Result<Vec<String>, String> {
     let game = GAME_SELECTED.read().unwrap().clone();
     let tags = game.steam_workshop_tags()
         .map_err(|e| format!("Error requesting mod tags: {}", e))?;
