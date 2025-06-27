@@ -773,10 +773,10 @@ async fn load_packs(
                     if pack_name.ends_with(".pack") {
                         let pack = Pack::read_and_merge(
                             &[modd.paths()[0].to_path_buf()],
+                            game_info,
                             true,
                             false,
-                            false,
-                            false,
+                            false
                         )?;
 
                         let mut item = ListItem::default();

@@ -187,7 +187,7 @@ impl LoadOrder {
                 let path = modd.paths().first()?;
                 Some((
                     mod_id.to_owned(),
-                    Pack::read_and_merge(&[path.to_path_buf()], true, false, false, false).ok()?,
+                    Pack::read_and_merge(&[path.to_path_buf()], game,  true, false, false).ok()?,
                 ))
             })
             .collect();

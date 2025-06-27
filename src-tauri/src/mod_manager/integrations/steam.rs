@@ -313,7 +313,7 @@ impl Integration for SteamIntegration {
         if force_update {
             let extra_data = Some(EncodeableExtraData::new_from_game_info(game));
             let mut pack =
-                Pack::read_and_merge(&[PathBuf::from(&pack_path)], true, false, false, false)?;
+                Pack::read_and_merge(&[PathBuf::from(&pack_path)], game,  true, false, false)?;
             pack.save(None, game, &extra_data)?;
         }
 

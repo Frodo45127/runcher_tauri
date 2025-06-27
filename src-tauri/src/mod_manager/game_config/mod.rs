@@ -282,8 +282,8 @@ impl GameConfig {
                             paths.par_iter().partition_map(|path| {
                                 match Pack::read_and_merge(
                                     &[path.to_path_buf()],
+                                    game,
                                     true,
-                                    false,
                                     false,
                                     false,
                                 ) {
@@ -534,10 +534,10 @@ impl GameConfig {
                                 path,
                                 Pack::read_and_merge(
                                     &[path.to_path_buf()],
+                                    game,
                                     true,
                                     false,
-                                    false,
-                                    false,
+                                    false
                                 ),
                             )
                         })
@@ -670,10 +670,10 @@ impl GameConfig {
                                 path,
                                 Pack::read_and_merge(
                                     &[path.to_path_buf()],
+                                    game,
                                     true,
                                     false,
-                                    false,
-                                    false,
+                                    false
                                 ),
                             )
                         })
@@ -904,8 +904,8 @@ impl GameConfig {
                                 // This is for Packs. Map mods use a different process.
                                 if let Ok(mut pack) = Pack::read_and_merge(
                                     &[last_path.to_path_buf()],
+                                    &game,
                                     true,
-                                    false,
                                     false,
                                     false,
                                 ) {
