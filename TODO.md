@@ -88,8 +88,8 @@ TODO:
         - [ ] Moddb? (maybe for older games?)
     - [ ] Multiplatform Support:
         - [x] Windows
-        - [ ] Linux:
-            - [ ] Port windows-specific ifs (mainly related with executable paths and args)
+        - [X] Linux:
+            - [X] Port windows-specific ifs (mainly related with executable paths and args)
         - [ ] MacOS (nice to have, but I don't have a mac for testing)
     - [ ] Status bar:
         - [x] Loading bar for background processes.
