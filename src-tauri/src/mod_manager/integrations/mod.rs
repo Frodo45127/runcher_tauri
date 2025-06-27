@@ -87,6 +87,17 @@ trait Integration {
         user_names: &HashMap<String, String>,
     );
 
+    /// This function downloads all the provided mods from their respective integrations.
+    ///
+    /// If the integration doesn't support downloading mods, it will return an error.
+    fn download_mods(
+        _app: &AppHandle,
+        _game: &GameInfo,
+        _remote_ids: &[String],
+    ) -> Result<()> {
+        Err(anyhow!("Not implemented for this integration."))
+    }
+
     /// This function uploads a mod to the site of the integration.
     ///
     /// If the mod doesn't yet exists in the site, it creates it. If it already exists, it updates it.

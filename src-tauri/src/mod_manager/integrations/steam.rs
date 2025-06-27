@@ -58,7 +58,7 @@ static WORKSHOPPER_PATH: LazyLock<String> = LazyLock::new(|| {
 #[cfg(target_os = "windows")] const SCRIPT_GET_PUBLISHED_FILE_DETAILS: &str = "get-published-file-details.bat";
 #[cfg(target_os = "windows")] const SCRIPT_GET_USER_ID: &str = "get-user-id.bat";
 #[cfg(target_os = "windows")] const SCRIPT_LAUNCH_GAME: &str = "launch-game.bat";
-#[cfg(target_os = "windows")] const SCRIPT_DOWNLOAD_SUBSCRIBED_ITEMS: &str = "download-subscribed-items.bat";
+#[cfg(target_os = "windows")] const SCRIPT_DOWNLOAD_MODS: &str = "download-mods.bat";
 
 #[cfg(any(target_os = "linux", target_os = "macos"))] const STEAM_PROCESS_NAME: &str = "steam";
 #[cfg(any(target_os = "linux", target_os = "macos"))] const WORKSHOPPER_EXE: &str = "workshopper";
@@ -66,7 +66,7 @@ static WORKSHOPPER_PATH: LazyLock<String> = LazyLock::new(|| {
 #[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_GET_PUBLISHED_FILE_DETAILS: &str = "get-published-file-details.sh";
 #[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_GET_USER_ID: &str = "get-user-id.sh";
 #[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_LAUNCH_GAME: &str = "launch-game.sh";
-#[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_DOWNLOAD_SUBSCRIBED_ITEMS: &str = "download-subscribed-items.sh";
+#[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_DOWNLOAD_MODS: &str = "download-mods.sh";
 
 //-------------------------------------------------------------------------------//
 //                              Enums & Structs
@@ -376,36 +376,23 @@ impl Integration for SteamIntegration {
 
         Ok(())
     }
-    /*
-    /// This function asks workshopper to get all subscribed items, check which ones are missing, and tell steam to re-download them.
-    /// TODO: Update with the changes between runcher 0.9.11 and 0.9.16.
-    pub fn download_subscribed_mods(
+
+    fn download_mods(
         app: &AppHandle,
         game: &GameInfo,
-        published_file_ids: &Option<Vec<String>>,
+        remote_ids: &[String]
     ) -> Result<()> {
         let settings = SETTINGS.read().unwrap().clone();
         let game_path = settings.game_path(game)?;
         let steam_id = game.steam_id(&game_path)? as u32;
 
-        let mut command = workshopper_command(app, false, true, false)?;
-        command.arg(&*WORKSHOPPER_PATH);
-
-        command.arg("download-subscribed-items");
-        command.arg("-s");
-        command.arg(steam_id.to_string());
-
-        if let Some(published_file_ids) = published_file_ids {
-            command.arg("-p");
-            command.arg(published_file_ids.join(","));
-        }
-
-        workshopper_command_post(&mut command, false, true, false);
+        let command_string = format!("download-subscribed-items -s {steam_id} -p {}", remote_ids.join(","));
+        let mut command = build_command_from_str(app, &command_string, SCRIPT_DOWNLOAD_MODS, true, false)?;
         let mut handle = command.spawn()?;
         handle.wait()?;
 
         Ok(())
-    }*/
+    }
 
     fn user_id(app: &AppHandle, game: &GameInfo) -> Result<String> {
         if !is_steam_running() {
