@@ -34,8 +34,6 @@ const PROFILES_FOLDER: &str = "profiles";
 const GAME_CONFIG_FOLDER: &str = "game_config";
 const ERROR_FOLDER: &str = "error";
 const SETTINGS_FILE: &str = "settings.json";
-const PROFILES_FILE: &str = "profiles.json";
-const GAME_CONFIG_FILE: &str = "game_config.json";
 
 //-------------------------------------------------------------------------------//
 //                             Structs & Enums
@@ -155,19 +153,6 @@ impl AppSettings {
             .get("secondary_mods_path")
             .ok_or(anyhow!("Secondary mods path not found"))?;
         Ok(PathBuf::from(path))
-    }
-
-    pub fn string(&self, key: &str) -> Result<String> {
-        self.strings
-            .get(key)
-            .cloned()
-            .ok_or(anyhow!("String not found"))
-    }
-
-    pub fn set_string_if_new(&mut self, key: &str, value: &str) {
-        if self.strings.get(key).is_none() {
-            self.strings.insert(key.to_string(), value.to_string());
-        }
     }
 
     pub fn load(app_handle: &tauri::AppHandle) -> Result<Self> {
