@@ -490,4 +490,24 @@ impl StoreId {
     pub fn is_steam(&self) -> bool {
         matches!(self, StoreId::Steam(_))
     }
+
+    pub fn is_epic(&self) -> bool {
+        matches!(self, StoreId::Epic(_))
+    }
+
+    pub fn is_nexus(&self) -> bool {
+        matches!(self, StoreId::Nexus(_))
+    }
+
+    pub fn is_moddb(&self) -> bool {
+        matches!(self, StoreId::ModDB(_))
+    }
+
+    pub fn is_lovers_lab(&self) -> bool {
+        matches!(self, StoreId::LoversLab(_))
+    }
+
+    pub fn is_github(&self) -> bool {
+        matches!(self, StoreId::Github(_))
+    }
 }
