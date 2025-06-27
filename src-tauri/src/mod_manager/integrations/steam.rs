@@ -11,7 +11,6 @@
 use anyhow::{Result, anyhow};
 use base64::prelude::*;
 use interprocess::local_socket::{GenericNamespaced, ListenerOptions, prelude::*};
-use regex::Regex;
 use serde::Deserialize;
 use steam_workshop_api::{client::Workshop, interfaces::i_steam_user::*};
 use tauri::AppHandle;
@@ -24,6 +23,7 @@ use std::io::{BufWriter, Read, Write};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::LazyLock;
 
 use rpfm_lib::files::{EncodeableExtraData, pack::Pack};
 use rpfm_lib::games::GameInfo;
@@ -40,14 +40,16 @@ use super::{Integration, RemoteMetadata, PublishedFileVisibilityDerive, StoreId}
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::os::unix::fs::PermissionsExt;
 
-const REGEX_URL: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"(\[url=)(.*)(\])(.*)(\[/url\])").unwrap());
-const WORKSHOPPER_PATH: LazyCell<String> = LazyCell::new(|| {
+// Path is absolute to avoid weird issues under windows.
+static WORKSHOPPER_PATH: LazyLock<String> = LazyLock::new(|| {
+    let mut base_path = std::env::current_dir().unwrap();
     if cfg!(debug_assertions) {
-        format!("./target/debug/{}", WORKSHOPPER_EXE)
-    } else {
-        WORKSHOPPER_EXE.to_string()
+        base_path.push("target");
+        base_path.push("debug");
     }
+
+    base_path.push(WORKSHOPPER_EXE);
+    base_path.to_string_lossy().to_string()
 });
 
 #[cfg(target_os = "windows")] const STEAM_PROCESS_NAME: &str = "steam.exe";
@@ -56,6 +58,7 @@ const WORKSHOPPER_PATH: LazyCell<String> = LazyCell::new(|| {
 #[cfg(target_os = "windows")] const SCRIPT_GET_PUBLISHED_FILE_DETAILS: &str = "get-published-file-details.bat";
 #[cfg(target_os = "windows")] const SCRIPT_GET_USER_ID: &str = "get-user-id.bat";
 #[cfg(target_os = "windows")] const SCRIPT_LAUNCH_GAME: &str = "launch-game.bat";
+#[cfg(target_os = "windows")] const SCRIPT_DOWNLOAD_SUBSCRIBED_ITEMS: &str = "download-subscribed-items.bat";
 
 #[cfg(any(target_os = "linux", target_os = "macos"))] const STEAM_PROCESS_NAME: &str = "steam";
 #[cfg(any(target_os = "linux", target_os = "macos"))] const WORKSHOPPER_EXE: &str = "workshopper";
@@ -63,6 +66,8 @@ const WORKSHOPPER_PATH: LazyCell<String> = LazyCell::new(|| {
 #[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_GET_PUBLISHED_FILE_DETAILS: &str = "get-published-file-details.sh";
 #[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_GET_USER_ID: &str = "get-user-id.sh";
 #[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_LAUNCH_GAME: &str = "launch-game.sh";
+#[cfg(any(target_os = "linux", target_os = "macos"))] const SCRIPT_DOWNLOAD_SUBSCRIBED_ITEMS: &str = "download-subscribed-items.sh";
+
 //-------------------------------------------------------------------------------//
 //                              Enums & Structs
 //-------------------------------------------------------------------------------//
@@ -313,16 +318,14 @@ impl Integration for SteamIntegration {
         if force_update {
             let extra_data = Some(EncodeableExtraData::new_from_game_info(game));
             let mut pack =
-                Pack::read_and_merge(&[PathBuf::from(&pack_path)], game,  true, false, false)?;
+                Pack::read_and_merge(&[PathBuf::from(&pack_path)], game, true, false, false)?;
             pack.save(None, game, &extra_data)?;
         }
 
         // If we have a published_file_id, it means this file exists in the workshop.
         //
         // So, instead of uploading, we just update it.
-        let mut command_string = format!(
-            "{} {} -b -s {steam_id} -f \"{pack_path}\" -t {} --tags {}",
-            &*WORKSHOPPER_PATH,
+        let mut command_string = format!("{} -b -s {steam_id} -f \"{pack_path}\" -t {} --tags \"{}\"",
             match modd.store_id() {
                 StoreId::Steam(published_file_id) => format!("update --published-file-id {published_file_id}"),
                 _ => "upload".to_string(),
@@ -343,12 +346,7 @@ impl Integration for SteamIntegration {
             command_string.push_str(&format!(" --visibility {visibility}"));
         }
 
-        command_string.push_str(" & exit");
-
-        let script_path = create_script(app, SCRIPT_UPLOAD_TO_WORKSHOP, &command_string)?;
-        let mut command = workshopper_command(app, false, false, true)?;
-        command.arg(&script_path);
-        workshopper_command_post(&mut command, false, false, true);
+        let mut command = build_command_from_str(app, &command_string, SCRIPT_UPLOAD_TO_WORKSHOP, false, true)?;
         command.spawn()?;
 
         Ok(())
@@ -368,15 +366,8 @@ impl Integration for SteamIntegration {
         let game_path = settings.game_path(game)?;
         let steam_id = game.steam_id(&game_path)? as u32;
 
-        let command_string = format!(
-            "{} launch -b -s {steam_id} -c {command_to_pass}",
-            &*WORKSHOPPER_PATH,
-        );
-
-        let script_path = create_script(app, SCRIPT_LAUNCH_GAME, &command_string)?;
-        let mut command = workshopper_command(app, false, false, true)?;
-        command.arg(&script_path);
-        workshopper_command_post(&mut command, false, false, true);
+        let command_string = format!("launch -b -s {steam_id} -c {command_to_pass}");
+        let mut command = build_command_from_str(app, &command_string, SCRIPT_LAUNCH_GAME, false, false)?;
         let mut handle = command.spawn()?;
 
         if wait_for_finish {
@@ -387,6 +378,7 @@ impl Integration for SteamIntegration {
     }
     /*
     /// This function asks workshopper to get all subscribed items, check which ones are missing, and tell steam to re-download them.
+    /// TODO: Update with the changes between runcher 0.9.11 and 0.9.16.
     pub fn download_subscribed_mods(
         app: &AppHandle,
         game: &GameInfo,
@@ -425,15 +417,8 @@ impl Integration for SteamIntegration {
         let steam_id = game.steam_id(&game_path)? as u32;
         let ipc_channel = rand::random::<u64>().to_string();
 
-        let command_string = format!(
-            "{} user-id -s {steam_id} -i {ipc_channel} & exit",
-            &*WORKSHOPPER_PATH
-        );
-
-        let script_path = create_script(app, SCRIPT_GET_USER_ID, &command_string)?;
-        let mut command = workshopper_command(app, true, true, false)?;
-        command.arg(&script_path);
-        workshopper_command_post(&mut command, true, true, false);
+        let command_string = format!("user-id -s {steam_id} -i {ipc_channel}");
+        let mut command = build_command_from_str(app, &command_string, SCRIPT_GET_USER_ID, false, false)?;
         command.spawn()?;
 
         let channel = ipc_channel.to_ns_name::<GenericNamespaced>()?;
@@ -487,45 +472,43 @@ impl Integration for SteamIntegration {
 //                      Utils used by this integration
 //-------------------------------------------------------------------------------//
 
-/// This function creates a command to run workshopper in any OS.
-fn workshopper_command(app: &AppHandle, hide_terminal: bool, detached: bool, new_console: bool) -> Result<Command> {
+fn build_command_from_str(app: &AppHandle, cmd: &str, script_name: &str, force_detached_process: bool, force_new_console: bool) -> Result<Command> {
+    let mut cmd = format!("\"{}\" {cmd}", WORKSHOPPER_PATH.as_str());
+
+    // Post command args, to close the terminal once the command is done.
     if cfg!(target_os = "windows") {
+        cmd.push_str(" & exit ");
+    } else {
+        cmd.push_str(" & ");
+    }
+
+    let script_path = create_script(app, script_name, &cmd)?;
+    let mut command = if cfg!(target_os = "windows") {
         let mut command = Command::new("cmd");
         command.arg("/C");
-
-        #[cfg(target_os = "windows")] {
-            // This is for creating the terminal window. Without it, the entire process runs in the background and there's no feedback on when it's done.
-            if hide_terminal {
-                if cfg!(debug_assertions) {
-                    command.creation_flags(DETACHED_PROCESS);
-                } else {
-                    command.creation_flags(CREATE_NO_WINDOW);
-                }
-            }
-
-            if detached {
-                command.creation_flags(DETACHED_PROCESS);
-            }
-
-            if new_console {
-                command.creation_flags(CREATE_NEW_CONSOLE);
-            }
-        }
-
-        Ok(command)
+        command
     } else {
 
         // We use nohup directly to disconnect the steamworks session from the main process.
         let command = Command::new("nohup");
-        Ok(command)
-    }
-}
+        command
+    };
 
-/// This function finishes the command to run workshopper in any OS.
-fn workshopper_command_post(command: &mut Command, hide_terminal: bool, detached: bool, new_console: bool) {
-    if !cfg!(target_os = "windows") {
-        command.arg("&");
+    command.arg(&script_path);
+
+    // This is for creating the terminal window under windows. Without it, the entire process
+    // runs in the background and there's no feedback on when it's done.
+    #[cfg(target_os = "windows")]if force_detached_process {
+        command.creation_flags(DETACHED_PROCESS);
+    } else if force_new_console {
+        command.creation_flags(CREATE_NEW_CONSOLE);
+    } else if cfg!(debug_assertions) {
+        command.creation_flags(DETACHED_PROCESS);
+    } else {
+        command.creation_flags(CREATE_NO_WINDOW);
     }
+
+    Ok(command)
 }
 
 /// This function creates a script to run workshopper in any OS.
@@ -580,15 +563,8 @@ fn request_mods_data_raw(
     let published_file_ids = mod_ids.join(",");
     let ipc_channel = rand::random::<u64>().to_string();
 
-    let command_string = format!(
-        "{} get-published-file-details -s {steam_id} -p {published_file_ids} -i {ipc_channel} & exit",
-        &*WORKSHOPPER_PATH
-    );
-
-    let script_path = create_script(app, SCRIPT_GET_PUBLISHED_FILE_DETAILS, &command_string)?;
-    let mut command = workshopper_command(app, true, true, false)?;
-    command.arg(&script_path);
-    workshopper_command_post(&mut command, true, true, false);
+    let command_string = format!("get-published-file-details -s {steam_id} -p {published_file_ids} -i {ipc_channel}");
+    let mut command = build_command_from_str(app, &command_string, SCRIPT_GET_PUBLISHED_FILE_DETAILS, false, false)?;
 
     command.spawn()?;
 

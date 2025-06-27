@@ -13,10 +13,12 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::LazyLock;
 
 use common_utils::sql::{ParamType, Preset, SQLScript};
@@ -42,13 +44,20 @@ const PATCHER_EXE: &str = "twpatcher.exe";
 #[cfg(target_os = "linux")]
 const PATCHER_EXE: &str = "twpatcher";
 
+// Path is absolute to avoid weird issues under windows.
 static PATCHER_PATH: LazyLock<String> = LazyLock::new(|| {
+    let mut base_path = std::env::current_dir().unwrap();
     if cfg!(debug_assertions) {
-        format!(".\\target\\debug\\{}", PATCHER_EXE)
-    } else {
-        PATCHER_EXE.to_string()
+        base_path.push("target");
+        base_path.push("debug");
     }
+
+    base_path.push(PATCHER_EXE);
+    base_path.to_string_lossy().to_string()
 });
+
+#[cfg(target_os = "windows")] const PATCHER_LAUNCH_SCRIPT: &str = "patcher-launch.bat";
+#[cfg(any(target_os = "linux", target_os = "macos"))] const PATCHER_LAUNCH_SCRIPT: &str = "patcher-launch.sh";
 
 const SUPPORTED_OPTIONS: &[(&str, &[&str])] = &[
     (
@@ -190,23 +199,13 @@ impl LaunchOptions {
                 data_path.join(reserved_pack_name)
             };
 
-            // Prepare the command to generate the temp pack.
-            let mut cmd = if cfg!(target_os = "windows") {
-                let mut cmd = Command::new("cmd");
-                cmd.arg("/C");
-                cmd
-            } else {
-                Command::new("sh")
-            };
-
-            cmd.arg(&*PATCHER_PATH);
-            cmd.arg("-g");
-            cmd.arg(game.key());
-            cmd.arg("-l");
-            cmd.arg(load_order_file_name(game));
-            cmd.arg("-p");
-            cmd.arg(temp_path.to_string_lossy().to_string()); // Use a custom path out of /data, if available.
-            cmd.arg("-s"); // Skip updates. Updates will be shipped with Runcher updates.
+            // Prepare the command to generate the temp pack. We do it as a string because, after a lot of testing,
+            // the escaping of Command is extremely unreliable on windows when using cmd.
+            let mut cmd_str = format!("-g {} -l {} -p \"{}\" -s",
+                game.key(),
+                load_order_file_name(game),
+                temp_path.to_string_lossy().to_string()
+            );
 
             // Logging check.
             if self
@@ -216,7 +215,7 @@ impl LaunchOptions {
                 .unwrap()
                 .enabled
             {
-                cmd.arg("-e");
+                cmd_str.push_str(" -e ");
             }
 
             // Skip Intros check.
@@ -227,7 +226,7 @@ impl LaunchOptions {
                 .unwrap()
                 .enabled
             {
-                cmd.arg("-i");
+                cmd_str.push_str(" -i ");
             }
 
             // Remove Trait Limit check.
@@ -238,7 +237,7 @@ impl LaunchOptions {
                 .unwrap()
                 .enabled
             {
-                cmd.arg("-r");
+                cmd_str.push_str(" -r ");
             }
 
             // Remove Siege Attacker check.
@@ -249,7 +248,7 @@ impl LaunchOptions {
                 .unwrap()
                 .enabled
             {
-                cmd.arg("-a");
+                cmd_str.push_str(" -a ");
             }
 
             // Enable Dev-only UI check.
@@ -260,7 +259,7 @@ impl LaunchOptions {
                 .unwrap()
                 .enabled
             {
-                cmd.arg("-d");
+                cmd_str.push_str(" -d ");
             }
 
             // Translations check.
@@ -276,8 +275,8 @@ impl LaunchOptions {
                         .find(|param| param.key == "language")
                     {
                         if let LaunchOptionValue::Select(ref language, _) = param.value {
-                            cmd.arg("-t");
-                            cmd.arg(language);
+                            cmd_str.push_str(" -t ");
+                            cmd_str.push_str(language);
                         }
                     }
                 }
@@ -296,8 +295,8 @@ impl LaunchOptions {
                         .find(|param| param.key == "base_mod")
                     {
                         if let LaunchOptionValue::Select(ref base_mod, _) = param.value {
-                            cmd.arg("-u");
-                            cmd.arg(base_mod);
+                            cmd_str.push_str(" -u ");
+                            cmd_str.push_str(base_mod);
                         }
                     }
                 }
@@ -316,8 +315,8 @@ impl LaunchOptions {
                         .find(|param| param.key == "multiplier")
                     {
                         if let LaunchOptionValue::Number(multiplier) = param.value {
-                            cmd.arg("-m");
-                            cmd.arg(multiplier.to_string());
+                            cmd_str.push_str(" -m ");
+                            cmd_str.push_str(multiplier.to_string().as_str());
                         }
                     }
                 }
@@ -341,7 +340,7 @@ impl LaunchOptions {
                     }
                 })
                 .for_each(|(script, option)| {
-                    cmd.arg("--sql-script");
+                    cmd_str.push_str(" --sql-script ");
 
                     let script_params = if script.metadata().parameters().is_empty() {
                         vec![]
@@ -403,28 +402,52 @@ impl LaunchOptions {
                         remote_script_path
                     };
 
+                    let script_path = script_path.to_string_lossy().replace("\\", "/");
                     if script_params.is_empty() {
-                        cmd.arg(script_path);
+                        cmd_str.push_str(&format!(" \"{script_path}\" "));
                     } else {
-                        cmd.arg(format!(
-                            "{};{}",
-                            script_path.to_string_lossy().to_string().replace("\\", "/"),
-                            script_params.join(";")
-                        ));
+                        cmd_str.push_str(&format!(" \"{script_path};{}\" ", script_params.join(";")));
                     }
                 });
+
+            let cmd = format!("\"{}\" {cmd_str} & exit", PATCHER_PATH.as_str());
+
+            let mut file = BufWriter::new(File::create(PATCHER_LAUNCH_SCRIPT)?);
+            file.write_all(cmd.as_bytes())?;
+            file.flush()?;
+
+            // Prepare the command to generate the temp pack.
+            let mut cmd = if cfg!(target_os = "windows") {
+                let mut cmd = Command::new("cmd");
+                cmd.arg("/C");
+                cmd
+            } else {
+                Command::new("sh")
+            };
 
             #[cfg(target_os = "windows")]
             cmd.creation_flags(DETACHED_PROCESS);
 
-            let mut h = cmd
-                .spawn()
-                .map_err(|err| anyhow!("Error when preparing the game patch: {}", err))?;
-            if let Ok(status) = h.wait() {
-                if !status.success() {
-                    return Err(anyhow!(
-                        "Something failed while creating the load order patch. Check the patcher terminal to see what happened."
-                    ));
+            let h = cmd
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn().map_err(|err| anyhow!("Error when preparing the game patch: {}", err))?;
+
+            if let Ok(output) = h.wait_with_output() {
+                if !output.status.success() {
+                    let mut err_message = String::from("Something failed while creating the load order patch. Check the patcher terminal to see what happened.");
+
+                    let out = String::from_utf8(output.stdout).unwrap_or_default();
+                    let err = String::from_utf8(output.stderr).unwrap_or_default();
+                    if !err.is_empty() {
+                        err_message.push_str(&format!("Specifically, this: \n\n{err}"));
+
+                        if !out.is_empty() {
+                            err_message.push_str(&format!("\n\nHere's the rest of the output: \n\n{out}"));
+                        }
+                    }
+
+                    return Err(anyhow!(err_message))
                 }
             }
         }
