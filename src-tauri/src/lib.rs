@@ -497,7 +497,7 @@ async fn load_data(
             let settings = SETTINGS.read().unwrap().clone();
             let game_path = settings.game_path(game)?;
 
-            *GAME_LOAD_ORDER.write().unwrap() = load_order;
+            *GAME_LOAD_ORDER.write().unwrap() = load_order.clone();
             *GAME_CONFIG.lock().unwrap() = Some(game_config.clone());
 
             // Trigger an update of all game profiles, just in case one needs update.
@@ -508,23 +508,8 @@ async fn load_data(
                 Ok(profiles) => *GAME_PROFILES.write().unwrap() = profiles,
                 Err(error) => return Err(anyhow!("Error loading profiles: {}", error)),
             }
-            /*
-                        self.actions_ui().profile_model().clear();
-                        for profile in self.game_profiles().read().unwrap().keys().sorted() {
-                            self.actions_ui().profile_combobox().add_item_q_string(&QString::from_std_str(profile));
-                        }
-
-                        // Load the saves list for the selected game.
-                        let game_path_str = setting_string(game.key());
-                        let game_path = PathBuf::from(&game_path_str);
-                        if let Err(error) = self.load_saves_to_ui(game, &game_path) {
-                            show_dialog(self.main_window(), error, false);
-                        }
-            */
 
             send_progress_event(&app, 10, 100);
-
-            let mut load_order = GAME_LOAD_ORDER.read().unwrap().clone();
             let online_data_receiver = game_config
                 .update_mod_list(app, &game, &game_path, &mut load_order, skip_network_update)
                 .await?;
@@ -569,7 +554,7 @@ async fn load_mods(
 
     let settings = SETTINGS.read().unwrap().clone();
     let game_path = settings.game_path(game)?;
-    let game_last_update_date = last_game_update_date(game, &game_path)?;
+    //let game_last_update_date = last_game_update_date(game, &game_path)?;
     let game_data_path = game.data_path(&game_path)?;
 
     let data_path = path_to_absolute_string(&game_data_path);
