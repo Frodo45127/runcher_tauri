@@ -203,7 +203,7 @@ fn move_to_destination(
     let mut in_secondary = false;
 
     // First try to move it to secondary if it's not in /data. Only if it's not in /data already.
-    if let Some(ref secondary_path) = &secondary_path {
+    if let Some(secondary_path) = &secondary_path {
         if !new_path_in_data.is_file() {
             let new_path_in_secondary = secondary_path.join(mod_name);
 

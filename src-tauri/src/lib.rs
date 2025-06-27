@@ -791,24 +791,24 @@ async fn load_packs(
                         {
                             format!("Secondary ({})", match modd.store_id() {
                                 StoreId::None => "Local",
-                                StoreId::Steam(ref id) => id,
-                                StoreId::Epic(ref id) => id,
-                                StoreId::Nexus(ref id) => id,
-                                StoreId::ModDB(ref id) => id,
-                                StoreId::LoversLab(ref id) => id,
-                                StoreId::Github(ref id) => id,
+                                StoreId::Steam(id) => id,
+                                StoreId::Epic(id) => id,
+                                StoreId::Nexus(id) => id,
+                                StoreId::ModDB(id) => id,
+                                StoreId::LoversLab(id) => id,
+                                StoreId::Github(id) => id,
                             })
                         } else if let StoreId::None = modd.store_id() {
                             "Where the fuck is this pack?".to_string()
                         } else {
                             format!("Content ({})", match modd.store_id() {
                                 StoreId::None => "Local",
-                                StoreId::Steam(ref id) => id,
-                                StoreId::Epic(ref id) => id,
-                                StoreId::Nexus(ref id) => id,
-                                StoreId::ModDB(ref id) => id,
-                                StoreId::LoversLab(ref id) => id,
-                                StoreId::Github(ref id) => id,
+                                StoreId::Steam(id) => id,
+                                StoreId::Epic(id) => id,
+                                StoreId::Nexus(id) => id,
+                                StoreId::ModDB(id) => id,
+                                StoreId::LoversLab(id) => id,
+                                StoreId::Github(id) => id,
                             })
                         };
 
