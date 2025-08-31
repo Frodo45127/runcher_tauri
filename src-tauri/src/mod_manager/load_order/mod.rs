@@ -187,7 +187,7 @@ impl LoadOrder {
                 let path = modd.paths().first()?;
                 Some((
                     mod_id.to_owned(),
-                    Pack::read_and_merge(&[path.to_path_buf()], game,  true, false, false).ok()?,
+                    Pack::read_and_merge(&[path.to_path_buf()], game, true, false, false).ok()?,
                 ))
             })
             .collect();
@@ -521,5 +521,24 @@ impl LoadOrder {
                 }
             }
         }
+    }
+
+    /// This function returns the packs in the load order, in the order they're loaded.
+    pub fn packs_in_order(&self) -> Vec<Pack> {
+        let mut packs = vec![];
+
+        for mod_id in self.mods() {
+            if let Some(pack) = self.packs().get(mod_id) {
+                packs.push(pack.clone());
+            }
+        }
+
+        for mod_id in self.movies() {
+            if let Some(pack) = self.packs().get(mod_id) {
+                packs.push(pack.clone());
+            }
+        }
+
+        packs
     }
 }

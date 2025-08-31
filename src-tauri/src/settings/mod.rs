@@ -33,6 +33,7 @@ const SCHEMAS_FOLDER: &str = "schemas";
 const PROFILES_FOLDER: &str = "profiles";
 const GAME_CONFIG_FOLDER: &str = "game_config";
 const ERROR_FOLDER: &str = "error";
+const DEPENDENCIES_FOLDER: &str = "dependencies";
 const SETTINGS_FILE: &str = "settings.json";
 
 //-------------------------------------------------------------------------------//
@@ -211,6 +212,9 @@ pub fn init_config_path(app_handle: &tauri::AppHandle) -> Result<()> {
     DirBuilder::new()
         .recursive(true)
         .create(sql_scripts_remote_path(app_handle)?)?;
+    DirBuilder::new()
+        .recursive(true)
+        .create(dependencies_cache_path(app_handle)?)?;
 
     // Within the config path we need to create a folder to store the temp packs of each game.
     // Otherwise they interfere with each other due to being movie packs.
@@ -283,6 +287,10 @@ pub fn game_config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
 
 pub fn profiles_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
     Ok(config_path(app_handle)?.join(PROFILES_FOLDER))
+}
+
+pub fn dependencies_cache_path(app_handle: &tauri::AppHandle) -> Result<PathBuf> {
+    Ok(config_path(app_handle)?.join(DEPENDENCIES_FOLDER))
 }
 
 pub fn last_game_update_date(game: &GameInfo, game_path: &Path) -> Result<u64> {

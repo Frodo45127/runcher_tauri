@@ -7,6 +7,8 @@ use std::fs::DirBuilder;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
+use rpfm_extensions::dependencies::Dependencies;
+use rpfm_extensions::diagnostics::Diagnostics;
 use rpfm_lib::files::pack::Pack;
 use rpfm_lib::games::{GameInfo, pfh_file_type::PFHFileType, supported_games::*};
 use rpfm_lib::schema::Schema;
@@ -35,7 +37,6 @@ mod updater;
 //    error_path().unwrap_or_else(|_| PathBuf::from("."))
 //}, true, true, release_name!()).unwrap()));
 
-/// Currently loaded schema.
 static SCHEMA: LazyLock<Arc<RwLock<Option<Schema>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 static SETTINGS: LazyLock<Arc<RwLock<AppSettings>>> =
@@ -58,6 +59,9 @@ static GAME_SELECTED: LazyLock<Arc<RwLock<GameInfo>>> = LazyLock::new(|| {
         SupportedGames::default().game("arena").unwrap().clone(),
     ))
 });
+
+static VANILLA_DATA: LazyLock<Arc<RwLock<Option<Dependencies>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 static INTEGRATIONS: LazyLock<Arc<Mutex<Integrations>>> =
     LazyLock::new(|| Arc::new(Mutex::new(Integrations::new())));
@@ -483,8 +487,8 @@ async fn load_data(
     match supported_games.game(game_id) {
         Some(game) => {
             // Schemas are optional, so don't interrupt loading due to they not being present.
-            //let schema_path = schemas_path().unwrap().join(game.schema_file_name());
-            //*SCHEMA.write().unwrap() = Schema::load(&schema_path, None).ok();
+            let schema_path = schemas_path(app).unwrap().join(game.schema_file_name());
+            *SCHEMA.write().unwrap() = Schema::load(&schema_path, None).ok();
             *GAME_SELECTED.write().unwrap() = game.clone();
 
             // Trigger an update of all game configs, just in case one needs update.
@@ -1067,6 +1071,65 @@ fn unescape(id: &str) -> String {
     id.replace("\\", "").replace("mod:", "").replace("cat:", "")
 }
 
+/// This function performs a diagnostics check through the entire load order.
+#[tauri::command]
+async fn check_diagnostics(app: tauri::AppHandle) -> Result<String, String> {
+    let game = GAME_SELECTED.read().unwrap().clone();
+    let game_path = SETTINGS
+        .read()
+        .unwrap()
+        .game_path(&game)
+        .map_err(|e| format!("Error getting the game's path: {}", e))?;
+    let schema = SCHEMA.read().unwrap();
+
+    if schema.is_none() {
+        return Err("Error checking diagnostics: Schema not found. Make sure Schemas are downloaded before trying again.".to_owned());
+    }
+
+    // First, check if we have dependencies data for the current game loaded, because that data
+    // is only loaded on demand, so we may have not load it yet.
+    let mut vanilla_data = VANILLA_DATA.write().unwrap();
+    if vanilla_data.is_none() {
+        let pak_path = dependencies_cache_path(&app)
+            .map_err(|e| format!("Error finding dependencies cache path: {e}"))?
+            .join(game.dependencies_cache_file_name());
+        let mut dependencies = Dependencies::load(&pak_path, &schema).unwrap_or_default();
+        if dependencies.needs_updating(&game, &game_path).map_err(|e| e.to_string())? {
+            dependencies = Dependencies::generate_dependencies_cache(&schema, &game, &game_path, &None, false)
+                .map_err(|e| format!("Error generating dependencies cache: {e}"))?;
+            dependencies.save(&pak_path)
+                .map_err(|e| format!("Error saving dependencies cache: {e}"))?;
+        }
+        *vanilla_data = Some(dependencies);
+    }
+
+    // Next, build the "local pack" from the entire load order. This pack is the one we're going to check diagnostics for.
+    // It depends on the load order, and we don't know if the load order changed since the last diagnostic check, so we
+    // need to regenerate this.
+    //
+    // TODO: Optimize this so it only regenerates on load order change.
+    // TODO2: Check if we have to re-load the vanilla movies after the mods and before the custom movies.
+    let load_order = GAME_LOAD_ORDER.read().unwrap().clone();
+    let mod_packs = load_order.packs_in_order();
+
+    let mut full_pack = Pack::merge(&mod_packs).map_err(|e| format!("Error merging packs: {e}"))?;
+    full_pack.set_dependencies(vec![]);
+
+    // Trigger a diagnostics check.
+    let mut diagnostics = Diagnostics::default();
+
+    if let Some(ref schema) = *schema {
+        if let Some(ref mut dependencies) = *vanilla_data {
+            diagnostics.check(&mut full_pack, dependencies, &schema, &game, &game_path, &[], false);
+        }
+    }
+    dbg!(&diagnostics.json());
+
+    //dependencies.rebuild(&schema, &[], Some(&pak_path), &game, &game_path, &PathBuf::new()).map_err(|e| e.to_string())?;
+    //dependencies.generate_local_db_references(&schema, &pack, &tables);
+    diagnostics.json().map_err(|e| format!("Error converting diagnostics to json: {e}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1116,7 +1179,8 @@ pub fn run() {
             #[cfg(desktop)]
             updater::fetch_update,
             #[cfg(desktop)]
-            updater::install_update
+            updater::install_update,
+            check_diagnostics
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

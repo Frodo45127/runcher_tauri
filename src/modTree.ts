@@ -943,6 +943,14 @@ export class ModTree {
     } finally {
       main.loadingManager.hideListLoading(main);
     }
+    /*
+    try {
+      const diagnostics = await invoke('check_diagnostics', {}) as String;
+      console.log('Diagnostics check completed:', diagnostics);
+
+    } catch (error) {
+      console.error('Failed to check diagnostics:', error);
+    }*/
   }
 
   /**
