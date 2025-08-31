@@ -14,6 +14,7 @@ TODO:
         - [x] Move between categories
         - [ ] Update (force-download)
         - [ ] Upload (publish || update published) (publish may be restricted as the vanilla launcher does not see mods published by other launchers)
+            - [ ] Select compression on upload
         - [ ] Lock (prevent updates)
         - [ ] Copy to data (or alternatives)
         - [ ] Copy to secondary
@@ -69,6 +70,7 @@ TODO:
             - [ ] Show profile details.
             - [ ] Profile sharing (copy mod list || copy to collection).
             - [ ] Profile import (from load order || from collection).
+            - [ ] Save launch options as part of the profiles.
     - [ ] 3rd Party Integration:
         - [ ] Workshop:
             - [ ] Collections support (for improved mod list sharing).
